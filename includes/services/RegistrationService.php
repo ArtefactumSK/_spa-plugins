@@ -6,6 +6,7 @@
  * týkajúcimi sa registrácií.
  */
 
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -16,12 +17,12 @@ class SPA_Registration_Service {
      * Vytvorí registráciu v DB
      *
      * @param array $data
-     * @return int|WP_Error registration_id
+     * @return int|\WP_Error
      */
     public static function create(array $data) {
         global $wpdb;
 
-        // POVINNÉ hodnoty (minimum)
+        // Povinné polia
         $required = [
             'parent_id',
             'child_id',
@@ -32,21 +33,21 @@ class SPA_Registration_Service {
             if (empty($data[$key])) {
                 return new WP_Error(
                     'spa_registration_missing_field',
-                    sprintf('Missing required field: %s', $key)
+                    'Missing required field: ' . $key
                 );
             }
         }
 
         $table = $wpdb->prefix . 'spa_registrations';
 
-        $inserted = $wpdb->insert(
+        $result = $wpdb->insert(
             $table,
             [
-                'parent_id'   => (int) $data['parent_id'],
-                'child_id'    => (int) $data['child_id'],
-                'program_id'  => (int) $data['program_id'],
-                'status'      => $data['status'] ?? 'pending',
-                'created_at'  => current_time('mysql'),
+                'parent_id'  => (int) $data['parent_id'],
+                'child_id'   => (int) $data['child_id'],
+                'program_id'=> (int) $data['program_id'],
+                'status'     => $data['status'] ?? 'pending',
+                'created_at' => current_time('mysql'),
             ],
             [
                 '%d',
@@ -57,7 +58,13 @@ class SPA_Registration_Service {
             ]
         );
 
-        if ($inserted === false) {
+        if ($result === false) {
             return new WP_Error(
                 'spa_registration_db_error',
-                $w
+                $wpdb->last_error
+            );
+        }
+
+        return (int) $wpdb->insert_id;
+    }
+}
