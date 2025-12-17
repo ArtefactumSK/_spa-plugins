@@ -2,8 +2,8 @@
 if (!defined('ABSPATH')) exit;
 
 add_action('init', function () {
-
-    if (!current_user_can('spa_trainer')) return;
+error_log('[SPA ATTENDANCE] POST received');
+    /* if (!current_user_can('spa_trainer')) return; */
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
     if (empty($_POST['schedule_id']) || empty($_POST['date'])) return;
