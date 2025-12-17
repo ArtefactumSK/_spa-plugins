@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: SPA Core
- * Description: Core systém pre Piasecky Academy (DB, logika, integrácie).
+ * Description: Core systém pre Samuel Piasecky ACADEMY (DB, logika, integrácie).
  * Version: 1.0.0
  */
 
