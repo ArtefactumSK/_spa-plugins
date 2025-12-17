@@ -42,29 +42,3 @@ add_action('after_setup_theme', function () {
         show_admin_bar(false);
     }
 });
-
-
-add_action('admin_init', function () {
-
-    // ⚠️ DOČASNÝ HELPER – po úspechu ZMAŽ
-    if (!current_user_can('administrator')) {
-        return;
-    }
-
-    if (!isset($_GET['spa_seed_schedule'])) {
-        return;
-    }
-
-    $schedule_id = 898;
-
-    update_post_meta($schedule_id, '_spa_program_id', 49);
-    update_post_meta($schedule_id, '_spa_city', 'Malacky');
-    update_post_meta($schedule_id, '_spa_weekday', 'tue');
-    update_post_meta($schedule_id, '_spa_time_from', '16:00');
-    update_post_meta($schedule_id, '_spa_time_to', '17:00');
-    update_post_meta($schedule_id, '_spa_trainer_user_id', 98);
-    update_post_meta($schedule_id, '_spa_capacity', 12);
-
-    wp_die('✅ Rozvrh meta úspešne vložené. Tento kód teraz ZMAŽ.');
-});
-
