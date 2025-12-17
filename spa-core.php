@@ -14,5 +14,8 @@ require_once __DIR__ . '/includes/db/install.php';
 
 // Services
 require_once __DIR__ . '/includes/services/RegistrationService.php';
+if (!class_exists('SPA_Registration_Service')) {
+    error_log('[SPA CORE] RegistrationService class NOT loaded');
+}
 
 register_activation_hook(__FILE__, 'spa_core_install_db');
