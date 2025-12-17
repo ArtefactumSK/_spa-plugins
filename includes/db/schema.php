@@ -9,83 +9,54 @@
 if (!defined('ABSPATH')) {
     exit;
 }
-
-/**
- * Vráti SQL schému pre SPA Core tabuľky
- *
- * @return string
- */
 function spa_core_get_schema_sql() {
     global $wpdb;
 
     $charset_collate = $wpdb->get_charset_collate();
+    $prefix = $wpdb->prefix;
 
-    $sql = <<<SQL
+    $sql = "
 
-/* Projekt SPA (Samuel Piasecky ACADEMY)
-WP multisite/ pracovna URL spa.artepaint.eu
-DB artepaint_eu
-DB_HOST 'db-05.nameserver.sk'
-$table_prefix = 'wp_ap';
-Author: Mgr. Roman Valent/AI assistants
-*/
+    CREATE TABLE {$prefix}spa_parents (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        user_id BIGINT UNSIGNED NOT NULL,
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY user_id (user_id)
+    ) $charset_collate;
 
+    CREATE TABLE {$prefix}spa_children (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        parent_id BIGINT UNSIGNED NOT NULL,
+        name VARCHAR(191) NOT NULL,
+        birthdate DATE NULL,
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id),
+        KEY parent_id (parent_id)
+    ) $charset_collate;
 
-// DB TABULKY k subdomene spa.artepaint.eu
+    CREATE TABLE {$prefix}spa_programs (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        name VARCHAR(191) NOT NULL,
+        active TINYINT(1) NOT NULL DEFAULT 1,
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id)
+    ) $charset_collate;
 
-wp_ap5_actionscheduler_actions
-wp_ap5_actionscheduler_claims
-wp_ap5_actionscheduler_groups
-wp_ap5_actionscheduler_logs
-wp_ap5_b2s_network_insights
-wp_ap5_b2s_posts
-wp_ap5_b2s_posts_drafts
-wp_ap5_b2s_posts_favorites
-wp_ap5_b2s_posts_insights
-wp_ap5_b2s_posts_network_details
-wp_ap5_b2s_posts_sched_details
-wp_ap5_b2s_user
-wp_ap5_b2s_user_contact
-wp_ap5_b2s_user_network_settings
-wp_ap5_b2s_user_tool
-wp_ap5_commentmeta
-wp_ap5_comments
-wp_ap5_e_events
-wp_ap5_gf_addon_feed
-wp_ap5_gf_draft_submissions
-wp_ap5_gf_entry
-wp_ap5_gf_entry_meta
-wp_ap5_gf_entry_notes
-wp_ap5_gf_form
-wp_ap5_gf_form_meta
-wp_ap5_gf_form_revisions
-wp_ap5_gf_form_view
-wp_ap5_gf_rest_api_keys
-wp_ap5_links
-wp_ap5_litespeed_url
-wp_ap5_litespeed_url_file
-wp_ap5_options
-wp_ap5_postmeta
-wp_ap5_posts
-wp_ap5_term_relationships
-wp_ap5_term_taxonomy
-wp_ap5_termmeta
-wp_ap5_terms
-wp_ap5_trp_dictionary_sk_sk_en_us
-wp_ap5_trp_gettext_en_us
-wp_ap5_trp_gettext_original_meta
-wp_ap5_trp_gettext_original_strings
-wp_ap5_trp_gettext_sk_sk
-wp_ap5_trp_original_meta
-wp_ap5_trp_original_strings
- 
-wp_ap5_wpmailsmtp_debug_events
-wp_ap5_wpmailsmtp_tasks_meta
-wp_apusermeta
-wp_apusers
+    CREATE TABLE {$prefix}spa_registrations (
+        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        parent_id BIGINT UNSIGNED NOT NULL,
+        child_id BIGINT UNSIGNED NOT NULL,
+        program_id BIGINT UNSIGNED NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        created_at DATETIME NOT NULL,
+        PRIMARY KEY (id),
+        KEY parent_id (parent_id),
+        KEY child_id (child_id),
+        KEY program_id (program_id)
+    ) $charset_collate;
 
-
-SQL;
+    ";
 
     return $sql;
 }
