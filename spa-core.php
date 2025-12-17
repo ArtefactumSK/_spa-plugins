@@ -19,5 +19,10 @@ if (!class_exists('SPA_Registration_Service')) {
 }
 require_once __DIR__ . '/includes/controllers/GravityRegistrationController.php';
 require_once __DIR__ . '/includes/cpt/cpt-registration.php';
+require_once __DIR__ . '/includes/roles/roles.php';
 
-register_activation_hook(__FILE__, 'spa_core_install_db');
+register_activation_hook(__FILE__, function () {
+    spa_core_install_db();
+    spa_core_register_roles();
+});
+
