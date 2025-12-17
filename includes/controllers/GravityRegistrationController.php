@@ -7,7 +7,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-add_action('gform_after_submission', 'spa_handle_registration_form', 10, 2);
+add_action('gform_after_submission_12', 'spa_handle_registration_form', 10, 2);
 
 function spa_handle_registration_form($entry, $form) {
     error_log('SPA GF controller RUNNING');
@@ -15,9 +15,9 @@ function spa_handle_registration_form($entry, $form) {
     // ⛔ ZMENÍŠ na ID svojho registračného formulára
     $REG_FORM_ID = 1;
 
-    if ((int) $form['id'] !== $REG_FORM_ID) {
+    /* if ((int) $form['id'] !== $REG_FORM_ID) {
         return;
-    }
+    } */
 
     if (!class_exists('SPA_Registration_Service')) {
         error_log('[SPA CORE] RegistrationService missing');
