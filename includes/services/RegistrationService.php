@@ -25,6 +25,31 @@ class SPA_Registration_Service {
      * @param array $data
      * @return int|\WP_Error
      */
+
+
+    /**    
+    * Skontroluje kapacitu rozvrhu
+    */
+    private static function is_schedule_full($schedule_id) {
+        global $wpdb;
+
+        $capacity = (int) get_post_meta($schedule_id, '_spa_capacity', true);
+
+        // Ak kapacita nie je nastavená → neobmedzujeme
+        if ($capacity <= 0) {
+            return false;
+        }
+
+        $count = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}spa_registrations WHERE schedule_id = %d",
+                $schedule_id
+            )
+        );
+
+        return $count >= $capacity;
+    }
+
     public static function create(array $data) {
         global $wpdb;
 
@@ -43,6 +68,18 @@ class SPA_Registration_Service {
         $table = $wpdb->prefix . 'spa_registrations';
         
         $schedule_id = isset($data['schedule_id']) ? (int) $data['schedule_id'] : null;
+
+        if (!empty($data['schedule_id'])) {
+            if (self::is_schedule_full((int) $data['schedule_id'])) {
+                return new WP_Error(
+                    'spa_capacity_full',
+                    'Kapacita tréningu je naplnená.'
+                );
+            }
+        }
+
+
+
         /* ==========================
            1. ZÁPIS DO DB
            ========================== */

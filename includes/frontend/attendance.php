@@ -6,6 +6,20 @@ if (!current_user_can('spa_trainer')) {
     return;
 }
 
+if (isset($_GET['saved'])): ?>
+    <div style="
+        margin: 20px 0;
+        padding: 12px 16px;
+        background: #e8f7ee;
+        border-left: 5px solid #2ecc71;
+        color: #1e7e34;
+        font-weight: 600;
+    ">
+        ✔ Dochádzka bola úspešne uložená.
+    </div>
+<?php endif;
+
+
 $schedule_id = isset($_GET['schedule_id']) ? (int) $_GET['schedule_id'] : 0;
 $date = date('Y-m-d');
 

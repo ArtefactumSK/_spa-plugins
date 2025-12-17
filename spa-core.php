@@ -26,6 +26,11 @@ require_once __DIR__ . '/includes/cpt/cpt-schedule.php';
 require_once __DIR__ . '/includes/services/AttendanceService.php';
 require_once __DIR__ . '/includes/controllers/AttendanceController.php';
 require_once __DIR__ . '/includes/frontend/attendance-shortcode.php';
+require_once __DIR__ . '/includes/taxonomies/tax-city.php';
+// Taxonomies
+require_once __DIR__ . '/includes/taxonomies/tax-city.php';
+// CPT
+require_once __DIR__ . '/includes/cpt/cpt-venue.php';
 
 
 register_activation_hook(__FILE__, function () {
