@@ -34,6 +34,53 @@ function spa_get_registrations_for_current_user() {
         return new WP_Query($args);
     }
 
+    // Trainer – len registrácie jeho programov
+    if (current_user_can('spa_view_assigned_registrations')) {
+
+        global $wpdb;
+        $user_id = get_current_user_id();
+
+        // 1. Programy, kde je tréner priradený
+        $program_ids = get_posts([
+            'post_type'  => 'spa_program',
+            'numberposts'=> -1,
+            'fields'     => 'ids',
+            'meta_query' => [
+                [
+                    'key'   => '_spa_trainer_user_id',
+                    'value' => $user_id,
+                ],
+            ],
+        ]);
+
+        if (empty($program_ids)) {
+            return [];
+        }
+
+        // 2. Registrácie v DB k týmto programom
+        $table = $wpdb->prefix . 'spa_registrations';
+
+        $registration_ids = $wpdb->get_col(
+            "SELECT id FROM $table WHERE program_id IN (" . implode(',', array_map('intval', $program_ids)) . ")"
+        );
+
+        if (empty($registration_ids)) {
+            return [];
+        }
+
+        // 3. CPT výpis cez meta väzbu
+        $args['meta_query'] = [
+            [
+                'key'     => '_spa_registration_id',
+                'value'   => $registration_ids,
+                'compare' => 'IN',
+            ],
+        ];
+
+        return new WP_Query($args);
+    }
+
+
     // Parent – len svoje registrácie
     if (current_user_can('spa_view_own_registrations')) {
 
