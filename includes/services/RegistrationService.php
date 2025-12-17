@@ -52,11 +52,13 @@ class SPA_Registration_Service {
                 'parent_id'  => (int) $data['parent_id'],
                 'child_id'   => (int) $data['child_id'],
                 'program_id'=> (int) $data['program_id'],
+                'schedule_id' => $schedule_id,
                 'status'     => $data['status'] ?? 'pending',
                 'created_at' => current_time('mysql'),
             ],
             ['%d', '%d', '%d', '%s', '%s']
         );
+        $schedule_id = isset($args['schedule_id']) ? (int) $args['schedule_id'] : null;
 
         if ($result === false) {
             return new WP_Error(
