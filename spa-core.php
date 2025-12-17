@@ -23,6 +23,8 @@ require_once __DIR__ . '/includes/roles/roles.php';
 require_once __DIR__ . '/includes/frontend/registrations-list.php';
 require_once __DIR__ . '/includes/frontend/shortcodes.php';
 require_once __DIR__ . '/includes/cpt/cpt-schedule.php';
+require_once __DIR__ . '/includes/services/AttendanceService.php';
+require_once __DIR__ . '/includes/controllers/AttendanceController.php';
 
 
 register_activation_hook(__FILE__, function () {
