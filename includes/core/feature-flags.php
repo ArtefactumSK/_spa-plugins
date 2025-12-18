@@ -14,9 +14,14 @@ if (!defined('ABSPATH')) exit;
  */
 function spa_init_feature_flags() {
 
-    if (get_option('spa_features')) {
-        return;
+    $existing = get_option('spa_features');
+    if ($existing && !empty($existing['trial_ends_at']) && current_time('Y-m-d') <= $existing['trial_ends_at']) {
+        return;  // ← Vráť len ak trial AŽ NIE JE EXPIROVANÝ
     }
+
+    // Inak vždy regeneruj
+    delete_option('spa_features');
+
 
     $trial_start = current_time('Y-m-d');
     $trial_end   = date('Y-m-d', strtotime('+30 days'));
