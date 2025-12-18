@@ -1,4 +1,4 @@
-    <?php
+<?php
 if (!defined('ABSPATH')) exit;
 
 add_action('init', function () {
@@ -30,4 +30,3 @@ add_action('init', function () {
     wp_redirect(add_query_arg('saved', 1));
     exit;
 });
-
