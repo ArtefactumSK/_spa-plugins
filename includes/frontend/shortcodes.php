@@ -7,18 +7,29 @@ if (!defined('ABSPATH')) exit;
 
 add_shortcode('spa_registrations', function () {
 
-    $query = spa_get_registrations_for_current_user();
-        spa_feature_lock_notice(
-        'reports_extended',
-        'Test: Rozšírené reporty (len overenie mechanizmu)'
-        );
+    ob_start(); // ⬅️ DÔLEŽITÉ
 
-
-    if (empty($query) || !$query->have_posts()) {
-        return '<p>Žiadne registrácie.</p>';
+    /**
+     * TRIAL gate – štatistiky dochádzky (UX info)
+     * Zobrazí sa aj v prípade, že ešte nie sú žiadne registrácie
+     */
+    if (current_user_can('spa_trainer')) {
+        if (!spa_feature_enabled('attendance_stats')) {
+            spa_feature_lock_notice(
+                'attendance_stats',
+                'Štatistiky dochádzky (percentá, trendy) sú dostupné v rozšírenej verzii.'
+            );
+        }
     }
 
-    ob_start();
+    // Získanie registrácií
+    $query = spa_get_registrations_for_current_user();
+
+    if (empty($query) || !$query->have_posts()) {
+        echo '<p>Žiadne registrácie.</p>';
+        return ob_get_clean(); // ⬅️ VRÁTIME AJ GATE
+    }
+
     echo '<ul class="spa-registrations">';
 
     while ($query->have_posts()) {
@@ -33,6 +44,7 @@ add_shortcode('spa_registrations', function () {
     }
 
     echo '</ul>';
+
     wp_reset_postdata();
 
     return ob_get_clean();
