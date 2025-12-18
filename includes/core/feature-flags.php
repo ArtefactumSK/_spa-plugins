@@ -41,7 +41,9 @@ function spa_init_feature_flags() {
         ]
     ];
 
-    add_option('spa_features', $features);
+    $result = add_option('spa_features', $features);
+    error_log('[SPA INIT] add_option result: ' . ($result ? 'SUCCESS' : 'FAILED or EXISTS'));
+    error_log('[SPA INIT] Stored value: ' . json_encode($features, JSON_PRETTY_PRINT));
 }
 
 
@@ -52,6 +54,18 @@ function spa_init_feature_flags() {
  * @return bool
  */
 function spa_feature_enabled(string $feature_key): bool {
+
+      // DEBUG: Sleduj kde sa berú dáta
+    $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+    error_log('[SPA TRACE] Called from: ' . $backtrace[1]['file'] . ':' . $backtrace[1]['line']);
+    
+    $options = get_option('spa_features');
+    
+    error_log('[SPA SOURCE] get_option returned: ' . (is_array($options) ? 'ARRAY' : 'NULL'));
+    if (is_array($options)) {
+        error_log('[SPA SOURCE] Keys: ' . json_encode(array_keys($options)));
+    }
+    
 
     $options = get_option('spa_features');
 
