@@ -4,6 +4,7 @@
  * Description: Core systém pre Samuel Piasecky ACADEMY (DB, logika, integrácie).
  * Version: 1.0.0
  */
+ob_start();
 
 if (!defined('ABSPATH')) {
     exit;
@@ -73,4 +74,11 @@ add_action('wp_enqueue_scripts', function () {
 
 add_action('init', function () {
     error_log('FEATURE attendance_stats: ' . (spa_feature_enabled('attendance_stats') ? 'ON' : 'OFF'));
+});
+
+register_shutdown_function(function () {
+    $out = ob_get_clean();
+    if (!empty($out)) {
+        error_log('[SPA OUTPUT BUFFER] >>>' . bin2hex($out) . '<<<');
+    }
 });
