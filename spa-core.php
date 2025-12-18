@@ -9,13 +9,13 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-register_activation_hook(__FILE__, 'spa_init_feature_flags');
 
 // DB install
 require_once __DIR__ . '/includes/db/install.php';
 
 // Services
 require_once __DIR__ . '/includes/core/feature-flags.php';
+register_activation_hook(__FILE__, 'spa_init_feature_flags');
 
 require_once __DIR__ . '/includes/services/RegistrationService.php';
 if (!class_exists('SPA_Registration_Service')) {
