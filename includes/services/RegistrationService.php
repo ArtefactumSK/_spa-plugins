@@ -78,6 +78,31 @@ class SPA_Registration_Service {
             }
         }
 
+        /* ==========================
+   DUPLICITY CHECK (CORE A+)
+   ========================== */
+error_log('[SPA DUP CHECK] existing=' . var_export($existing, true));
+
+    $existing = $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT id
+            FROM {$table}
+            WHERE child_id = %d
+            AND schedule_id = %d
+            AND status = 'active'
+            LIMIT 1",
+            (int) $data['child_id'],
+            (int) $schedule_id
+        )
+    );
+
+    if ($existing) {
+        // Už existuje aktívna registrácia pre tento rozvrh
+        return new WP_Error(
+            'spa_duplicate_registration',
+            'Dieťa je už registrované na tento tréning.'
+        );
+    }
 
 
         /* ==========================
@@ -91,7 +116,7 @@ class SPA_Registration_Service {
                 'child_id'    => (int) $data['child_id'],
                 'program_id'  => (int) $data['program_id'],
                 'schedule_id' => $schedule_id,
-                'status'      => $data['status'] ?? 'pending',
+                'status'      => 'active',
                 'created_at'  => current_time('mysql'),
             ],
             ['%d', '%d', '%d', '%d', '%s', '%s']
