@@ -118,3 +118,10 @@ function spa_get_registrations_for_current_user() {
     // Iné roly zatiaľ nič
     return [];
 }
+
+
+// Dočasne
+spa_feature_lock_notice(
+    'reports_extended',
+    'Test: Rozšírené reporty (len overenie mechanizmu)'
+);

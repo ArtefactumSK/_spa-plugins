@@ -34,6 +34,8 @@ require_once __DIR__ . '/includes/roles/roles.php';
 require_once __DIR__ . '/includes/frontend/registrations-list.php';
 require_once __DIR__ . '/includes/frontend/attendance-shortcode.php';
 require_once __DIR__ . '/includes/frontend/shortcodes.php';
+require_once __DIR__ . '/includes/frontend/feature-lock.php';
+
 require_once __DIR__ . '/includes/cpt/cpt-schedule.php';
 require_once __DIR__ . '/includes/services/AttendanceService.php';
 
