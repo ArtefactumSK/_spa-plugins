@@ -110,7 +110,7 @@ foreach ($schedules as $schedule) {
         echo 'Voľné miesta: ' . esc_html($available) . '<br>';
         echo ($available > 0)
             ? '<span style="color:green;font-weight:bold;">Voľné</span>'
-            : '<span style="color:red;font-weight:bold;">Plné</span>';
+            : '<span style="color:red;font-weight:bold;">Obsadené</span>';
     } else {
         echo 'Kapacita: neobmedzená';
     }
