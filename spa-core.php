@@ -4,49 +4,65 @@
  * Description: Core systém pre Samuel Piasecky ACADEMY (DB, logika, integrácie).
  * Version: 1.0.0
  */
-ob_start();
+if (!defined('WP_ACTIVATING_PLUGIN')) {
+    define('WP_ACTIVATING_PLUGIN', false);
+}
+
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
 
-// DB install
-require_once __DIR__ . '/includes/db/install.php';
-
-// Services
+// SAFE – vždy
 require_once __DIR__ . '/includes/core/feature-flags.php';
-register_activation_hook(__FILE__, 'spa_init_feature_flags');
 
-require_once __DIR__ . '/includes/services/RegistrationService.php';
-if (!class_exists('SPA_Registration_Service')) {
-    error_log('[SPA CORE] RegistrationService class NOT loaded');
+// Ak NIE SME v aktivácii, načítaj zvyšok
+if (!defined('WP_ACTIVATING_PLUGIN')) {
+
+    require_once __DIR__ . '/includes/controllers/GravityRegistrationController.php';
+    require_once __DIR__ . '/includes/controllers/AttendanceController.php';
+    require_once __DIR__ . '/includes/controllers/GravityRegistrationController.php';
+
+    require_once __DIR__ . '/includes/frontend/registrations-list.php';
+    require_once __DIR__ . '/includes/frontend/attendance-shortcode.php';
+    require_once __DIR__ . '/includes/frontend/shortcodes.php';
+    require_once __DIR__ . '/includes/cpt/cpt-schedule.php';
+    require_once __DIR__ . '/includes/services/AttendanceService.php';
+
+    // DB install
+    require_once __DIR__ . '/includes/db/install.php';
+
+    // Services
+    require_once __DIR__ . '/includes/core/feature-flags.php';
+    register_activation_hook(__FILE__, 'spa_init_feature_flags');
+
+    require_once __DIR__ . '/includes/services/RegistrationService.php';
+    if (!class_exists('SPA_Registration_Service')) {
+        error_log('[SPA CORE] RegistrationService class NOT loaded');
+    }
+    require_once __DIR__ . '/includes/cpt/cpt-registration.php';
+    require_once __DIR__ . '/includes/roles/roles.php';
+
+
+
+    // Taxonomies
+    require_once __DIR__ . '/includes/taxonomies/tax-city.php';
+    // CPT
+    require_once __DIR__ . '/includes/cpt/cpt-venue.php';
+
+    require_once __DIR__ . '/includes/frontend/schedules-shortcode.php';
+    require_once __DIR__ . '/includes/frontend/child-selector-shortcode.php';
+
 }
-require_once __DIR__ . '/includes/cpt/cpt-registration.php';
-require_once __DIR__ . '/includes/roles/roles.php';
-require_once __DIR__ . '/includes/frontend/registrations-list.php';
-require_once __DIR__ . '/includes/frontend/attendance-shortcode.php';
-require_once __DIR__ . '/includes/frontend/shortcodes.php';
-require_once __DIR__ . '/includes/cpt/cpt-schedule.php';
-require_once __DIR__ . '/includes/services/AttendanceService.php';
 
-require_once __DIR__ . '/includes/controllers/GravityRegistrationController.php';
-require_once __DIR__ . '/includes/controllers/AttendanceController.php';
-require_once __DIR__ . '/includes/controllers/GravityChildController.php';
-
-
-// Taxonomies
-require_once __DIR__ . '/includes/taxonomies/tax-city.php';
-// CPT
-require_once __DIR__ . '/includes/cpt/cpt-venue.php';
-
-require_once __DIR__ . '/includes/frontend/schedules-shortcode.php';
-require_once __DIR__ . '/includes/frontend/child-selector-shortcode.php';
 
 
 register_activation_hook(__FILE__, function () {
     spa_core_install_db();
     spa_core_register_roles();
+    define('WP_ACTIVATING_PLUGIN', true);
+    spa_init_feature_flags();
 });
 
 add_action('after_setup_theme', function () {
