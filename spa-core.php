@@ -16,6 +16,8 @@ require_once __DIR__ . '/includes/core/feature-flags.php';
 require_once __DIR__ . '/includes/db/schema.php';
 require_once __DIR__ . '/includes/db/install.php';
 
+require_once __DIR__ . '/includes/core/trial-status.php';
+
 // === Controllers ===
 require_once __DIR__ . '/includes/controllers/GravityRegistrationController.php';
 require_once __DIR__ . '/includes/controllers/GravityChildController.php';
@@ -26,7 +28,9 @@ require_once __DIR__ . '/includes/frontend/feature-lock.php';
 require_once __DIR__ . '/includes/frontend/registrations-list.php';
 require_once __DIR__ . '/includes/frontend/attendance-shortcode.php';
 require_once __DIR__ . '/includes/frontend/shortcodes.php';
-require_once __DIR__ . '/includes/frontend/feature-lock.php';
+
+require_once __DIR__ . '/includes/frontend/trial-info-panel.php';
+
 
 require_once __DIR__ . '/includes/services/RegistrationService.php';
 if (!class_exists('SPA_Registration_Service')) {
