@@ -9,6 +9,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+register_activation_hook(__FILE__, 'spa_init_feature_flags');
+
 // DB install
 require_once __DIR__ . '/includes/db/install.php';
 

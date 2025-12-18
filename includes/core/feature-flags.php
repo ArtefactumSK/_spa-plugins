@@ -39,8 +39,6 @@ function spa_init_feature_flags() {
     add_option('spa_features', $features);
 }
 
-add_action('after_switch_theme', 'spa_init_feature_flags');
-add_action('activated_plugin', 'spa_init_feature_flags');
 
 /**
  * Overí, či je rozšírená funkcionalita dostupná
