@@ -17,20 +17,24 @@ require_once __DIR__ . '/includes/services/RegistrationService.php';
 if (!class_exists('SPA_Registration_Service')) {
     error_log('[SPA CORE] RegistrationService class NOT loaded');
 }
-require_once __DIR__ . '/includes/controllers/GravityRegistrationController.php';
 require_once __DIR__ . '/includes/cpt/cpt-registration.php';
 require_once __DIR__ . '/includes/roles/roles.php';
 require_once __DIR__ . '/includes/frontend/registrations-list.php';
+require_once __DIR__ . '/includes/frontend/attendance-shortcode.php';
 require_once __DIR__ . '/includes/frontend/shortcodes.php';
 require_once __DIR__ . '/includes/cpt/cpt-schedule.php';
 require_once __DIR__ . '/includes/services/AttendanceService.php';
+
+require_once __DIR__ . '/includes/controllers/GravityRegistrationController.php';
 require_once __DIR__ . '/includes/controllers/AttendanceController.php';
-require_once __DIR__ . '/includes/frontend/attendance-shortcode.php';
-require_once __DIR__ . '/includes/taxonomies/tax-city.php';
+require_once __DIR__ . '/includes/controllers/GravityChildController.php';
+
+
 // Taxonomies
 require_once __DIR__ . '/includes/taxonomies/tax-city.php';
 // CPT
 require_once __DIR__ . '/includes/cpt/cpt-venue.php';
+
 require_once __DIR__ . '/includes/frontend/schedules-shortcode.php';
 require_once __DIR__ . '/includes/frontend/child-selector-shortcode.php';
 
