@@ -1,6 +1,8 @@
 <?php
 /**
- * Gravity Forms → SPA Registration Controller
+ * Gravity Forms → SPA Registration Controller (BULK MODE)
+ * 
+ * Spracuje registráciu jedného ALEBO viacerých detí naraz
  */
 
 if (!defined('ABSPATH')) {
@@ -25,32 +27,59 @@ function spa_handle_registration_form($entry, $form) {
         return;
     }
 
-    // GF field IDs (podľa tvojho screenshotu)
-    $program_id  = (int) rgar($entry, '27'); // ID Programu = 49
-    $schedule_id = (int) rgar($entry, '28'); // ID Rozvrhu = 898
+    // GF field IDs
+    $program_id  = (int) rgar($entry, '27'); // ID Programu
+    $schedule_id = (int) rgar($entry, '28'); // ID Rozvrhu
+    $child_ids_raw = rgar($entry, '26'); // Child IDs (môže byť "1,2,3")
 
-    error_log('[SPA] GF values program_id=' . $program_id . ' schedule_id=' . $schedule_id);
+    error_log('[SPA] GF values program_id=' . $program_id . ' schedule_id=' . $schedule_id . ' child_ids=' . $child_ids_raw);
 
-    $parent_id = get_current_user_id();
+    // Rozdeľ child_ids (ak je viac oddelených čiarkou)
+    $child_ids = array_filter(array_map('intval', explode(',', $child_ids_raw)));
 
-    // Child ID z hidden field (GF field 26?)
-    $child_id = (int) rgar($entry, '26'); 
-
-    if (!$child_id) {
-        error_log('[SPA] Missing child_id in GF entry');
+    if (empty($child_ids)) {
+        error_log('[SPA] Missing child_ids in GF entry');
         return;
     }
 
-    $result = SPA_Registration_Service::create([
-        'parent_id'   => $parent_id,
-        'child_id'    => $child_id,
-        'program_id'  => $program_id,
-        'schedule_id' => $schedule_id,
-    ]);
+    $parent_id = get_current_user_id();
 
-    if (is_wp_error($result)) {
-        error_log('[SPA] create() error: ' . $result->get_error_message());
-    } else {
-        error_log('[SPA] created registration_id=' . (int) $result);
+    // Pre každé dieťa vytvor samostatnú registráciu
+    $results = [
+        'success' => [],
+        'error' => [],
+    ];
+
+    foreach ($child_ids as $child_id) {
+        error_log('[SPA] Processing child_id=' . $child_id);
+
+        $result = SPA_Registration_Service::create([
+            'parent_id'   => $parent_id,
+            'child_id'    => $child_id,
+            'program_id'  => $program_id,
+            'schedule_id' => $schedule_id,
+        ]);
+
+        if (is_wp_error($result)) {
+            $results['error'][] = [
+                'child_id' => $child_id,
+                'message' => $result->get_error_message(),
+            ];
+            error_log('[SPA] create() error for child_id=' . $child_id . ': ' . $result->get_error_message());
+        } else {
+            $results['success'][] = [
+                'child_id' => $child_id,
+                'registration_id' => (int) $result,
+            ];
+            error_log('[SPA] created registration_id=' . (int) $result . ' for child_id=' . $child_id);
+        }
+    }
+
+    // Sumár do logu
+    error_log('[SPA BULK] Total: ' . count($child_ids) . ' | Success: ' . count($results['success']) . ' | Error: ' . count($results['error']));
+
+    // Voliteľne: ulož výsledok do GF entry meta pre spätnú väzbu
+    if (!empty($results['error'])) {
+        gform_update_meta($entry['id'], 'spa_bulk_errors', json_encode($results['error']));
     }
 }

@@ -1,8 +1,8 @@
 <?php
 /**
- * Shortcode: SPA Child Selector
+ * Shortcode: SPA Child Selector (BULK MODE)
  *
- * Zobrazuje výber dieťaťa pre prihláseného rodiča alebo trénera
+ * Zobrazuje výber dieťaťa s možnosťou hromadnej registrácie
  *
  * Použitie:
  * [spa_child_selector]
@@ -37,7 +37,7 @@ add_shortcode('spa_child_selector', function () {
             ORDER BY c.name"
         );
         
-        error_log('[SPA CHILD SELECTOR] Privileged user (roles: ' . implode(', ', $current_user->roles) . ') → showing ALL children: ' . count($children));
+        error_log('[SPA CHILD SELECTOR] Privileged user → showing ALL children: ' . count($children));
     } else {
         // Rodič vidí len svoje deti
         $children = $wpdb->get_results(
@@ -55,33 +55,56 @@ add_shortcode('spa_child_selector', function () {
     }
 
     ob_start();
+    ?>
 
-    echo '<h3>Vyber dieťa</h3>';
-    echo '<div class="spa-children">';
+    <div class="spa-child-selector-wrapper">
+        <h3>Vyber deti na registráciu</h3>
+        
+        <div class="spa-selector-actions">
+            <label class="spa-select-all">
+                <input type="checkbox" id="spa-select-all-children">
+                Vybrať všetky (<?php echo count($children); ?>)
+            </label>
+            <button type="button" class="spa-clear-selection">Zrušiť výber</button>
+        </div>
 
-    foreach ($children as $child) {
-        // Zostaviť info text
-        $info_parts = [];
-        if (!empty($child->birthdate)) {
-            $info_parts[] = '🎂 ' . date('d.m.Y', strtotime($child->birthdate));
-        }
-        if ($is_privileged && !empty($child->parent_email)) {
-            $info_parts[] = '👤 ' . $child->parent_email;
-        }
-        $info_text = !empty($info_parts) ? '<br><small>' . implode(' | ', $info_parts) . '</small>' : '';
+        <div class="spa-children-list">
+            <?php foreach ($children as $child): ?>
+                <label class="spa-child-item">
+                    <input 
+                        type="checkbox" 
+                        class="spa-child-checkbox" 
+                        data-child-id="<?php echo esc_attr($child->id); ?>"
+                        data-child-name="<?php echo esc_attr($child->name); ?>"
+                    >
+                    
+                    <div class="spa-child-info">
+                        <strong class="spa-child-name"><?php echo esc_html($child->name); ?></strong>
+                        
+                        <div class="spa-child-meta">
+                            <?php if (!empty($child->birthdate)): ?>
+                                <span class="spa-meta-item">
+                                    🎂 <?php echo date('d.m.Y', strtotime($child->birthdate)); ?>
+                                </span>
+                            <?php endif; ?>
+                            
+                            <?php if ($is_privileged && !empty($child->parent_email)): ?>
+                                <span class="spa-meta-item">
+                                    👤 <?php echo esc_html($child->parent_email); ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </label>
+            <?php endforeach; ?>
+        </div>
 
-        echo '<button type="button"
-            class="spa-child-btn"
-            data-child-id="' . esc_attr($child->id) . '"
-            data-parent-id="' . esc_attr($parent_id) . '">
-            ' . esc_html($child->name) . $info_text . '
-        </button>';
-    }
+        <div class="spa-selection-summary">
+            <p class="spa-selected-count">Vybrané: <strong id="spa-selected-count">0</strong></p>
+            <p class="spa-selected-names" id="spa-selected-names"></p>
+        </div>
+    </div>
 
-    echo '</div>';
-
-    // Feedback div (vyplní ho JavaScript)
-    echo '<div class="spa-child-feedback"></div>';
-
+    <?php
     return ob_get_clean();
 });
