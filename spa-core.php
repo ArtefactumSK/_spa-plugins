@@ -29,6 +29,8 @@ require_once __DIR__ . '/includes/frontend/feature-lock.php';
 require_once __DIR__ . '/includes/frontend/registrations-list.php';
 require_once __DIR__ . '/includes/frontend/attendance-shortcode.php';
 require_once __DIR__ . '/includes/frontend/shortcodes.php';
+require_once __DIR__ . '/includes/frontend/schedules-shortcode.php';
+require_once __DIR__ . '/includes/frontend/child-selector-shortcode.php';
 
 require_once __DIR__ . '/includes/frontend/trial-info-panel.php';
 
@@ -38,20 +40,21 @@ if (!class_exists('SPA_Registration_Service')) {
     error_log('[SPA CORE] RegistrationService class NOT loaded');
 }
 
+// roles
 require_once __DIR__ . '/includes/roles/roles.php';
 
-
-require_once __DIR__ . '/includes/cpt/cpt-schedule.php';
+// Services
 require_once __DIR__ . '/includes/services/AttendanceService.php';
 
 
 // Taxonomies
 require_once __DIR__ . '/includes/taxonomies/tax-city.php';
-// CPT
-require_once __DIR__ . '/includes/cpt/cpt-venue.php';
 
-require_once __DIR__ . '/includes/frontend/schedules-shortcode.php';
-require_once __DIR__ . '/includes/frontend/child-selector-shortcode.php';
+// CPT
+require_once __DIR__ . '/includes/cpt/cpt-program.php';  // ← NOVÝ
+require_once __DIR__ . '/includes/cpt/cpt-venue.php';
+require_once __DIR__ . '/includes/cpt/cpt-schedule.php';
+
 
 
 register_activation_hook(__FILE__, function () {
