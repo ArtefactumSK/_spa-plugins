@@ -9,25 +9,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// === GUARANTEE feature flags exist HNEĎ ===
-if (!get_option('spa_features')) {
-    $trial_start = current_time('Y-m-d');
-    $trial_end   = date('Y-m-d', strtotime('+30 days'));
-
-    add_option('spa_features', [
-        'trial_active'     => true,
-        'trial_started_at' => $trial_start,
-        'trial_ends_at'    => $trial_end,
-        'features' => [
-            'attendance_stats'         => false,
-            'payments_extended'        => 'extended',
-            'messaging_extended'       => 'extended',
-            'coach_dashboard_extended' => 'extended',
-            'reports_extended'         => 'extended',
-            'gps_verification'         => 'extended',
-        ]
-    ]);
-}
 
 // === CORE (bez side-effects) ===
 require_once __DIR__ . '/includes/core/feature-flags.php';
@@ -60,13 +41,8 @@ if (!class_exists('SPA_Registration_Service')) {
 require_once __DIR__ . '/includes/roles/roles.php';
 
 
-
 require_once __DIR__ . '/includes/cpt/cpt-schedule.php';
 require_once __DIR__ . '/includes/services/AttendanceService.php';
-
-require_once __DIR__ . '/includes/controllers/GravityRegistrationController.php';
-require_once __DIR__ . '/includes/controllers/AttendanceController.php';
-require_once __DIR__ . '/includes/controllers/GravityChildController.php';
 
 
 // Taxonomies
@@ -78,12 +54,10 @@ require_once __DIR__ . '/includes/frontend/schedules-shortcode.php';
 require_once __DIR__ . '/includes/frontend/child-selector-shortcode.php';
 
 
-/* register_activation_hook(__FILE__, function () {
+register_activation_hook(__FILE__, function () {
     spa_core_install_db();
     spa_core_register_roles();
-    register_activation_hook(__FILE__, 'spa_init_feature_flags');
-}); */
-
+});
 
 
 add_action('after_setup_theme', function () {

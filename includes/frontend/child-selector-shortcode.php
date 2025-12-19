@@ -21,18 +21,15 @@ add_shortcode('spa_child_selector', function () {
     $current_user = wp_get_current_user();
     $parent_id = (int) $current_user->ID;
 
-    // Predpoklad: deti sú CPT spa_child s meta _spa_parent_id
-    $children = get_posts([
-        'post_type'   => 'spa_child',
-        'post_status' => 'publish',
-        'numberposts' => -1,
-        'meta_query'  => [
-            [
-                'key'   => '_spa_parent_id',
-                'value' => $parent_id,
-            ]
-        ]
-    ]);
+    global $wpdb;
+    $table = $wpdb->prefix . 'spa_children';
+
+    $children = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT id, name FROM $table WHERE parent_id = %d ORDER BY name",
+            $parent_id
+        )
+    );
 
     if (!$children) {
         return '<p>Zatiaľ nemáte pridané žiadne dieťa.</p>';
@@ -46,9 +43,9 @@ add_shortcode('spa_child_selector', function () {
     foreach ($children as $child) {
         echo '<button type="button"
             class="spa-child-btn"
-            data-child-id="' . esc_attr($child->ID) . '"
+            data-child-id="' . esc_attr($child->id) . '"
             data-parent-id="' . esc_attr($parent_id) . '">
-            ' . esc_html($child->post_title) . '
+            ' . esc_html($child->name) . '
         </button>';
     }
 

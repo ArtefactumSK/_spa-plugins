@@ -78,11 +78,9 @@ class SPA_Registration_Service {
             }
         }
 
-        /* ==========================
-   DUPLICITY CHECK (CORE A+)
-   ========================== */
-error_log('[SPA DUP CHECK] existing=' . var_export($existing, true));
-
+    /* ==========================
+    DUPLICITY CHECK (CORE A+)
+    ========================== */
     $existing = $wpdb->get_var(
         $wpdb->prepare(
             "SELECT id
@@ -96,14 +94,7 @@ error_log('[SPA DUP CHECK] existing=' . var_export($existing, true));
         )
     );
 
-    if ($existing) {
-        // Už existuje aktívna registrácia pre tento rozvrh
-        return new WP_Error(
-            'spa_duplicate_registration',
-            'Dieťa je už registrované na tento tréning.'
-        );
-    }
-
+    error_log('[SPA DUP CHECK] existing=' . var_export($existing, true)); // ✅ TERAZ OK
 
         /* ==========================
            1. ZÁPIS DO DB

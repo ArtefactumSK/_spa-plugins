@@ -31,9 +31,19 @@ function spa_handle_registration_form($entry, $form) {
 
     error_log('[SPA] GF values program_id=' . $program_id . ' schedule_id=' . $schedule_id);
 
+    $parent_id = get_current_user_id();
+
+    // Child ID z hidden field (GF field 26?)
+    $child_id = (int) rgar($entry, '26'); 
+
+    if (!$child_id) {
+        error_log('[SPA] Missing child_id in GF entry');
+        return;
+    }
+
     $result = SPA_Registration_Service::create([
-        'parent_id'   => 1,
-        'child_id'    => 1,
+        'parent_id'   => $parent_id,
+        'child_id'    => $child_id,
         'program_id'  => $program_id,
         'schedule_id' => $schedule_id,
     ]);
