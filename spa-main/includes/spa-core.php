@@ -136,3 +136,61 @@ function spa_process_registration($registration) {
         'data' => $registration,
     ];
 }
+
+/**
+ * ============================================
+ * AJAX ENDPOINTY PRE DYNAMICKÉ SELECTY
+ * ============================================
+ */
+
+/**
+ * AJAX: Získanie zoznamu miest
+ */
+function spa_ajax_get_cities() {
+    // Dummy data (pripravené na budúce DB/CPT)
+    $cities = [
+        ['id' => 1, 'name' => 'Malacky'],
+        ['id' => 2, 'name' => 'Košice'],
+    ];
+    
+    wp_send_json_success($cities);
+}
+add_action('wp_ajax_spa_get_cities', 'spa_ajax_get_cities');
+add_action('wp_ajax_nopriv_spa_get_cities', 'spa_ajax_get_cities');
+
+/**
+ * AJAX: Získanie programov podľa mesta
+ */
+function spa_ajax_get_programs() {
+    // Validácia vstupu
+    $city_id = isset($_POST['city_id']) ? intval($_POST['city_id']) : 0;
+    
+    if ($city_id === 0) {
+        wp_send_json_error(['message' => 'Neplatné ID mesta.']);
+        return;
+    }
+    
+    // Dummy data (pripravené na budúce DB/CPT)
+    $all_programs = [
+        ['id' => 10, 'name' => 'Mladý akrobati', 'city_id' => 1],
+        ['id' => 11, 'name' => 'Little Big Heroes', 'city_id' => 1],
+        ['id' => 20, 'name' => 'SPA Juniori', 'city_id' => 2],
+    ];
+    
+    // Filtrácia podľa city_id
+    $programs = array_filter($all_programs, function($program) use ($city_id) {
+        return $program['city_id'] === $city_id;
+    });
+    
+    // Reset indexov
+    $programs = array_values($programs);
+    
+    if (empty($programs)) {
+        wp_send_json_error(['message' => 'Pre toto mesto nie sú dostupné žiadne programy.']);
+        return;
+    }
+    
+    wp_send_json_success($programs);
+}
+add_action('wp_ajax_spa_get_programs', 'spa_ajax_get_programs');
+add_action('wp_ajax_nopriv_spa_get_programs', 'spa_ajax_get_programs');

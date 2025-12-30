@@ -1,8 +1,16 @@
+
 {
-    "program": "input_12",
-    "variant": "input_13",
-  
-    "client_email": "input_22",
-    "client_phone": "input_23"
-  }
-  
+  "spa_city": "input_11",
+  "spa_program": "input_12",
+  "spa_registration_type": "input_14",
+
+  "spa_client_email": "input_15",
+  "spa_client_phone": "input_19",
+  "spa_client_address": "input_17",
+  "spa_consent_gdpr": "input_22",
+  "spa_consent_health": "input_24",
+  "spa_consent_statutes": "input_21",
+  "spa_consent_terms": "input_23",
+  "spa_consent_guardian": "input_25",
+  "spa_consent_marketing": "input_26"
+}

@@ -5,34 +5,35 @@
  * Upravuje sa PO IMPORTE GF formulára na novom webe.
  */
 
-return [
+ return [
 
-    /* ==========================
-       VÝBER PROGRAMU
-       ========================== */
-    'program' => 'input_12',
-    'variant' => 'input_13',
+   /* ==========================
+      VÝBER PROGRAMU
+      ========================== */
+   'spa_city'    => 'input_11',  // NOVÉ POLE – nastav správne input_ID po vytvorení v GF
+   'spa_program' => 'input_12',
+   'spa_registration_type' => 'input_14',
 
-    /* ==========================
-       ÚČASTNÍK – KONTAKT
-       ========================== */
-    'client_email' => 'input_22',
-    'client_phone' => 'input_23',
+   /* ==========================
+      ÚČASTNÍK – KONTAKT
+      ========================== */
+   'spa_client_email' => 'input_15',
+   'spa_client_phone' => 'input_19',
 
-    /* ==========================
-       ÚČASTNÍK – ADRESA
-       (GF Address – array)
-       ========================== */
-    'client_address' => 'input_30',
+   /* ==========================
+      ÚČASTNÍK – ADRESA
+      (GF Address – array)
+      ========================== */
+   'spa_client_address' => 'input_17',
 
-    /* ==========================
-       SÚHLASY
-       ========================== */
-    'consent_gdpr'      => 'input_40',
-    'consent_health'    => 'input_41',
-    'consent_statutes'  => 'input_42',
-    'consent_terms'     => 'input_43',
-    'consent_guardian'  => 'input_44',
-    'consent_marketing' => 'input_45',
+   /* ==========================
+      SÚHLASY
+      ========================== */
+   'spa_consent_gdpr'      => 'input_22',
+   'spa_consent_health'    => 'input_24',
+   'spa_consent_statutes'  => 'input_21',
+   'spa_consent_terms'     => 'input_23',
+   'spa_consent_guardian'  => 'input_25',
+   'spa_consent_marketing' => 'input_26',
 
 ];
