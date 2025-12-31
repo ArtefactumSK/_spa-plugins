@@ -108,6 +108,9 @@
         formData.append('program_name', wizardData.program_name);
         formData.append('program_age', wizardData.program_age);
 
+        // Uložíme si ikonu location pre inline použitie v summary
+        let locationIconSvg = null;
+
         fetch(spaConfig.ajaxUrl, {
             method: 'POST',
             body: formData,
@@ -116,7 +119,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                renderInfobox(data.data.content, data.data.icons);
+                renderInfobox(data.data.content, data.data.icons, data.data.capacity_free);
             } else {
                 console.error('[SPA Infobox] Chyba:', data.data?.message);
             }
@@ -129,7 +132,7 @@
     /**
      * Vykreslenie infoboxu
      */
-    function renderInfobox(content, icons) {
+    function renderInfobox(content, icons, capacityFree) {
         const container = document.getElementById('spa-infobox-container');
         if (!container) return;
 
@@ -145,7 +148,7 @@
         container.appendChild(contentDiv);
 
         /* ==================================================
-        1.5 DYNAMICKÝ SUMMARY (mesto, vek, ...)
+        1.5 DYNAMICKÝ SUMMARY (mesto, vek, kapacita)
         ================================================== */
         if (wizardData.city_name || wizardData.program_age) {
 
@@ -154,17 +157,32 @@
 
             let summaryHtml = '<ul class="spa-summary-list">';
 
+            // MESTO s inline ikonou
             if (wizardData.city_name) {
+                // Získaj location ikonu z už renderovaných ikon
+                const locationIcon = icons && icons.location ? icons.location : '';
+                
                 summaryHtml += `
                     <li class="spa-summary-item spa-summary-city">
+                        <span class="spa-summary-icon">${locationIcon}</span>
                         <strong>Mesto:</strong> ${wizardData.city_name}
                     </li>`;
             }
 
+            // VEK s placeholder ikonou
             if (wizardData.program_age) {
                 summaryHtml += `
                     <li class="spa-summary-item spa-summary-age">
-                        <strong>Vek:</strong> ${wizardData.program_age} rokov
+                        <span class="spa-summary-icon spa-icon-age"></span>
+                        <strong>Vek:</strong> ${wizardData.program_age} roky
+                    </li>`;
+            }
+
+            // KAPACITA (len v stave 2)
+            if (currentState === 2 && capacityFree !== undefined && capacityFree !== null) {
+                summaryHtml += `
+                    <li class="spa-summary-item spa-summary-capacity">
+                        <strong>Voľná kapacita:</strong> ${capacityFree} miest
                     </li>`;
             }
 

@@ -192,6 +192,7 @@ function spa_ajax_get_infobox_content() {
     wp_send_json_success([
         'content' => $content,
         'icons' => $icons,
+        'capacity_free' => $capacity_free,
     ]);
 }
 
