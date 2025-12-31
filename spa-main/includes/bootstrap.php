@@ -1,6 +1,6 @@
 <?php
 /**
- * SPA System MAIN  Bootstrap
+ * SPA System Bootstrap
  * Inicializácia pluginu a načítanie závislostí
  */
 
@@ -8,11 +8,19 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Definovanie konštánt pluginu
-define('SPA_VERSION', '1.0.0');
-define('SPA_PLUGIN_DIR', plugin_dir_path(dirname(__FILE__)));
-define('SPA_PLUGIN_URL', plugin_dir_url(dirname(__FILE__)));
-define('SPA_CONFIG_DIR', SPA_PLUGIN_DIR . 'spa-config/');
+// Definovanie konštánt pluginu – KONTROLA ČI UŽ NEEXISTUJÚ (téma ich môže mať)
+if (!defined('SPA_VERSION')) {
+    define('SPA_VERSION', '1.0.0');
+}
+if (!defined('SPA_PLUGIN_DIR')) {
+    define('SPA_PLUGIN_DIR', plugin_dir_path(dirname(__FILE__)));
+}
+if (!defined('SPA_PLUGIN_URL')) {
+    define('SPA_PLUGIN_URL', plugin_dir_url(dirname(__FILE__)));
+}
+if (!defined('SPA_CONFIG_DIR')) {
+    define('SPA_CONFIG_DIR', SPA_PLUGIN_DIR . 'spa-config/');
+}
 
 /**
  * Načítanie konfigurácie field mappingu
@@ -57,16 +65,16 @@ function spa_init() {
     require_once SPA_PLUGIN_DIR . 'includes/spa-helpers.php';
     require_once SPA_PLUGIN_DIR . 'includes/spa-core.php';
     require_once SPA_PLUGIN_DIR . 'includes/spa-registration.php';
+    require_once SPA_PLUGIN_DIR . 'includes/spa-infobox.php';
     
     // Inicializácia registračného modulu
     spa_registration_init();
-
+    
     // Inicializácia infobox modulu
-    require_once SPA_PLUGIN_DIR . 'includes/spa-infobox.php';
     spa_infobox_init();
 }
 
-add_action('plugins_loaded', 'spa_init');
+add_action('plugins_loaded', 'spa_init', 5); // Priorita 5 = skoršie ako téma
 
 /**
  * Enqueue JavaScript pre Gravity Forms
@@ -83,6 +91,7 @@ function spa_enqueue_gf_scripts($form) {
         SPA_VERSION,
         true
     );
+    
     // Enqueue infobox JS
     wp_enqueue_script(
         'spa-infobox',
@@ -91,7 +100,7 @@ function spa_enqueue_gf_scripts($form) {
         SPA_VERSION,
         true
     );
-
+    
     // Poskytnutie konfigurácie do JS
     wp_localize_script('spa-registration', 'spaConfig', [
         'ajaxUrl' => admin_url('admin-ajax.php'),
