@@ -148,13 +148,15 @@ HTML;
 /**
  * AJAX: Získanie obsahu infoboxu
  */
+/**
+ * AJAX: Získanie obsahu infoboxu
+ */
 function spa_ajax_get_infobox_content() {
     $state = isset($_POST['state']) ? intval($_POST['state']) : 0;
     $city_name = isset($_POST['city_name']) ? sanitize_text_field($_POST['city_name']) : '';
     $program_name = isset($_POST['program_name']) ? sanitize_text_field($_POST['program_name']) : '';
     $program_age = isset($_POST['program_age']) ? sanitize_text_field($_POST['program_age']) : '';
     
-    // 🔍 DEBUG LOG
     spa_log('Infobox AJAX called', [
         'state' => $state,
         'city_name' => $city_name,
@@ -162,7 +164,6 @@ function spa_ajax_get_infobox_content() {
         'program_age' => $program_age
     ]);
     
-    // Získaj obsah z WP stránky
     $page_id = spa_get_infobox_page_id();
     
     if (!$page_id) {
@@ -176,28 +177,25 @@ function spa_ajax_get_infobox_content() {
         return;
     }
     
-    // Získaj CELÝ obsah stránky (ako ho edituje admin)
     $content = apply_filters('the_content', $page->post_content);
     
-    // Nahraď placeholdery
     $content = spa_replace_placeholders($content, [
         'city_name' => $city_name,
         'program_name' => $program_name,
         'program_age' => $program_age,
     ]);
     
-    // Pridaj ikony podľa stavu
-    $icons = spa_get_infobox_icons($state);    
+    $icons = spa_get_infobox_icons($state);
     
-    // Získaj ID programu podľa názvu
+    // Výpočet kapacity
     global $wpdb;
     $program_id = $wpdb->get_var(
         $wpdb->prepare(
             "SELECT ID FROM {$wpdb->posts} 
-            WHERE post_type = 'spa_program' 
-            AND post_title = %s 
-            AND post_status = 'publish' 
-            LIMIT 1",
+             WHERE post_type = 'spa_program' 
+             AND post_title = %s 
+             AND post_status = 'publish' 
+             LIMIT 1",
             $program_name
         )
     );
@@ -205,26 +203,25 @@ function spa_ajax_get_infobox_content() {
     $capacity_free = null;
 
     if ($program_id) {
-        // Načítaj kapacitu programu
         $capacity_total = (int) get_post_meta($program_id, 'spa_capacity', true);
-        if (!$capacity_total) $capacity_total = 100;
+        if (!$capacity_total) {
+            $capacity_total = 100;
+        }
         
-        // Spočítaj aktívne registrácie
         $registered_active = (int) $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT COUNT(DISTINCT p.ID) 
-                FROM {$wpdb->posts} p
-                INNER JOIN {$wpdb->postmeta} pm1 ON p.ID = pm1.post_id AND pm1.meta_key = 'program_id'
-                INNER JOIN {$wpdb->postmeta} pm2 ON p.ID = pm2.post_id AND pm2.meta_key = 'status'
-                WHERE p.post_type = 'spa_registration'
-                AND p.post_status = 'publish'
-                AND pm1.meta_value = %d
-                AND pm2.meta_value = 'active'",
+                 FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->postmeta} pm1 ON p.ID = pm1.post_id AND pm1.meta_key = 'program_id'
+                 INNER JOIN {$wpdb->postmeta} pm2 ON p.ID = pm2.post_id AND pm2.meta_key = 'status'
+                 WHERE p.post_type = 'spa_registration'
+                 AND p.post_status = 'publish'
+                 AND pm1.meta_value = %d
+                 AND pm2.meta_value = 'active'",
                 $program_id
             )
         );
         
-        // Výpočet voľnej kapacity
         $capacity_free = max(0, $capacity_total - $registered_active);
     }
 
@@ -233,7 +230,7 @@ function spa_ajax_get_infobox_content() {
         'icons' => $icons,
         'capacity_free' => $capacity_free,
     ]);
-    }
+}
 
 /**
  * Nahradenie placeholderov v obsahu
@@ -277,12 +274,11 @@ function spa_get_infobox_icons($state) {
             $icons['program'] = spa_icon('program', 'spa-icon-program', ['stroke' => '#cccccc']);
             break;
         case 2:
-            $options = ['stroke' => 'var(--theme-palette-color-2)']; // Zelená - všetko vybrané
+            $options = ['stroke' => 'var(--theme-palette-color-2)'];
             $icons['location'] = spa_icon('location', 'spa-icon-location', $options);
             $icons['program'] = spa_icon('program', 'spa-icon-program', $options);
             $icons['time'] = spa_icon('time', 'spa-icon-time', $options);
-            break;
-            // PRIDAJ ikony pre summary
+            // Ikony pre summary
             $icons['age'] = spa_icon('age', 'spa-icon-age', $options);
             $icons['capacity'] = spa_icon('capacity', 'spa-icon-capacity', $options);
             break;
