@@ -9,6 +9,10 @@
         console.error('[SPA Infobox] spaConfig nie je definovaný.');
         return;
     }
+    if (typeof spaConfig === 'undefined') {
+        console.error('[SPA Infobox] spaConfig nie je definovaný.');
+        return; // ← ZASTAV VYKONÁVANIE
+    }
 
     let currentState = 0;
     let wizardData = {
@@ -96,7 +100,7 @@
      */
     function loadInfoboxContent(state) {
         console.log('[SPA Infobox] Loading state:', state, wizardData); // 🔍 DEBUG
-        
+
         const formData = new FormData();
         formData.append('action', 'spa_get_infobox_content');
         formData.append('state', state);
