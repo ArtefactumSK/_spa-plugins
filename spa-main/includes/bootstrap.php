@@ -60,6 +60,10 @@ function spa_init() {
     
     // Inicializácia registračného modulu
     spa_registration_init();
+
+    // Inicializácia infobox modulu
+    require_once SPA_PLUGIN_DIR . 'includes/spa-infobox.php';
+    spa_infobox_init();
 }
 
 add_action('plugins_loaded', 'spa_init');
@@ -79,7 +83,15 @@ function spa_enqueue_gf_scripts($form) {
         SPA_VERSION,
         true
     );
-    
+    // Enqueue infobox JS
+    wp_enqueue_script(
+        'spa-infobox',
+        SPA_PLUGIN_URL . 'assets/js/spa-infobox.js',
+        ['spa-registration'],
+        SPA_VERSION,
+        true
+    );
+
     // Poskytnutie konfigurácie do JS
     wp_localize_script('spa-registration', 'spaConfig', [
         'ajaxUrl' => admin_url('admin-ajax.php'),
