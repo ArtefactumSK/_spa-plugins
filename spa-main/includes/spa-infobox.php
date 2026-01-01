@@ -185,24 +185,137 @@ function spa_ajax_get_infobox_content() {
         'program_age' => $program_age,
     ]);
     
-    $icons = spa_get_infobox_icons($state);
+    $icons = spa_get_infobox_icons($state);    
     
-    // Získaj program_id z POST (ak existuje) alebo fallback na SQL hľadanie
-        $program_id = isset($_POST['program_id']) ? intval($_POST['program_id']) : null;
+        // Získaj program_id z POST
+        $program_id_from_post = isset($_POST['program_id']) ? sanitize_text_field($_POST['program_id']) : '';
 
+        global $wpdb;
+        $program_id = null;
+
+        // Hľadaj program (WordPress API detekuje správny prefix automaticky)
+        if (!empty($program_id_from_post)) {
+            if (is_numeric($program_id_from_post)) {
+                $program_id = intval($program_id_from_post);
+            } else {
+                // Hľadaj podľa slug
+                $program_id = $wpdb->get_var(
+                    $wpdb->prepare(
+                        "SELECT ID FROM {$wpdb->posts} 
+                        WHERE post_type = 'spa_group' 
+                        AND post_name = %s 
+                        AND post_status = 'publish' 
+                        LIMIT 1",
+                        $program_id_from_post
+                    )
+                );
+            }
+        }
+
+        // Fallback: hľadaj podľa názvu
         if (!$program_id && !empty($program_name)) {
-            // Fallback: hľadaj podľa názvu
-            global $wpdb;
             $program_id = $wpdb->get_var(
                 $wpdb->prepare(
                     "SELECT ID FROM {$wpdb->posts} 
-                    WHERE post_type = 'spa_program' 
+                    WHERE post_type = 'spa_group' 
                     AND post_title = %s 
                     AND post_status = 'publish' 
                     LIMIT 1",
                     $program_name
                 )
             );
+        }
+
+        spa_log('Program ID lookup', [
+            'table_prefix' => $wpdb->prefix,
+            'posts_table' => $wpdb->posts,
+            'program_id_from_post' => $program_id_from_post,
+            'program_name' => $program_name,
+            'found_program_id' => $program_id
+        ]);
+
+        // Výpočet kapacity
+        $capacity_free = null;
+
+        if ($program_id) {
+            // Načítaj kapacitu pomocou WP API
+            $capacity_total = (int) get_post_meta($program_id, 'spa_capacity', true);
+            
+            if ($capacity_total <= 0) {
+                $capacity_total = 100;
+            }
+        
+            // Spočítaj aktívne registrácie (custom tabuľka)
+            $registered_active = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT COUNT(DISTINCT p.ID)
+                     FROM {$wpdb->posts} p
+                     INNER JOIN {$wpdb->postmeta} pm1 ON p.ID = pm1.post_id AND pm1.meta_key = 'program_id'
+                     INNER JOIN {$wpdb->postmeta} pm2 ON p.ID = pm2.post_id AND pm2.meta_key = 'status'
+                     WHERE p.post_type = 'spa_registration'
+                     AND p.post_status = 'publish'
+                     AND pm1.meta_value = %d
+                     AND pm2.meta_value = 'active'",
+                    $program_id
+                )
+            );
+            
+            spa_log('Registrations count (from CPT)', [
+                'program_id' => $program_id,
+                'registered_active' => $registered_active
+            ]);
+        
+            // Vypočítaj voľnú kapacitu
+            $capacity_free = max(0, $capacity_total - $registered_active);
+            
+            spa_log('Capacity calculated', [
+                'program_id' => $program_id,
+                'capacity_total' => $capacity_total,
+                'registered_active' => $registered_active,
+                'capacity_free' => $capacity_free,
+                'registrations_table' => $registrations_table
+            ]);
+
+            $prices = [];
+
+            // 1x týždenne
+            $price_1x = get_post_meta($program_id, 'spa_price_1x_weekly', true);
+            if ($price_1x && floatval($price_1x) > 0) {
+                $prices[] = number_format((float)$price_1x, 0, ',', ' ') . ' €';
+            }
+
+            // 2x týždenne
+            $price_2x = get_post_meta($program_id, 'spa_price_2x_weekly', true);
+            if ($price_2x && floatval($price_2x) > 0) {
+                $prices[] = number_format((float)$price_2x, 0, ',', ' ') . ' €';
+            }
+
+            // Mesačný paušál (fallback)
+            if (empty($prices)) {
+                $monthly = get_post_meta($program_id, 'spa_price_monthly', true);
+                if ($monthly && floatval($monthly) > 0) {
+                    $prices[] = number_format((float)$monthly, 0, ',', ' ') . ' € / mesiac';
+                }
+            }
+
+            // Semester (fallback)
+            if (empty($prices)) {
+                $semester = get_post_meta($program_id, 'spa_price_semester', true);
+                if ($semester && floatval($semester) > 0) {
+                    $prices[] = number_format((float)$semester, 0, ',', ' ') . ' € / semester';
+                }
+            }
+
+            // výsledná cena pre infobox
+            $price_label = !empty($prices) ? implode(' / ', $prices) : null;
+
+            // DEBUG (pokojne nechaj počas vývoja)
+            spa_log('Infobox price resolved', [
+                'program_id' => $program_id,
+                'price_1x'   => $price_1x,
+                'price_2x'   => $price_2x,
+                'final'      => $price,
+            ]);
         }
 
         // Výpočet kapacity
@@ -218,7 +331,7 @@ function spa_ajax_get_infobox_content() {
             }
 
             // 2. Počet aktívnych registrácií
-            $registered_active = (int) $wpdb->get_var(
+            /* $registered_active = (int) $wpdb->get_var(
                 $wpdb->prepare(
                     "SELECT COUNT(*)
                     FROM wp_ap5_spa_registrations
@@ -226,7 +339,23 @@ function spa_ajax_get_infobox_content() {
                     AND status = 'active'",
                     $program_id
                 )
-            );
+            ); */
+            
+            $table_registrations = $wpdb->prefix . 'spa_registrations';
+
+            // 2. Počet aktívnych registrácií
+            $registered_active = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                    "
+                    SELECT COUNT(*)
+                    FROM {$table_registrations}
+                    WHERE program_id = %d
+                      AND status = 'active'
+                    ",
+                    $program_id
+                )
+            );  
+
 
             // 3. Voľná kapacita
             $capacity_free = max(0, $capacity_total - $registered_active);
@@ -240,21 +369,23 @@ function spa_ajax_get_infobox_content() {
             ]);
         } else {
             spa_log('Program ID not found', ['program_name' => $program_name]);
-        }
+        }            
 
-            // DEBUG: Loguj PRESNE to, čo ide do JSON
-            spa_log('AJAX Response PRED odoslaním', [
-                'capacity_free' => $capacity_free,
-                'program_id' => $program_id ?? 'NULL',
-                'program_name' => $program_name,
-                'capacity_total' => $capacity_total ?? 'NULL',
-                'registered_active' => $registered_active ?? 'NULL'
-            ]);
+        // DEBUG: Loguj PRESNE to, čo ide do JSON
+        spa_log('AJAX Response PRED odoslaním', [
+            'capacity_free' => $capacity_free,
+            'program_id' => $program_id ?? 'NULL',
+            'program_name' => $program_name,
+            'capacity_total' => $capacity_total ?? 'NULL',
+            'registered_active' => $registered_active ?? 'NULL'
+        ]);
+
 
             wp_send_json_success([
                 'content' => $content,
                 'icons' => $icons,
                 'capacity_free' => $capacity_free,
+                'price' => $price_label,
             ]);
 }
 
@@ -300,9 +431,9 @@ function spa_get_infobox_icons($state) {
             $icons['program'] = spa_icon('program', 'spa-icon-program', ['stroke' => '#cccccc']);
             break;
         case 2:
-            $options = ['stroke' => 'var(--theme-palette-color-2)'];
+            $options = ['stroke' => 'var(--theme-palette-color-3)'];
             $icons['location'] = spa_icon('location', 'spa-icon-location', $options);
-            $icons['program'] = spa_icon('program', 'spa-icon-program', $options);
+            $icons['spa_program'] = spa_icon('spa_program', 'spa-icon-spa_program', $options);
             $icons['time'] = spa_icon('time', 'spa-icon-time', $options);
             // Ikony pre summary
             $icons['age'] = spa_icon('age', 'spa-icon-age', $options);

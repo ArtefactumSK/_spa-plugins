@@ -49,7 +49,7 @@
         // Načítaj úvodný stav
         loadInfoboxContent(0);
         
-        console.log('[SPA Infobox] Inicializovaný.');
+        console.log('[SPA Infobox] Inicializovaný.');spa_get_infobox_content
     }
 
     /**
@@ -144,7 +144,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                renderInfobox(data.data.content, data.data.icons, data.data.capacity_free);
+                renderInfobox(data.data.content, data.data.icons, data.data.capacity_free,data.data.price );
             } else {
                 console.error('[SPA Infobox] Chyba:', data.data?.message);
             }
@@ -157,7 +157,7 @@
     /**
      * Vykreslenie infoboxu
      */
-    function renderInfobox(content, icons, capacityFree) {
+    function renderInfobox(content, icons, capacityFree, price) {
         console.log('[renderInfobox]', {
             capacityFree,
             currentState,
@@ -173,10 +173,13 @@
         /* ==================================================
         1. OBSAH – WP stránka (SPA Infobox Wizard)
         ================================================== */
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'spa-infobox-content';
-        contentDiv.innerHTML = content;
-        container.appendChild(contentDiv);
+        if (currentState !== 2) {
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'spa-infobox-content';
+            contentDiv.innerHTML = content;
+            container.appendChild(contentDiv);
+        }
+        
 
         /* ==================================================
         1.5 DYNAMICKÝ SUMMARY (mesto, vek, kapacita)
@@ -186,7 +189,7 @@
             const summaryDiv = document.createElement('div');
             summaryDiv.className = 'spa-infobox-summary';
 
-            let summaryHtml = '<ul class="spa-summary-list">';
+            let summaryHtml = '<hr><ul class="spa-summary-list">';
 
             // MESTO s inline ikonou
             if (wizardData.city_name) {
@@ -196,7 +199,18 @@
                 summaryHtml += `
                     <li class="spa-summary-item spa-summary-city">
                         <span class="spa-summary-icon">${locationIcon}</span>
-                        <strong>Mesto:</strong> ${wizardData.city_name}
+                        ${wizardData.city_name}
+                    </li>`;
+            }
+
+            // PROGRAM (len ak je vybraný)
+            if (wizardData.program_name) {
+                const spa_programIconSvg = icons && icons.spa_program ? icons.spa_program : '🎯';
+
+                summaryHtml += `
+                    <li class="spa-summary-item spa-summary-program">
+                        <span class="spa-summary-icon">${spa_programIconSvg}</span>
+                        ${wizardData.program_name}
                     </li>`;
             }
 
@@ -211,23 +225,36 @@
                 summaryHtml += `
                     <li class="spa-summary-item spa-summary-age">
                         <span class="spa-summary-icon">${ageIconSvg}</span>
-                        <strong>Vek:</strong> ${wizardData.program_age} ${ageLabel}
+                        <strong>${wizardData.program_age}</strong> ${ageLabel}
                     </li>`;
             }
 
             // KAPACITA (len v stave 2)
-            if (capacityFree !== null && capacityFree !== undefined) {
+            if (currentState === 2 && wizardData.program_name && capacityFree !== null && capacityFree !== undefined) {            
 
                 const capacityIconSvg = icons && icons.capacity
                     ? icons.capacity
-                    : '<span class="spa-icon-placeholder">👥</span>';
+                    : '';
+                const capacityLabel = getCapacityLabel(capacityFree);
             
                 summaryHtml += `
                     <li class="spa-summary-item spa-summary-capacity">
                         <span class="spa-summary-icon">${capacityIconSvg}</span>
-                        <strong>Voľná kapacita:</strong> ${capacityFree} miest
+                        <strong>${capacityFree}</strong> ${capacityLabel}
                     </li>`;
             }
+
+            // CENA
+            if (price) {
+                const priceIconSvg = icons && icons.price ? icons.price : '€';
+
+                summaryHtml += `
+                    <li class="spa-summary-item spa-summary-price">
+                        <span class="spa-summary-icon">${priceIconSvg}</span>
+                        <strong>${price}</strong>
+                    </li>`;
+            }
+
 
             summaryHtml += '</ul>';
 
@@ -235,42 +262,15 @@
             container.appendChild(summaryDiv);
         }
 
-
-
-        /* ==================================================
-        2. IKONY – kontrolovaná veľkosť SVG
-        ================================================== */
-        /* if (icons && Object.keys(icons).length > 0) {
-            const iconsWrapper = document.createElement('div');
-            iconsWrapper.className = 'spa-infobox-icons';
-
-            Object.values(icons).forEach(iconSvg => {
-                if (!iconSvg) return;
-
-                const iconDiv = document.createElement('div');
-                iconDiv.className = 'spa-infobox-icon';
-                iconDiv.innerHTML = iconSvg;
-
-                // 🔧 OPRAVA SVG VEĽKOSTI (kľúčová časť)
-                const svgEl = iconDiv.querySelector('svg');
-                if (svgEl) {
-                    // odstráň pevné rozmery zo SVG
-                    svgEl.removeAttribute('width');
-                    svgEl.removeAttribute('height');
-
-                    // vynúť prispôsobenie rodičovi (.spa-infobox-icon)
-                    svgEl.style.width = '100%';
-                    svgEl.style.height = '100%';
-
-                    // zachovaj pomer strán
-                    svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-                }
-
-                iconsWrapper.appendChild(iconDiv);
-            });
-
-            container.appendChild(iconsWrapper);
-        } */
+        function getCapacityLabel(count) {
+            if (count === 1) {
+                return 'voľné miesto';
+            }
+            if (count >= 2 && count <= 4) {
+                return 'voľné miesta';
+            }
+            return 'voľných miest';
+        }
     }
 
 })();
