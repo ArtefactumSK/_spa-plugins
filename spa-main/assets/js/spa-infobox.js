@@ -49,7 +49,7 @@
         // Načítaj úvodný stav
         loadInfoboxContent(0);
         
-        console.log('[SPA Infobox] Inicializovaný.');spa_get_infobox_content
+        console.log('[SPA Infobox] Inicializovaný.');
     }
 
     /**
