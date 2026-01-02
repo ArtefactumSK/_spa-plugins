@@ -234,6 +234,30 @@ function spa_ajax_get_infobox_content() {
             'found_program_id' => $program_id
         ]);
 
+        // Načítaj údaje programu ak je vybraný
+        $program_data = null;
+        if ($program_id) {
+            $program_post = get_post($program_id);
+            
+            if ($program_post && $program_post->post_status === 'publish') {
+                // Získaj ikonu programu
+                $icon_name = get_post_meta($program_id, 'spa_icon', true);
+                $icon_svg = '';
+                
+                if ($icon_name) {
+                    $icon_path = WP_CONTENT_DIR . '/uploads/spa-icons/' . $icon_name;
+                    if (file_exists($icon_path)) {
+                        $icon_svg = file_get_contents($icon_path);
+                    }
+                }
+                
+                $program_data = [
+                    'title' => $program_post->post_title,
+                    'content' => apply_filters('the_content', $program_post->post_content),
+                    'icon' => $icon_svg
+                ];
+            }
+        }
         // Výpočet kapacity
         $capacity_free = null;
 
@@ -381,12 +405,13 @@ function spa_ajax_get_infobox_content() {
         ]);
 
 
-            wp_send_json_success([
-                'content' => $content,
-                'icons' => $icons,
-                'capacity_free' => $capacity_free,
-                'price' => $price_label,
-            ]);
+                wp_send_json_success([
+                    'content' => $content,
+                    'icons' => $icons,
+                    'capacity_free' => $capacity_free,
+                    'price' => $price_label,
+                    'program' => $program_data,
+                ]);
 }
 
 /**

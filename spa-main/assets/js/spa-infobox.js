@@ -150,7 +150,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                renderInfobox(data.data.content, data.data.icons, data.data.capacity_free,data.data.price );
+                renderInfobox(data.data, data.data.icons, data.data.capacity_free, data.data.price);
             } else {
                 console.error('[SPA Infobox] Chyba:', data.data?.message);
             }
@@ -163,7 +163,8 @@
     /**
      * Vykreslenie infoboxu
      */
-    function renderInfobox(content, icons, capacityFree, price) {
+    function renderInfobox(data, icons, capacityFree, price) {
+        const content = data.content;
         console.log('[renderInfobox]', {
             capacityFree,
             currentState,
@@ -186,7 +187,31 @@
             container.appendChild(contentDiv);
         }
         
-
+        /* ==================================================
+        1.3 ÚDAJE PROGRAMU (ikona, názov, obsah)
+        ================================================== */
+        if (currentState === 2 && wizardData.program_name && content.program) {
+            const programDiv = document.createElement('div');
+            programDiv.className = 'spa-infobox-program';
+            
+            let programHtml = '';
+            
+            // Ikona programu (zväčšená)
+            if (content.program.icon) {
+                programHtml += `<div class="spa-program-icon-large">${content.program.icon}</div>`;
+            }
+            
+            // Názov programu
+            programHtml += `<h4 class="spa-program-title">${content.program.title}</h4>`;
+            
+            // Obsah CPT (čistý WordPress content)
+            if (content.program.content) {
+                programHtml += `<div class="spa-program-content">${content.program.content}</div>`;
+            }
+            
+            programDiv.innerHTML = programHtml;
+            container.appendChild(programDiv);
+        }
         /* ==================================================
         1.5 DYNAMICKÝ SUMMARY (mesto, vek, kapacita)
         ================================================== */
