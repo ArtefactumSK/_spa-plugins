@@ -253,11 +253,14 @@
             // CENA (len ak je vybraný program)
             if (price && wizardData.program_name) {
                 const priceIconSvg = icons && icons.price ? icons.price : '€';
+                
+                // Rozdeľ cenu a kontext (napr. "130 € / 2× týždenne")
+                const priceFormatted = price.replace(/(\d+\s*€)/g, '<strong>$1</strong>');
 
                 summaryHtml += `
                     <li class="spa-summary-item spa-summary-price">
                         <span class="spa-summary-icon">${priceIconSvg}</span>
-                        <strong>${price}</strong>
+                        ${priceFormatted}
                     </li>`;
             }
 

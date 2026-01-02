@@ -281,13 +281,13 @@ function spa_ajax_get_infobox_content() {
             // 1x týždenne
             $price_1x = get_post_meta($program_id, 'spa_price_1x_weekly', true);
             if ($price_1x && floatval($price_1x) > 0) {
-                $prices[] = number_format((float)$price_1x, 0, ',', ' ') . ' €';
+                $prices[] = number_format((float)$price_1x, 0, ',', ' ') . ' € / 1× týždenne';
             }
 
             // 2x týždenne
             $price_2x = get_post_meta($program_id, 'spa_price_2x_weekly', true);
             if ($price_2x && floatval($price_2x) > 0) {
-                $prices[] = number_format((float)$price_2x, 0, ',', ' ') . ' €';
+                $prices[] = number_format((float)$price_2x, 0, ',', ' ') . ' € / 2× týždenne';
             }
 
             // Mesačný paušál (fallback)
@@ -306,8 +306,8 @@ function spa_ajax_get_infobox_content() {
                 }
             }
 
-            // výsledná cena pre infobox
-            $price_label = !empty($prices) ? implode(' / ', $prices) : null;
+            // výsledná cena pre infobox - oddeľovač •
+            $price_label = !empty($prices) ? implode(' • ', $prices) : null;
 
             // DEBUG (pokojne nechaj počas vývoja)
             spa_log('Infobox price resolved', [
