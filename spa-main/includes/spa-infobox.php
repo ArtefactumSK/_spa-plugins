@@ -156,6 +156,15 @@ function spa_ajax_get_infobox_content() {
     $city_name = isset($_POST['city_name']) ? sanitize_text_field($_POST['city_name']) : '';
     $program_name = isset($_POST['program_name']) ? sanitize_text_field($_POST['program_name']) : '';
     $program_age = isset($_POST['program_age']) ? sanitize_text_field($_POST['program_age']) : '';
+
+    if (empty($program_age) && !empty($program_name)) {
+        // Regex: zachytáva 1,8–3 alebo 6+ alebo 12-15
+        if (preg_match('/(\d+(?:,\d+)?)\s*[–-]\s*(\d+(?:,\d+)?)/', $program_name, $matches)) {
+            $program_age = $matches[1] . '–' . $matches[2];
+        } elseif (preg_match('/(\d+(?:,\d+)?)\+/', $program_name, $matches)) {
+            $program_age = $matches[1] . '+';
+        }
+    }
     
     spa_log('Infobox AJAX called', [
         'state' => $state,

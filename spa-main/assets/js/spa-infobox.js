@@ -97,16 +97,18 @@
                     
                     console.log('[SPA Infobox] Program ID:', wizardData.program_id);
                     
-                    // Parsuj vek z názvu programu
-                    const ageMatch = selectedOption.text.match(/(\d+)[–-](\d+)/);
+                    // Parsuj vek z názvu programu (podporuje desatinné čísla s čiarkou)
+                    const ageMatch = selectedOption.text.match(/(\d+(?:,\d+)?)\s*[–-]\s*(\d+(?:,\d+)?)/);
                     if (ageMatch) {
-                        wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
+                        wizardData.program_age = ageMatch[1] + ' - ' + ageMatch[2];
                     } else {
-                        const agePlusMatch = selectedOption.text.match(/(\d+)\+/);
+                        const agePlusMatch = selectedOption.text.match(/(\d+(?:,\d+)?)\+/);
                         if (agePlusMatch) {
                             wizardData.program_age = agePlusMatch[1] + '+';
                         }
                     }
+
+                    console.log('[SPA Infobox] Parsed program_age:', wizardData.program_age); // DEBUG
                     
                     currentState = 2;
                     console.log('[SPA Infobox] State changed to 2, wizardData:', wizardData);

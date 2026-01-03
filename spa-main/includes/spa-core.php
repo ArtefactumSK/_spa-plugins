@@ -350,44 +350,58 @@ function spa_determine_participant_type($age_from, $age_to) {
  * @return string Formátovaný label
  */
 function spa_format_program_label($title, $age_from, $age_to, $target) {
-    $age_from = intval($age_from);
-    $age_to = !empty($age_to) ? intval($age_to) : null;
+    // Konverzia na float a zachovanie desatinnej časti
+    $age_from_float = !empty($age_from) ? floatval($age_from) : 0;
+    $age_to_float = !empty($age_to) ? floatval($age_to) : null;
     
     $prefix = '';
     
     switch ($target) {
         case 'child':
-            // DETI: "pre deti X–Y r." alebo "pre deti X+ r."
             $prefix = 'pre deti';
             
-            if ($age_from > 0 && $age_to !== null) {
-                $prefix .= " {$age_from}–{$age_to} r.";
-            } elseif ($age_from > 0) {
-                $prefix .= " {$age_from}+ r.";
+            if ($age_from_float > 0 && $age_to_float !== null) {
+                $age_from_str = spa_format_age_display($age_from_float);
+                $age_to_str = spa_format_age_display($age_to_float);
+                $prefix .= " {$age_from_str} - {$age_to_str} r.";
+            } elseif ($age_from_float > 0) {
+                $age_from_str = spa_format_age_display($age_from_float);
+                $prefix .= " {$age_from_str}+ r.";
             }
             break;
             
         case 'youth':
-            // MLÁDEŽ: "pre mládež X–Y r."
             $prefix = 'pre mládež';
             
-            if ($age_from > 0 && $age_to !== null) {
-                $prefix .= " {$age_from}–{$age_to} r.";
-            } elseif ($age_from > 0) {
-                $prefix .= " {$age_from}+ r.";
+            if ($age_from_float > 0 && $age_to_float !== null) {
+                $age_from_str = spa_format_age_display($age_from_float);
+                $age_to_str = spa_format_age_display($age_to_float);
+                $prefix .= " {$age_from_str} - {$age_to_str} r.";
+            } elseif ($age_from_float > 0) {
+                $age_from_str = spa_format_age_display($age_from_float);
+                $prefix .= " {$age_from_str}+ r.";
             }
             break;
             
         case 'adult':
-            // DOSPELÍ: "pre dospelých X+ r."
             $prefix = 'pre dospelých';
             
-            if ($age_from > 0) {
-                $prefix .= " {$age_from}+ r.";
+            if ($age_from_float > 0) {
+                $age_from_str = spa_format_age_display($age_from_float);
+                $prefix .= " {$age_from_str}+ r.";
             }
             break;
     }
     
-    // Finálny formát: "prefix / Názov programu"
     return $prefix . ' / ' . $title;
+}
+
+function spa_format_age_display($age) {
+    // Ak je celé číslo (napr. 3.0), zobraz bez desatinnej časti
+    if (fmod($age, 1) == 0) {
+        return intval($age);
+    }
+    
+    // Inak zobraz s čiarkou namiesto bodky
+    return str_replace('.', ',', number_format($age, 1, '.', ''));
 }
