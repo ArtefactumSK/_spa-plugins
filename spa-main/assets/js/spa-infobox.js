@@ -201,8 +201,16 @@
             
             // Ikona programu (zväčšená)
             if (programData.icon) {
-                programHtml += `<div class="spa-program-icon-large">${programData.icon}</div>`;
+                programHtml += `
+                    <div class="spa-program-icon-large"
+                         style="
+                           --program-primary-color: ${programData.primary_color || '#4f7cff'};
+                           --program-secondary-color: ${programData.secondary_color || '#111827'};
+                         ">
+                        ${programData.icon}
+                    </div>`;
             }
+            
             
             // Názov programu s ikonou
             if (programData.title) {
