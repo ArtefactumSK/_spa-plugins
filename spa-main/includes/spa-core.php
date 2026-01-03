@@ -283,6 +283,13 @@ function spa_get_programs_for_city_dynamic($city_name) {
         wp_reset_postdata();
     }
     
+    // Zoradenie programov podľa age_from (vzostupne)
+    usort($programs, function($a, $b) {
+        $age_a = $a['age_min'] !== null ? $a['age_min'] : 999;
+        $age_b = $b['age_min'] !== null ? $b['age_min'] : 999;
+        return $age_a - $age_b;
+    });
+    
     return $programs;
 }
 
