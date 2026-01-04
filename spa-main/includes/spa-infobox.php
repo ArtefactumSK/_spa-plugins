@@ -245,6 +245,7 @@ function spa_ajax_get_infobox_content() {
 
         // Načítaj údaje programu ak je vybraný
         $program_data = null;
+        $place_data = null;
         if ($program_id) {
             $program_post = get_post($program_id);
             
@@ -278,8 +279,7 @@ function spa_ajax_get_infobox_content() {
                     'age_max' => get_post_meta($program_id, 'spa_age_to', true)
                 ];
 
-                // === NOVÝ BLOK – ÚDAJE MIESTA ===
-                $place_data = null;
+                // === NOVÝ BLOK – ÚDAJE MIESTA ===                
                 if ($program_id) {
                     // Získaj place_id z programu
                     $place_id = get_post_meta($program_id, 'spa_place_id', true);
