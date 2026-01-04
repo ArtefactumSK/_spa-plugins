@@ -284,8 +284,20 @@
             }            
            
             // CENA (len ak je vybraný program)
+            // Problém: price.svg sa nezobrazuje lebo v PHP kóde nie je vrátená v poli $icons, teda neprenáša sa do JS
+            // RIEŠENIE: fallback na <span>€</span> ak svg neprišlo, ale HLAVNÝ problém treba opraviť v PHP (pozri nižšie JS komentáre)
+
             if (price && wizardData.program_name) {
-                const priceIconSvg = icons && icons.price ? icons.price : '€';
+                let priceIconSvg = '€';
+                // icons.price je undefined ak PHP ho negeneruje do pola $icons. Ostatné (location/capacity) tam sú, price nie.
+                // Odporúčaná oprava (PHP): do funkcie spa_get_infobox_icons() pridať riadok pre 'price' v stave 2:
+                // $icons['price'] = spa_icon('price', 'spa-icon-price', $options);
+                // Pokiaľ to v JS nie je, fallbackuj na €
+                if (icons && icons.price && typeof icons.price === 'string' && icons.price.trim().startsWith('<svg')) {
+                    priceIconSvg = icons.price;
+                } else {
+                    priceIconSvg = '<span class="spa-icon-placeholder">€</span>';
+                }
                 
                 // Rozdeľ cenu a kontext (napr. "130 € / 2× týždenne")
                 const priceFormatted = price.replace(/(\d+\s*€)/g, '<strong>$1</strong>');

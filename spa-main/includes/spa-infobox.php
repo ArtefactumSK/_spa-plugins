@@ -259,6 +259,14 @@ function spa_ajax_get_infobox_content() {
                         $icon_svg = file_get_contents($icon_path);
                     }
                 }
+                // Získaj farby programu (KRITICKÉ!)
+                $primary_color = get_post_meta($program_id, 'spa_icon_primary_color', true);
+                $secondary_color = get_post_meta($program_id, 'spa_icon_secondary_color', true);
+
+                // DEBUG (môžeš odstrániť po otestovaní)
+                error_log('[SPA Infobox] Program ID: ' . $program_id);
+                error_log('[SPA Infobox] Primary color: ' . $primary_color);
+                error_log('[SPA Infobox] Secondary color: ' . $secondary_color);
                 
                 $program_data = [
                     'title' => $program_post->post_title,
@@ -472,6 +480,7 @@ function spa_get_infobox_icons($state) {
             $options = ['stroke' => 'var(--theme-palette-color-3)'];
             $icons['location'] = spa_icon('location', 'spa-icon-location', $options);
             $icons['spa_program'] = spa_icon('spa_program', 'spa-icon-spa_program', $options);
+            $icons['price'] = spa_icon('price', 'spa-icon-price', ['fill' => 'var(--theme-palette-color-3)', 'stroke' => 'none']);
             $icons['time'] = spa_icon('time', 'spa-icon-time', $options);
             // Ikony pre summary
             $icons['age'] = spa_icon('age', 'spa-icon-age', $options);
