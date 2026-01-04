@@ -217,9 +217,10 @@
                 programHtml += `<div class="spa-age-range-text" style="color: ${primaryColor};">${wizardData.program_age} r.</div>`;
             }
             
-            // Názov programu
+            // Názov programu s SPA logom
             if (programData.title) {
-                programHtml += `<h4 class="spa-program-title">${programData.title}</h4>`;
+                const spaLogoSvg = icons && icons.spa_logo ? icons.spa_logo : '';
+                programHtml += `<h4 class="spa-program-title">${spaLogoSvg}${programData.title}</h4>`;
             }
             
             // Obsah CPT (čistý WordPress content)
@@ -362,6 +363,49 @@
                 return 'voľné miesta';
             }
             return 'voľných miest';
+        }
+
+        // Aplikuj farby na SVG elementy (override inline fill atribútov)
+        if (programData.primary_color || programData.secondary_color) {
+            setTimeout(() => {
+                const iconContainer = container.querySelector('.spa-program-icon-large');
+                if (iconContainer) {
+                    const svg = iconContainer.querySelector('svg');
+                    if (svg) {
+                        // Shirt (primary color)
+                        const shirtPaths = svg.querySelectorAll('#shirt, #shirt path');
+                        shirtPaths.forEach(el => {
+                            if (programData.primary_color) {
+                                el.style.fill = programData.primary_color;
+                            }
+                        });
+                        
+                        // Shirt shadow (tmavšia primary)
+                        const shadowPaths = svg.querySelectorAll('#shirt-shadow path');
+                        if (programData.primary_color) {
+                            shadowPaths.forEach(path => {
+                                path.style.fill = `color-mix(in srgb, ${programData.primary_color} 70%, black)`;
+                            });
+                        }
+                        
+                        // Shirt highlight (svetlejšia primary)
+                        const highlightPaths = svg.querySelectorAll('#shirt-highlight path');
+                        if (programData.primary_color) {
+                            highlightPaths.forEach(path => {
+                                path.style.fill = `color-mix(in srgb, ${programData.primary_color} 70%, white)`;
+                            });
+                        }
+                        
+                        // Logo SPA (secondary color)
+                        const logoPaths = svg.querySelectorAll('#logoSPA path');
+                        if (programData.secondary_color) {
+                            logoPaths.forEach(path => {
+                                path.style.fill = programData.secondary_color;
+                            });
+                        }
+                    }
+                }
+            }, 100);
         }
     }
 

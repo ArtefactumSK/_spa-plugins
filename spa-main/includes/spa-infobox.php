@@ -264,6 +264,8 @@ function spa_ajax_get_infobox_content() {
                     'title' => $program_post->post_title,
                     'content' => apply_filters('the_content', $program_post->post_content),
                     'icon' => $icon_svg,
+                    'primary_color' => !empty($primary_color) ? $primary_color : '#6d71b2',
+                    'secondary_color' => !empty($secondary_color) ? $secondary_color : '#000000',
                     'age_min' => get_post_meta($program_id, 'spa_age_from', true),
                     'age_max' => get_post_meta($program_id, 'spa_age_to', true)
                 ];
