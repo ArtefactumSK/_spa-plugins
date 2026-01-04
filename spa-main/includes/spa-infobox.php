@@ -474,6 +474,9 @@ function spa_get_infobox_icons($state) {
             // Ikony pre summary
             $icons['age'] = spa_icon('age', 'spa-icon-age', $options);
             $icons['capacity'] = spa_icon('capacity', 'spa-icon-capacity', $options);
+            
+            // SPA logo (nad ikonou programu)
+            $icons['spa_logo'] = spa_icon('spa_logo', 'spa-logo-small', $options);
             break;
     }
     

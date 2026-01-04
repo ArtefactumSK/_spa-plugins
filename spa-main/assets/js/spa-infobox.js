@@ -201,23 +201,25 @@
             
             let programHtml = '';
             
-            // Ikona programu (zväčšená)
+            // Ikona programu (zväčšená) + aplikácia CSS premenných
             if (programData.icon) {
-                programHtml += `
-                    <div class="spa-program-icon-large"
-                         style="
-                           --program-primary-color: ${programData.primary_color || '#4f7cff'};
-                           --program-secondary-color: ${programData.secondary_color || '#111827'};
-                         ">
-                        ${programData.icon}
-                    </div>`;
+                const colorStyle = [
+                    programData.primary_color ? `--program-primary-color: ${programData.primary_color};` : '',
+                    programData.secondary_color ? `--program-secondary-color: ${programData.secondary_color};` : ''
+                ].filter(Boolean).join(' ');
+                
+                programHtml += `<div class="spa-program-icon-large" style="${colorStyle}">${programData.icon}</div>`;
             }
             
+            // VEĽKÝ TEXT VEKU POD SVG
+            if (wizardData.program_age) {
+                const primaryColor = programData.primary_color || '#6d71b2';
+                programHtml += `<div class="spa-age-range-text" style="color: ${primaryColor};">${wizardData.program_age} r.</div>`;
+            }
             
-            // Názov programu s ikonou
+            // Názov programu
             if (programData.title) {
-                const titleIcon = icons && icons.spa_program ? icons.spa_program : '';
-                programHtml += `<h4 class="spa-program-title">${titleIcon} ${programData.title}</h4>`;
+                programHtml += `<h4 class="spa-program-title">${programData.title}</h4>`;
             }
             
             // Obsah CPT (čistý WordPress content)
@@ -261,7 +263,7 @@
                 summaryHtml += `
                     <li class="spa-summary-item spa-summary-age">
                         <span class="spa-summary-icon">${ageIconSvg}</span>
-                        <strong>${wizardData.program_age}</strong> ${ageLabel}
+                        <strong style="color: var(--program-primary-color, inherit);">${wizardData.program_age}</strong> ${ageLabel}
                     </li>`;
             }
 
