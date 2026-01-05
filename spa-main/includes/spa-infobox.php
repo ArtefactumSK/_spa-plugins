@@ -458,7 +458,18 @@ function spa_ajax_get_infobox_content() {
         ]);
         // === KONIEC DEBUG ===
 
-
+        // DEBUG
+    error_log('[SPA Infobox PHP] program_id: ' . ($program_id ?? 'NULL'));
+    error_log('[SPA Infobox PHP] program_data title: ' . ($program_data['title'] ?? 'NULL'));
+    error_log('[SPA Infobox PHP] capacity_free: ' . ($capacity_free ?? 'NULL'));
+    error_log('[SPA Infobox PHP] price_label: ' . ($price_label ?? 'NULL'));
+    error_log('[SPA Infobox PHP] place_data name: ' . ($place_data['name'] ?? 'NULL'));
+    error_log('[SPA Infobox PHP] place_data address: ' . ($place_data['address'] ?? 'NULL'));
+    error_log('[SPA Infobox PHP] place_data city: ' . ($place_data['city'] ?? 'NULL'));
+    error_log('[SPA Infobox PHP] icons keys: ' . implode(', ', array_keys($icons)));
+    error_log('[SPA Infobox PHP] spa_logo exists: ' . (isset($icons['spa_logo']) ? 'YES' : 'NO'));
+    error_log('[SPA Infobox PHP] spa_logo length: ' . (isset($icons['spa_logo']) ? strlen($icons['spa_logo']) : 0));
+    error_log('[SPA Infobox PHP] spa_logo preview: ' . (isset($icons['spa_logo']) ? substr($icons['spa_logo'], 0, 100) : 'NONE'));
         wp_send_json_success([
             'content' => $content,
             'icons' => $icons,
