@@ -5,6 +5,12 @@
 
 (function() {
     'use strict';
+    // GLOBÁLNY STAV FORMULÁRA
+    window.spaFormState = {
+        city: false,
+        program: false,
+        frequency: false
+    };
 
     if (typeof spaConfig === 'undefined') {
         console.error('[SPA Infobox] spaConfig nie je definovaný.');
@@ -96,7 +102,8 @@
     
         // Načítaj úvodný stav
         updateInfoboxState();
-        
+        // Inicializuj validáciu krokov
+        updateNextButtonState();
         console.log('[SPA Infobox] Inicializovaný.');
     }
 
@@ -116,17 +123,20 @@
                 });
                 
                 if (this.value && this.value !== '0') {
-                    // Mesto vybrané
                     wizardData.city_name = selectedOption.text;
+                    window.spaFormState.city = true;
                 } else {
-                    // Reset - vyčisti všetko
                     wizardData.city_name = '';
                     wizardData.program_name = '';
                     wizardData.program_id = null;
                     wizardData.program_age = '';
+                    window.spaFormState.city = false;
+                    window.spaFormState.program = false;
+                    window.spaFormState.frequency = false;
                 }
                 
                 updateInfoboxState();
+                updateNextButtonState();
             });
         }
         
@@ -146,32 +156,32 @@
                 if (this.value) {
                     wizardData.program_name = selectedOption.text;
                     wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
+                    window.spaFormState.program = true;
+                    window.spaFormState.frequency = false; // reset frekvencie
                     
                     console.log('[SPA Infobox] Program ID:', wizardData.program_id);
                     
-                    // Parsuj vek z názvu programu
                     const ageRangeMatch = selectedOption.text.match(/(\d+(?:,\d+)?)\s*[–-]\s*(\d+(?:,\d+)?)/);
                     if (ageRangeMatch) {
-                        // Rozsah: "1,8 - 3" alebo "5 - 7"
                         wizardData.program_age = ageRangeMatch[1] + ' - ' + ageRangeMatch[2];
                     } else {
                         const agePlusMatch = selectedOption.text.match(/(\d+(?:,\d+)?)\+/);
                         if (agePlusMatch) {
-                            // Plus: "8+" alebo "10+"
                             wizardData.program_age = agePlusMatch[1] + '+';
                         } else {
-                            // Fallback - nevyplnené
                             wizardData.program_age = '';
                         }
                     }
                 } else {
-                    // Reset programu - NEMAZEME mesto
                     wizardData.program_name = '';
                     wizardData.program_id = null;
                     wizardData.program_age = '';
+                    window.spaFormState.program = false;
+                    window.spaFormState.frequency = false;
                 }
                 
                 updateInfoboxState();
+                updateNextButtonState();
             });
         } else {
             console.error('[SPA Infobox] Program field NOT FOUND!');
@@ -498,6 +508,8 @@ function renderInfobox(data, icons, capacityFree, price) {
 
         if (!programData) {
             selector.innerHTML = '';
+            window.spaFormState.frequency = false;
+            updateNextButtonState();
             return;
         }
 
@@ -586,6 +598,18 @@ function renderInfobox(data, icons, capacityFree, price) {
                 }
             }
         }, 50);
+        // Listener na zmenu frekvencie
+        activeFrequencies.forEach((freq) => {
+            const radioInput = selector.querySelector(`input[value="${freq.key}"]`);
+            if (radioInput) {
+                radioInput.addEventListener('change', function() {
+                    if (this.checked) {
+                        window.spaFormState.frequency = true;
+                        updateNextButtonState();
+                    }
+                });
+            }
+        });
     }
 
    /**
@@ -610,5 +634,77 @@ function renderInfobox(data, icons, capacityFree, price) {
         }
     }
 
+    /**
+     * Aktualizácia stavu Next button
+     */
+    /* function updateNextButtonState() {
+        const isStep1Complete = window.spaFormState.city && 
+                               window.spaFormState.program && 
+                               window.spaFormState.frequency;
+        
+        const nextButton = document.querySelector('.gform_next_button');
+        if (nextButton) {
+            if (isStep1Complete) {
+                nextButton.disabled = false;
+                nextButton.style.opacity = '1';
+                nextButton.style.cursor = 'pointer';
+            } else {
+                nextButton.disabled = true;
+                nextButton.style.opacity = '0.5';
+                nextButton.style.cursor = 'not-allowed';
+            }
+        }
+        
+        console.log('[SPA Step Validation]', {
+            city: window.spaFormState.city,
+            program: window.spaFormState.program,
+            frequency: window.spaFormState.frequency,
+            complete: isStep1Complete
+        });
+    } */
+
+        /**
+         * Aktualizácia stavu Next button
+         */
+        function updateNextButtonState() {
+            const nextButton = document.querySelector('.gform_next_button');
+            
+            // Kontrola: ak button neexistuje (nie sme na správnej stránke), return
+            if (!nextButton) {
+                return;
+            }
+            
+            const isStep1Complete = window.spaFormState.city && 
+                                   window.spaFormState.program && 
+                                   window.spaFormState.frequency;
+            if (nextButton) {
+                // Odstráň starý listener (aby sa neduplikoval)
+                const newButton = nextButton.cloneNode(true);
+                nextButton.parentNode.replaceChild(newButton, nextButton);
+                
+                if (isStep1Complete) {
+                    newButton.style.opacity = '1';
+                    newButton.style.cursor = 'pointer';
+                } else {
+                    newButton.style.opacity = '0.5';
+                    newButton.style.cursor = 'not-allowed';
+                    
+                    // Prevencia submitu ak nie je kompletné
+                    newButton.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        alert('Prosím, vyplňte všetky povinné polia:\n\n• Vyberte mesto\n• Vyberte program\n• Vyberte frekvenciu tréningov');
+                        return false;
+                    }, true);
+                }
+            }
+            
+            console.log('[SPA Step Validation]', {
+                city: window.spaFormState.city,
+                program: window.spaFormState.program,
+                frequency: window.spaFormState.frequency,
+                complete: isStep1Complete
+            });
+        }
 })();
 
