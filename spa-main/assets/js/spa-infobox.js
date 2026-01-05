@@ -571,6 +571,18 @@ function renderInfobox(data, icons, capacityFree, price) {
             label.appendChild(span);
             selector.appendChild(label);
         });
+        // Skry/zobraz label poľa podľa počtu frekvencií
+        const frequencyField = document.querySelector('.ginput_container_radio');
+        if (frequencyField) {
+            const label = frequencyField.closest('.gfield').querySelector('.gfield_label');
+            if (label) {
+                if (activeFrequencies.length <= 1) {
+                    label.style.display = 'none';
+                } else {
+                    label.style.display = '';
+                }
+            }
+        }
     }
 
    /**
