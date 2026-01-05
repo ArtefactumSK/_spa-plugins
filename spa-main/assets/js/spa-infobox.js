@@ -83,7 +83,22 @@
             console.warn('[SPA Infobox] Container nenájdený v DOM.');
             return;
         }
-
+    
+        // Vytvor loader, ak ešte neexistuje
+        if (!document.getElementById('spa-infobox-loader')) {
+            const loaderDiv = document.createElement('div');
+            loaderDiv.id = 'spa-infobox-loader';
+            loaderDiv.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54.08 92.4">
+                    <path d="M36.29,0C-3.91,29.7.49,65.3,32.79,69.8-1.91,69-20.51,38.3,36.29,0Z" fill="#ff1439"/>
+                    <path d="M16.99,60.2c2.5,1.8,5.1,1.8,5.6-.2s-1.1-5.1-3.7-7-5.1-1.8-5.6.2,1.1,5.1,3.7,7Z" fill="#ff1439"/>
+                    <path d="M16.49,92.4c40.2-29.7,35.8-65.3,3.5-69.8,34.7.8,53.3,31.5-3.5,69.8Z" fill="#ff1439"/>
+                    <path d="M48.39,30.5c2.6,1.9,5.1,1.8,5.6-.2s-1.1-5.1-3.7-7-5.1-1.8-5.6.2,1.1,5.1,3.7,7Z" fill="#ff1439"/>
+                </svg>
+            `;
+            infoboxContainer.appendChild(loaderDiv);
+        }
+    
         // Prvotné načítanie
         updateInfoboxState();
         
@@ -173,7 +188,10 @@
      */
     function loadInfoboxContent(state) {
         console.log('[SPA Infobox] Loading content for state:', state, wizardData);
-
+    
+        // Zapni loader
+        showLoader();
+    
         const formData = new FormData();
         formData.append('action', 'spa_get_infobox_content');
         formData.append('program_id', wizardData.program_id || '');
@@ -181,7 +199,7 @@
         formData.append('city_name', wizardData.city_name);
         formData.append('program_name', wizardData.program_name);
         formData.append('program_age', wizardData.program_age);
-
+    
         fetch(spaConfig.ajaxUrl, {
             method: 'POST',
             body: formData,
@@ -195,10 +213,12 @@
                 renderInfobox(data.data, data.data.icons, data.data.capacity_free, data.data.price);
             } else {
                 console.error('[SPA Infobox] Chyba:', data.data?.message);
+                hideLoader();
             }
         })
         .catch(error => {
             console.error('[SPA Infobox] AJAX error:', error);
+            hideLoader();
         });
     }
 
@@ -329,6 +349,8 @@
             summaryDiv.innerHTML = summaryHtml;
             container.appendChild(summaryDiv);
         }
+        // Vypni loader po kompletnom renderi
+        hideLoader();
     }
 
     /**
@@ -343,5 +365,25 @@
         }
         return 'voľných miest';
     }
+/**
+ * Zobraz loader
+ */
+function showLoader() {
+    console.log('[SPA LOADER] start');
+    const loader = document.getElementById('spa-infobox-loader');
+    if (loader) {
+        loader.classList.add('active');
+    }
+}
 
+/**
+ * Skry loader
+ */
+function hideLoader() {
+    console.log('[SPA LOADER] end');
+    const loader = document.getElementById('spa-infobox-loader');
+    if (loader) {
+        loader.classList.remove('active');
+    }
+}
 })();

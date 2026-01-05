@@ -458,11 +458,21 @@ function spa_ajax_get_infobox_content() {
         ]);
         // === KONIEC DEBUG ===
 
+        // Loader HTML (bude vložený do containera)
+        $loader_html = '<div id="spa-infobox-loader">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54.08 92.4">
+            <path d="M36.29,0C-3.91,29.7.49,65.3,32.79,69.8-1.91,69-20.51,38.3,36.29,0Z" fill="#ff1439"/>
+            <path d="M16.99,60.2c2.5,1.8,5.1,1.8,5.6-.2s-1.1-5.1-3.7-7-5.1-1.8-5.6.2,1.1,5.1,3.7,7Z" fill="#ff1439"/>
+            <path d="M16.49,92.4c40.2-29.7,35.8-65.3,3.5-69.8,34.7.8,53.3,31.5-3.5,69.8Z" fill="#ff1439"/>
+            <path d="M48.39,30.5c2.6,1.9,5.1,1.8,5.6-.2s-1.1-5.1-3.7-7-5.1-1.8-5.6.2,1.1,5.1,3.7,7Z" fill="#ff1439"/>
+        </svg>
+        </div>';
 
         wp_send_json_success([
             'content' => $content,
             'icons' => $icons,
             'capacity_free' => $capacity_free,
+            'loader_html' => $loader_html,
             'price' => $price_label,
             'program' => $program_data,
             'place' => $place_data,
