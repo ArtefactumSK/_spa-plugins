@@ -572,17 +572,20 @@ function renderInfobox(data, icons, capacityFree, price) {
             selector.appendChild(label);
         });
         // Skry/zobraz label poľa podľa počtu frekvencií
-        const frequencyField = document.querySelector('.ginput_container_radio');
-        if (frequencyField) {
-            const label = frequencyField.closest('.gfield').querySelector('.gfield_label');
-            if (label) {
-                if (activeFrequencies.length <= 1) {
-                    label.style.display = 'none';
-                } else {
-                    label.style.display = '';
+        setTimeout(() => {
+            const gfieldRadio = document.querySelector('.gfield--type-radio');
+            if (gfieldRadio) {
+                const label = gfieldRadio.querySelector('.gfield_label');
+                if (label) {
+                    if (activeFrequencies.length <= 1) {
+                        label.style.display = 'none';
+                    } else {
+                        label.style.display = '';
+                    }
+                    console.log('[SPA Frequency] Label visibility set:', activeFrequencies.length <= 1 ? 'HIDDEN' : 'VISIBLE');
                 }
             }
-        }
+        }, 50);
     }
 
    /**
@@ -608,3 +611,4 @@ function renderInfobox(data, icons, capacityFree, price) {
     }
 
 })();
+
