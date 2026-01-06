@@ -101,12 +101,44 @@
         }
     
         // Načítaj úvodný stav
-        updateInfoboxState();
-        // Inicializuj validáciu krokov
-        updateNextButtonState();
+        loadInfoboxContent(0);
+        // Nastav page break na disabled (default)
+        updatePageBreakVisibility();
         console.log('[SPA Infobox] Inicializovaný.');
     }
 
+    /**
+ * Ovládanie viditeľnosti GF page break
+ */
+    function updatePageBreakVisibility() {
+        // Nájdi všetky page break tlačidlá (GF generuje class .gform_next_button)
+        const pageBreakButtons = document.querySelectorAll('.gform_page_footer .gform_next_button');
+        
+        // Podmienka: mesto A program MUSIA byť vybrané
+        const citySelected = wizardData.city_name && wizardData.city_name !== '';
+        const programSelected = wizardData.program_id && wizardData.program_id !== '';
+        
+        // Aktivuj/deaktivuj tlačidlo
+        const shouldEnable = citySelected && programSelected;
+        
+        pageBreakButtons.forEach(btn => {
+            if (shouldEnable) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+            } else {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.pointerEvents = 'none';
+            }
+        });
+        
+        console.log('[SPA Infobox] Page break state:', {
+            citySelected,
+            programSelected,
+            enabled: shouldEnable
+        });
+    }
     /**
      * Sledovanie zmien vo formulári
      */
@@ -117,28 +149,26 @@
             cityField.addEventListener('change', function() {
                 const selectedOption = this.options[this.selectedIndex];
                 
-                console.log('[SPA Infobox] City changed:', {
-                    value: this.value,
-                    text: selectedOption.text
-                });
-                
                 if (this.value && this.value !== '0') {
                     wizardData.city_name = selectedOption.text;
                     currentState = 1;
-                    window.spaFormState.city = true;
                 } else {
+                    // ÚPLNÝ RESET
                     wizardData.city_name = '';
                     wizardData.program_name = '';
                     wizardData.program_id = null;
                     wizardData.program_age = '';
                     currentState = 0;
-                    window.spaFormState.city = false;
-                    window.spaFormState.program = false;
-                    window.spaFormState.frequency = false;
+                    
+                    // Vyčisti program select
+                    const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+                    if (programField) {
+                        programField.value = '';
+                    }
                 }
+                
                 loadInfoboxContent(currentState);
-                updateInfoboxState();
-                updateNextButtonState();
+                updatePageBreakVisibility(); // ← PRIDANÉ
             });
         }
         
@@ -158,34 +188,32 @@
                 if (this.value) {
                     wizardData.program_name = selectedOption.text;
                     wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
-                    window.spaFormState.program = true;
                     
                     console.log('[SPA Infobox] Program ID:', wizardData.program_id);
                     
-                    const ageMatch = selectedOption.text.match(/(\d+(?:,\d+)?)\s*[–-]\s*(\d+(?:,\d+)?)/);
+                    // Parsuj vek z názvu programu
+                    const ageMatch = selectedOption.text.match(/(\d+)[–-](\d+)/);
                     if (ageMatch) {
-                        wizardData.program_age = ageMatch[1] + ' - ' + ageMatch[2];
+                        wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
                     } else {
-                        const agePlusMatch = selectedOption.text.match(/(\d+(?:,\d+)?)\+/);
+                        const agePlusMatch = selectedOption.text.match(/(\d+)\+/);
                         if (agePlusMatch) {
                             wizardData.program_age = agePlusMatch[1] + '+';
                         }
                     }
-
-                    console.log('[SPA Infobox] Parsed program_age:', wizardData.program_age);
                     
                     currentState = 2;
                     console.log('[SPA Infobox] State changed to 2, wizardData:', wizardData);
                 } else {
+                    // RESET PROGRAMU
                     wizardData.program_name = '';
                     wizardData.program_id = null;
                     wizardData.program_age = '';
-                    window.spaFormState.program = false;
-                    window.spaFormState.frequency = false;
                     currentState = wizardData.city_name ? 1 : 0;
                 }
+                
                 loadInfoboxContent(currentState);
-                updateInfoboxState();
+                updatePageBreakVisibility(); // ← PRIDANÉ
                 updateNextButtonState();
             });
         } else {
