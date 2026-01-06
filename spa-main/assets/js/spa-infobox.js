@@ -868,4 +868,3 @@ function renderInfobox(data, icons, capacityFree, price) {
     }
 
 })();
-
