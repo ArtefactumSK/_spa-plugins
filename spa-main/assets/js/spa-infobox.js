@@ -130,27 +130,50 @@
      * Obnovenie wizardData z hidden backup polí
      */
     function restoreWizardData() {
-        console.log('[SPA Restore] START - checking form state');
+        console.log('[SPA Restore] ========== START ==========');
         
-        // Zisti, či sme na stránke 2 (po page break)
-        const currentPage = document.querySelector('.gform_page_footer .gform_previous_button');
-        if (!currentPage) {
-            console.log('[SPA Restore] Still on page 1, skipping restore');
-            return;
-        }
+        // DEBUG: Zisti, na akej stránke sme
+        const allButtons = document.querySelectorAll('.gform_page_footer button, .gform_page_footer input[type="button"]');
+        const prevButton = document.querySelector('.gform_previous_button, button.gform_previous_button');
+        const nextButton = document.querySelector('.gform_next_button, button.gform_next_button');
+        
+        console.log('[SPA Restore] DEBUG - Buttons found:', {
+            allButtons: allButtons.length,
+            prevButton: !!prevButton,
+            nextButton: !!nextButton,
+            prevButtonText: prevButton?.textContent || prevButton?.value,
+            nextButtonText: nextButton?.textContent || nextButton?.value
+        });
         
         // Načítaj hodnoty z hidden backup polí
         const cityBackup = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
         const programBackup = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
         
         console.log('[SPA Restore] Backup fields:', {
+            cityBackupExists: !!cityBackup,
+            programBackupExists: !!programBackup,
             cityBackupValue: cityBackup?.value,
-            programBackupValue: programBackup?.value
+            programBackupValue: programBackup?.value,
+            cityBackupSelector: `[name="${spaConfig.fields.spa_city_backup}"]`,
+            programBackupSelector: `[name="${spaConfig.fields.spa_program_backup}"]`
         });
+        
+        // Ak nemáme žiadne backup hodnoty, ukonči
+        if (!cityBackup?.value && !programBackup?.value) {
+            console.log('[SPA Restore] No backup values found, skipping');
+            return;
+        }
         
         // Obnov mesto
         if (cityBackup && cityBackup.value) {
             const citySelect = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
+            
+            console.log('[SPA Restore] City select:', {
+                exists: !!citySelect,
+                currentValue: citySelect?.value,
+                backupValue: cityBackup.value,
+                selector: `[name="${spaConfig.fields.spa_city}"]`
+            });
             
             if (citySelect) {
                 // Nastav hodnotu selectu
@@ -162,14 +185,25 @@
                     window.spaFormState.city = true;
                     currentState = 1;
                     
-                    console.log('[SPA Restore] City restored:', wizardData.city_name);
+                    console.log('[SPA Restore] City RESTORED:', wizardData.city_name);
+                } else {
+                    console.error('[SPA Restore] City select has NO selected option after setting value');
                 }
+            } else {
+                console.error('[SPA Restore] City select NOT FOUND');
             }
         }
         
         // Obnov program
         if (programBackup && programBackup.value) {
             const programSelect = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+            
+            console.log('[SPA Restore] Program select:', {
+                exists: !!programSelect,
+                currentValue: programSelect?.value,
+                backupValue: programBackup.value,
+                selector: `[name="${spaConfig.fields.spa_program}"]`
+            });
             
             if (programSelect) {
                 // Nastav hodnotu selectu
@@ -194,8 +228,12 @@
                     
                     currentState = 2;
                     
-                    console.log('[SPA Restore] Program restored:', wizardData.program_name);
+                    console.log('[SPA Restore] Program RESTORED:', wizardData.program_name);
+                } else {
+                    console.error('[SPA Restore] Program select has NO selected option after setting value');
                 }
+            } else {
+                console.error('[SPA Restore] Program select NOT FOUND');
             }
         }
         
@@ -204,9 +242,11 @@
             console.log('[SPA Restore] Loading infobox for state:', currentState);
             loadInfoboxContent(currentState);
             updatePageBreakVisibility();
+        } else {
+            console.warn('[SPA Restore] currentState is 0, NOT loading infobox');
         }
         
-        console.log('[SPA Restore] DONE:', {
+        console.log('[SPA Restore] ========== DONE ==========', {
             currentState,
             wizardData,
             spaFormState: window.spaFormState
