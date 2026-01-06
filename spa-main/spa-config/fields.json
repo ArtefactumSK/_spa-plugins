@@ -1,8 +1,6 @@
 {
   "spa_city": "input_1",
   "spa_program": "input_2",
-  "spa_city_backup": "input_35",
-  "spa_program_backup": "input_36",
   "spa_registration_type": "input_14",
 
   "spa_client_email": "input_15",

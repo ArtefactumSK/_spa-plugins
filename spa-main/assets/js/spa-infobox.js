@@ -131,9 +131,7 @@
     function restoreWizardData() {
         console.log('[SPA Restore] ========== START ==========');
         
-        // Načítaj hodnoty z hidden backup polí
-        const cityBackup = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
-        const programBackup = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
+        
         
         console.log('[SPA Restore] Backup fields:', {
             cityBackupValue: cityBackup?.value,
@@ -295,12 +293,6 @@
                     wizardData.city_name = selectedOption.text;
                     window.spaFormState.city = true;
                     currentState = 1;
-                    
-                    // BACKUP do hidden field
-                    const backupField = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
-                    if (backupField) {
-                        backupField.value = this.value;
-                    }
                 } else {
                     // Reset - vyčisti všetko
                     wizardData.city_name = '';
