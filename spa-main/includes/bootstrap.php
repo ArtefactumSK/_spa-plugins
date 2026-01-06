@@ -112,6 +112,8 @@ function spa_enqueue_gf_scripts($form) {
         'fields' => [
             'spa_city' => $field_config['spa_city'] ?? '',
             'spa_program' => $field_config['spa_program'] ?? '',
+            'spa_city_backup' => $field_config['spa_city_backup'] ?? '',
+            'spa_program_backup' => $field_config['spa_program_backup'] ?? '',
         ],
         'nonce' => wp_create_nonce('spa_ajax_nonce'),
     ]);

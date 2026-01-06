@@ -102,42 +102,66 @@
     
         // Načítaj úvodný stav
         loadInfoboxContent(0);
-        // Nastav page break na disabled (default)
-        updatePageBreakVisibility();
+
+        // Observuj DOM a nastav page break keď sa zobrazí
+        const observer = new MutationObserver(() => {
+            const btn = document.querySelector('.gform_next_button');
+            if (btn) {
+                updatePageBreakVisibility();
+                observer.disconnect(); // Prestať observovať po prvom nájdení
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
         console.log('[SPA Infobox] Inicializovaný.');
-    }
+ }
 
     /**
  * Ovládanie viditeľnosti GF page break
  */
     function updatePageBreakVisibility() {
-        const pageBreakButtons = document.querySelectorAll('.gform_page_footer .gform_next_button');
-        
-        // PODMIENKA: mesto + program + frekvencia
-        const isComplete = window.spaFormState.city && 
-                          window.spaFormState.program && 
-                          window.spaFormState.frequency;
-        
-        pageBreakButtons.forEach(btn => {
-            if (isComplete) {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-                btn.style.pointerEvents = 'auto';
-                btn.style.cursor = 'pointer';
-            } else {
-                btn.disabled = true;
-                btn.style.opacity = '0.5';
-                btn.style.pointerEvents = 'none';
-                btn.style.cursor = 'not-allowed';
+        // Počkaj kým sa tlačidlo renderuje
+        setTimeout(() => {
+            const pageBreakButtons = document.querySelectorAll('.gform_page_footer .gform_next_button');
+            
+            if (pageBreakButtons.length === 0) {
+                console.warn('[SPA Page Break] Tlačidlo ešte nie je v DOM');
+                return;
             }
-        });
-        
-        console.log('[SPA Page Break]', {
-            city: window.spaFormState.city,
-            program: window.spaFormState.program,
-            frequency: window.spaFormState.frequency,
-            enabled: isComplete
-        });
+            
+            // PODMIENKA: mesto + program + frekvencia
+            const isComplete = window.spaFormState.city && 
+                              window.spaFormState.program && 
+                              window.spaFormState.frequency;
+            
+            pageBreakButtons.forEach(btn => {
+                if (isComplete) {
+                    btn.disabled = false;
+                    btn.style.display = '';
+                    btn.style.opacity = '1';
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.cursor = 'pointer';
+                } else {
+                    btn.disabled = true;
+                    btn.style.display = 'none'; // ← KRITICKÉ: SKRY TLAČIDLO
+                    btn.style.opacity = '0';
+                    btn.style.pointerEvents = 'none';
+                    btn.style.cursor = 'not-allowed';
+                }
+            });
+            
+            console.log('[SPA Page Break]', {
+                city: window.spaFormState.city,
+                program: window.spaFormState.program,
+                frequency: window.spaFormState.frequency,
+                enabled: isComplete,
+                buttonsFound: pageBreakButtons.length
+            });
+        }, 200); // Počkaj 200ms na render
     }
     /**
      * Sledovanie zmien vo formulári
@@ -153,6 +177,12 @@
                     wizardData.city_name = selectedOption.text;
                     window.spaFormState.city = true;
                     currentState = 1;
+                    
+                    // BACKUP do hidden field
+                    const backupField = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
+                    if (backupField) {
+                        backupField.value = this.value;
+                    }
                 } else {
                     // ÚPLNÝ RESET
                     wizardData.city_name = '';
@@ -168,6 +198,12 @@
                     const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
                     if (programField) {
                         programField.value = '';
+                    }
+                    
+                    // Vyčisti backup
+                    const backupField = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
+                    if (backupField) {
+                        backupField.value = '';
                     }
                 }
                 
@@ -294,7 +330,7 @@ function renderInfobox(data, icons, capacityFree, price) {
         }
     });
 
-    /* ==================================================
+   /* ==================================================
     1. OBSAH – WP stránka (SPA Infobox Wizard)
     ================================================== */
     if (!wizardData.program_name) {
@@ -302,6 +338,27 @@ function renderInfobox(data, icons, capacityFree, price) {
         contentDiv.className = 'spa-infobox-content';
         contentDiv.innerHTML = content;
         container.appendChild(contentDiv);
+        
+        // STATE 1: Zobraz mesto v SUMMARY
+        if (currentState === 1 && wizardData.city_name) {
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'spa-infobox-summary';
+            
+            const locationIcon = icons && icons.location ? icons.location : '';
+            
+            summaryDiv.innerHTML = `
+                <hr>
+                <ul class="spa-summary-list">
+                    <li class="spa-summary-item spa-summary-city">
+                        <span class="spa-summary-icon">${locationIcon}</span>
+                        ${wizardData.city_name}
+                    </li>
+                </ul>
+            `;
+            
+            container.appendChild(summaryDiv);
+        }
+        
         hideLoader();
         return; // Skončiť render pre state 0/1
     }
@@ -548,7 +605,6 @@ function renderInfobox(data, icons, capacityFree, price) {
         if (!programData) {
             selector.innerHTML = '';
             window.spaFormState.frequency = false;
-            updateNextButtonState();
             return;
         }
 
@@ -648,17 +704,6 @@ function renderInfobox(data, icons, capacityFree, price) {
                 }
             }
         }, 50);
-        /**
-         * Kontrola stavu pri page load
-         */
-        setTimeout(() => {
-            const nextButton = document.querySelector('.gform_next_button');
-            if (!nextButton) return;
-            
-            if (!window.spaFormState.city) {
-                nextButton.style.display = 'none';
-            }
-        }, 500);
         // Aktualizuj stav page break po renderi frekvencie
         if (activeFrequencies.length === 1) {
             // Ak je len 1 frekvencia, je automaticky vybraná
@@ -688,77 +733,5 @@ function renderInfobox(data, icons, capacityFree, price) {
         }
     }
 
-    /**
-     * Aktualizácia stavu Next button
-     */
-    /* function updateNextButtonState() {
-        const isStep1Complete = window.spaFormState.city && 
-                               window.spaFormState.program && 
-                               window.spaFormState.frequency;
-        
-        const nextButton = document.querySelector('.gform_next_button');
-        if (nextButton) {
-            if (isStep1Complete) {
-                nextButton.disabled = false;
-                nextButton.style.opacity = '1';
-                nextButton.style.cursor = 'pointer';
-            } else {
-                nextButton.disabled = true;
-                nextButton.style.opacity = '0.5';
-                nextButton.style.cursor = 'not-allowed';
-            }
-        }
-        
-        console.log('[SPA Step Validation]', {
-            city: window.spaFormState.city,
-            program: window.spaFormState.program,
-            frequency: window.spaFormState.frequency,
-            complete: isStep1Complete
-        });
-    } */
-
-        /**
-         * Aktualizácia stavu Next button
-         */
-        function updateNextButtonState() {
-            const nextButton = document.querySelector('.gform_next_button');
-            
-            // Kontrola: ak button neexistuje (nie sme na správnej stránke), return
-            if (!nextButton) {
-                return;
-            }
-            
-            const isStep1Complete = window.spaFormState.city && 
-                                   window.spaFormState.program && 
-                                   window.spaFormState.frequency;
-            if (nextButton) {
-                // Odstráň starý listener (aby sa neduplikoval)
-                const newButton = nextButton.cloneNode(true);
-                nextButton.parentNode.replaceChild(newButton, nextButton);
-                
-                if (isStep1Complete) {
-                    newButton.style.opacity = '1';
-                    newButton.style.cursor = 'pointer';
-                } else {
-                    newButton.style.opacity = '0.5';
-                    newButton.style.cursor = 'not-allowed';
-                    
-                    // Prevencia submitu ak nie je kompletné
-                    newButton.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        alert('Prosím, vyplňte všetky povinné polia:\n\n• Vyberte mesto\n• Vyberte program\n• Vyberte frekvenciu tréningov');
-                        return false;
-                    }, true);
-                }
-            }
-            
-            console.log('[SPA Step Validation]', {
-                city: window.spaFormState.city,
-                program: window.spaFormState.program,
-                frequency: window.spaFormState.frequency,
-                complete: isStep1Complete
-            });
-        }
 })();
 

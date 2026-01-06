@@ -12,6 +12,8 @@ return [
        ========================== */
     'spa_city'    => 'input_1',   // ✅ OPRAVENÉ: reálne GF field ID
     'spa_program' => 'input_2',   // ✅ OPRAVENÉ: reálne GF field ID
+    'spa_city_backup'    => 'input_35', 
+    'spa_program_backup' => 'input_36', 
     'spa_registration_type' => 'input_14',
 
     /* ==========================
