@@ -39,12 +39,7 @@
         jQuery(document).on('gform_post_render', function() {
             initInfobox();
             watchFormChanges();
-            
-            // KRITICKÉ: Obnov wizardData po page break
-            setTimeout(() => {
-                restoreWizardData();
-                updatePageBreakVisibility();
-            }, 300);
+            // updateSectionVisibility() sa teraz volá VNÚTRI initInfobox() s timeoutom
         });
     }
 
@@ -108,6 +103,10 @@
     
         // Načítaj úvodný stav
         loadInfoboxContent(0);
+        // Oneskorené skrytie sekcií (po GF render)
+        setTimeout(function() {
+            updateSectionVisibility();
+        }, 300);
 
         // Observuj DOM a nastav page break keď sa zobrazí
         const observer = new MutationObserver(() => {
@@ -303,26 +302,19 @@
                         backupField.value = this.value;
                     }
                 } else {
-                    // ÚPLNÝ RESET
+                    // Reset - vyčisti všetko
                     wizardData.city_name = '';
                     wizardData.program_name = '';
                     wizardData.program_id = null;
                     wizardData.program_age = '';
-                    window.spaFormState.city = false;
-                    window.spaFormState.program = false;
-                    window.spaFormState.frequency = false;
+                    wizardData.frequency = '';
                     currentState = 0;
                     
-                    // Vyčisti program select
-                    const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
-                    if (programField) {
-                        programField.value = '';
-                    }
-                    
-                    // Vyčisti backup
-                    const backupField = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
-                    if (backupField) {
-                        backupField.value = '';
+                    // RESET DOM hodnoty frequency fieldu
+                    const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
+                    if (frequencyField) {
+                        frequencyField.value = '';
+                        frequencyField.selectedIndex = 0;
                     }
                 }
                 
@@ -387,6 +379,12 @@
                     if (backupField) {
                         backupField.value = '';
                     }
+                }
+                // RESET DOM hodnoty frequency fieldu
+                const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
+                if (frequencyField) {
+                    frequencyField.value = '';
+                    frequencyField.selectedIndex = 0;
                 }
                 
                 loadInfoboxContent(currentState);
