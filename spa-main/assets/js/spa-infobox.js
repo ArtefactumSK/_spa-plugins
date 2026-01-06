@@ -101,12 +101,13 @@
             infoboxContainer.appendChild(loaderDiv);
         }
     
-        // Načítaj úvodný stav
-        loadInfoboxContent(0);
-        // Oneskorené skrytie sekcií (po GF render)
-        setTimeout(function() {
-            updateSectionVisibility();
-        }, 300);
+             // Načítaj úvodný stav
+            loadInfoboxContent(0);
+
+            // Oneskorené skrytie sekcií (po GF render) - DLHŠÍ timeout kvôli AJAX
+            setTimeout(function() {
+                updateSectionVisibility();
+            }, 1000);
 
         // Observuj DOM a nastav page break keď sa zobrazí
         const observer = new MutationObserver(() => {
@@ -302,11 +303,13 @@
                     wizardData.frequency = '';
                     currentState = 0;
                     
-                    // RESET DOM hodnoty frequency fieldu
-                    const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
-                    if (frequencyField) {
-                        frequencyField.value = '';
-                        frequencyField.selectedIndex = 0;
+                    // RESET state frekvencie
+                    window.spaFormState.frequency = false;
+
+                    // VYČISTI frekvenčný selector
+                    const frequencySelector = document.querySelector('.spa-frequency-selector');
+                    if (frequencySelector) {
+                        frequencySelector.innerHTML = '';
                     }
                 }
                 
@@ -386,10 +389,12 @@
             console.error('[SPA Infobox] Program field NOT FOUND!');
         }
         // Sleduj typ registrácie (Dieťa / Dospelá osoba)
-        const registrationTypeFields = document.querySelectorAll(`[name="${spaConfig.fields.spa_registration_type}"]`);
+        // POUŽIJ priamy selector pre GF radio
+        const registrationTypeFields = document.querySelectorAll('input[name="input_14"]');
         registrationTypeFields.forEach(function(radio) {
             radio.addEventListener('change', function() {
                 if (this.checked) {
+                    console.log('[SPA Section Control] Registration type changed');
                     updateSectionVisibility();
                 }
             });
@@ -898,8 +903,8 @@ function renderInfobox(data, icons, capacityFree, price) {
         const guardianSection = findSectionByHeading('ÚDAJE O RODIČOVI / ZÁKONNOM ZÁSTUPCOVI');
         
         if (guardianSection) {
-            // Zisti aktuálnu hodnotu spa_registration_type
-            const registrationTypeField = document.querySelector(`[name="${spaConfig.fields.spa_registration_type}"]:checked`);
+            // GF používa input_X_Y formát pre radio
+            const registrationTypeField = document.querySelector(`input[name="input_14"]:checked`);
             
             let isChild = false;
             
