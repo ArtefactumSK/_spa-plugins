@@ -385,6 +385,15 @@
         } else {
             console.error('[SPA Infobox] Program field NOT FOUND!');
         }
+        // Sleduj typ registrácie (Dieťa / Dospelá osoba)
+        const registrationTypeFields = document.querySelectorAll(`[name="${spaConfig.fields.spa_registration_type}"]`);
+        registrationTypeFields.forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
+                    updateSectionVisibility();
+                }
+            });
+        });
     }
 
     /**
@@ -801,6 +810,7 @@ function renderInfobox(data, icons, capacityFree, price) {
                 if (this.checked) {
                     window.spaFormState.frequency = true;
                     updatePageBreakVisibility();
+                    updateSectionVisibility(); // ← PRIDAJ TENTO RIADOK
                     console.log('[SPA Frequency] Selected:', this.value);
                 }
             });
@@ -855,6 +865,89 @@ function renderInfobox(data, icons, capacityFree, price) {
         if (loader) {
             loader.classList.remove('active');
         }
+    }    
+
+
+    /**
+     * ========================================
+     * RIADENIE VIDITEĽNOSTI SEKCIÍ
+     * ========================================
+     */
+    function updateSectionVisibility() {
+        console.log('[SPA Section Control] Update sections', {
+            city: wizardData.city_name,
+            program: wizardData.program_name,
+            frequency: window.spaFormState.frequency
+        });
+
+        // SEKCIA 1: ÚDAJE O ÚČASTNÍKOVI
+        const participantSection = findSectionByHeading('ÚDAJE O ÚČASTNÍKOVI TRÉNINGOV');
+        
+        if (participantSection) {
+            const showParticipant = !!(
+                wizardData.city_name && 
+                wizardData.program_name && 
+                window.spaFormState.frequency
+            );
+            
+            toggleSection(participantSection, showParticipant);
+            console.log('[SPA Section Control] Participant section:', showParticipant ? 'VISIBLE' : 'HIDDEN');
+        }
+
+        // SEKCIA 2: ÚDAJE O RODIČOVI
+        const guardianSection = findSectionByHeading('ÚDAJE O RODIČOVI / ZÁKONNOM ZÁSTUPCOVI');
+        
+        if (guardianSection) {
+            // Zisti aktuálnu hodnotu spa_registration_type
+            const registrationTypeField = document.querySelector(`[name="${spaConfig.fields.spa_registration_type}"]:checked`);
+            
+            let isChild = false;
+            
+            if (registrationTypeField) {
+                const label = registrationTypeField.closest('label') || registrationTypeField.parentElement;
+                const labelText = label ? label.textContent.trim().toLowerCase() : '';
+                
+                // "Dieťa (mladší ako 18 rokov)" → zobraz sekciu
+                isChild = labelText.includes('dieťa') || labelText.includes('diet') || labelText.includes('mladš');
+            }
+            
+            toggleSection(guardianSection, isChild);
+            console.log('[SPA Section Control] Guardian section:', isChild ? 'VISIBLE (child)' : 'HIDDEN (adult)');
+        }
     }
 
+    /**
+     * Nájdi sekciu podľa textu nadpisu
+     */
+    function findSectionByHeading(headingText) {
+        const allHeadings = document.querySelectorAll('.gfield--type-section .gsection_title');
+        
+        for (let heading of allHeadings) {
+            if (heading.textContent.trim().includes(headingText)) {
+                return heading.closest('.gfield--type-section') || heading.closest('.gfield');
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Zobraz/skry sekciu + všetky nasledujúce polia až po ďalšiu sekciu
+     */
+    function toggleSection(sectionElement, show) {
+        if (!sectionElement) return;
+
+        sectionElement.style.display = show ? 'block' : 'none';
+
+        let nextElement = sectionElement.nextElementSibling;
+
+        while (nextElement) {
+            if (nextElement.classList.contains('gfield--type-section')) {
+                break;
+            }
+
+            nextElement.style.display = show ? 'block' : 'none';
+            nextElement = nextElement.nextElementSibling;
+        }
+    }    
 })();

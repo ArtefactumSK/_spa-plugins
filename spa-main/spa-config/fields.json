@@ -2,6 +2,7 @@
   "spa_city": "input_1",
   "spa_program": "input_2",
   "spa_registration_type": "input_14",
+  "spa_frequency": "input_31",
 
   "spa_client_email": "input_15",
   "spa_client_phone": "input_19",
