@@ -890,20 +890,11 @@
                             checked: targetRadio.checked
                         });
                         
-                        // POČKAJ na dokončenie GF renderu
-                        setTimeout(() => {
-                            // Trigger change event
-                            const event = new Event('change', { bubbles: true });
-                            targetRadio.dispatchEvent(event);
-                            
-                            console.log('[SPA Auto-select] ✅ Change event dispatched');
-                            
-                            // Zavolaj updateSectionVisibility() AŽ PO change event
-                            setTimeout(() => {
-                                console.log('[SPA Auto-select] Calling updateSectionVisibility() after change');
-                                updateSectionVisibility();
-                            }, 300);
-                        }, 100);
+                        // Trigger change event
+                        const event = new Event('change', { bubbles: true });
+                        targetRadio.dispatchEvent(event);
+                        
+                        console.log('[SPA Auto-select] ✅ Change event dispatched');
                     } else {
                         console.error('[SPA Auto-select] ❌ No target radio found!');
                     }
@@ -915,6 +906,11 @@
             }
             
             console.log('[SPA Frequency] ========== AUTO-SELECT END ==========');
+            
+            // Počkaj ešte chvíľu pred updateSectionVisibility
+            setTimeout(() => {
+                updateSectionVisibility();
+            }, 200);
         }, 1000); // Zvýš z 500ms na 1000ms
     }
 
