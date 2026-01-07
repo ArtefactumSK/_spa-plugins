@@ -466,6 +466,7 @@ function renderInfobox(data, icons, capacityFree, price) {
         if (child.id !== 'spa-infobox-loader') {
             child.remove();
         }
+    window.spaCurrentProgramData = programData;   
     });
 
    /* ==================================================
@@ -538,7 +539,28 @@ function renderInfobox(data, icons, capacityFree, price) {
         if (programData.content) {
             programHtml += `<div class="spa-program-content">${programData.content}</div>`;
         }
-        
+        // AUTOMATICKÉ OZNAČENIE TYPU ÚČASTNÍKA podľa veku programu
+        if (programData.age_max && programData.age_max < 18) {
+            // Program je pre deti - označ "Dieťa"
+            setTimeout(() => {
+                const childRadio = document.querySelector('input[name="input_14"][value*="Dieťa"], input[name="input_14"]:first-of-type');
+                if (childRadio && !childRadio.checked) {
+                    childRadio.checked = true;
+                    console.log('[SPA Auto-select] Child option selected for age < 18');
+                    updateSectionVisibility();
+                }
+            }, 500);
+        } else if (programData.age_min && programData.age_min >= 18) {
+            // Program je pre dospelých - označ "Dospelá osoba"
+            setTimeout(() => {
+                const adultRadio = document.querySelector('input[name="input_14"][value*="Dospelá"], input[name="input_14"]:last-of-type');
+                if (adultRadio && !adultRadio.checked) {
+                    adultRadio.checked = true;
+                    console.log('[SPA Auto-select] Adult option selected for age >= 18');
+                    updateSectionVisibility();
+                }
+            }, 500);
+        }
         programDiv.innerHTML = programHtml;
         container.appendChild(programDiv);
     }
@@ -808,6 +830,11 @@ function renderInfobox(data, icons, capacityFree, price) {
             if (activeFrequencies.length === 1) {
                 input.checked = true;
                 window.spaFormState.frequency = true;
+                
+                // OKAMŽITE AKTUALIZUJ VIDITEĽNOSŤ SEKCIÍ
+                setTimeout(() => {
+                    updateSectionVisibility();
+                }, 100);
             }
             
             // EVENT LISTENER na zmenu frekvencie
@@ -848,6 +875,37 @@ function renderInfobox(data, icons, capacityFree, price) {
             // Ak je len 1 frekvencia, je automaticky vybraná
             updatePageBreakVisibility();
         }
+        // TRIGGER pre sekcie - VŽDY po renderi frekvencie
+        setTimeout(() => {
+            console.log('[SPA Frequency] Triggering section visibility after render');
+            
+            // Automaticky označ typ účastníka ak ešte nie je označený
+            const registrationTypeChecked = document.querySelector('input[name="input_14"]:checked');
+            
+            if (!registrationTypeChecked) {
+                // Nič nie je označené - označ podľa programData
+                const programData = window.spaCurrentProgramData; // Musíme uložiť do global
+                
+                if (programData) {
+                    if (programData.age_max && programData.age_max < 18) {
+                        const childRadio = document.querySelector('input[name="input_14"]');
+                        if (childRadio) {
+                            childRadio.checked = true;
+                            console.log('[SPA Auto-select] Child selected');
+                        }
+                    } else if (programData.age_min && programData.age_min >= 18) {
+                        const radios = document.querySelectorAll('input[name="input_14"]');
+                        const adultRadio = radios[radios.length - 1];
+                        if (adultRadio) {
+                            adultRadio.checked = true;
+                            console.log('[SPA Auto-select] Adult selected');
+                        }
+                    }
+                }
+            }
+            
+            updateSectionVisibility();
+        }, 200);
     }
 
    /**
@@ -918,6 +976,34 @@ function renderInfobox(data, icons, capacityFree, price) {
             
             toggleSection(guardianSection, isChild);
             console.log('[SPA Section Control] Guardian section:', isChild ? 'VISIBLE (child)' : 'HIDDEN (adult)');
+        }
+        // SEKCIA 3: RODNÉ ČÍSLO (enable/disable podľa typu)
+        const birthNumberField = document.querySelector('input[name*="rodne_cislo"], input[name*="birth_number"], input[placeholder*="rodné číslo"]');
+
+        if (birthNumberField) {
+            // Zisti aktuálnu hodnotu spa_registration_type
+            const registrationTypeField = document.querySelector('input[name="input_14"]:checked');
+            
+            let isChild = false;
+            
+            if (registrationTypeField) {
+                const label = registrationTypeField.closest('label') || registrationTypeField.parentElement;
+                const labelText = label ? label.textContent.trim().toLowerCase() : '';
+                isChild = labelText.includes('dieťa') || labelText.includes('diet') || labelText.includes('mladš');
+            }
+            
+            if (isChild) {
+                birthNumberField.disabled = false;
+                birthNumberField.style.opacity = '1';
+                birthNumberField.style.pointerEvents = 'auto';
+                console.log('[SPA Section Control] Birth number field: ENABLED (child)');
+            } else {
+                birthNumberField.disabled = true;
+                birthNumberField.value = '';
+                birthNumberField.style.opacity = '0.5';
+                birthNumberField.style.pointerEvents = 'none';
+                console.log('[SPA Section Control] Birth number field: DISABLED (adult)');
+            }
         }
     }
 
