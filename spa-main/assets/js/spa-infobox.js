@@ -360,6 +360,9 @@
                     
                     currentState = 2;
                     console.log('[SPA Infobox] State changed to 2, wizardData:', wizardData);
+                    // RESET frekvencie pri zmene programu
+                    window.spaFormState.frequency = false;
+                    updateSectionVisibility(); // ← PRIDAJ TENTO RIADOK
                 } else {
                     // RESET PROGRAMU
                     wizardData.program_name = '';
@@ -374,6 +377,15 @@
                     if (backupField) {
                         backupField.value = '';
                     }
+
+                    // VYČISTI frekvenčný selector
+                    const frequencySelector = document.querySelector('.spa-frequency-selector');
+                    if (frequencySelector) {
+                        frequencySelector.innerHTML = '';
+                    }
+
+                    // OKAMŽITE AKTUALIZUJ SEKCIE
+                    updateSectionVisibility();
                 }
                 // RESET DOM hodnoty frequency fieldu
                 const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
@@ -878,6 +890,7 @@ function renderInfobox(data, icons, capacityFree, price) {
             updatePageBreakVisibility();
         }
         // TRIGGER pre sekcie - VŽDY po renderi frekvencie
+        // TRIGGER pre sekcie - VŽDY po renderi frekvencie
         setTimeout(() => {
             console.log('[SPA Frequency] Triggering section visibility after render');
             
@@ -885,29 +898,33 @@ function renderInfobox(data, icons, capacityFree, price) {
             const registrationTypeChecked = document.querySelector('input[name="input_14"]:checked');
             
             if (!registrationTypeChecked) {
-                // Nič nie je označené - označ podľa programData
-                const programData = window.spaCurrentProgramData; // Musíme uložiť do global
+                const programData = window.spaCurrentProgramData;
                 
                 if (programData) {
+                    let targetRadio = null;
+                    
                     if (programData.age_max && programData.age_max < 18) {
-                        const childRadio = document.querySelector('input[name="input_14"]');
-                        if (childRadio) {
-                            childRadio.checked = true;
-                            console.log('[SPA Auto-select] Child selected');
-                        }
+                        targetRadio = document.querySelector('input[name="input_14"]');
+                        console.log('[SPA Auto-select] Child selected (age < 18)');
                     } else if (programData.age_min && programData.age_min >= 18) {
                         const radios = document.querySelectorAll('input[name="input_14"]');
-                        const adultRadio = radios[radios.length - 1];
-                        if (adultRadio) {
-                            adultRadio.checked = true;
-                            console.log('[SPA Auto-select] Adult selected');
-                        }
+                        targetRadio = radios[radios.length - 1];
+                        console.log('[SPA Auto-select] Adult selected (age >= 18)');
+                    }
+                    
+                    if (targetRadio) {
+                        targetRadio.checked = true;
+                        
+                        // TRIGGER change event aby sa spustili listenery
+                        const event = new Event('change', { bubbles: true });
+                        targetRadio.dispatchEvent(event);
                     }
                 }
             }
             
+            // VŽDY aktualizuj sekcie
             updateSectionVisibility();
-        }, 200);
+        }, 500); // Zvýš timeout na 500ms
     }
 
    /**
@@ -980,7 +997,17 @@ function renderInfobox(data, icons, capacityFree, price) {
             console.log('[SPA Section Control] Guardian section:', isChild ? 'VISIBLE (child)' : 'HIDDEN (adult)');
         }
         // SEKCIA 3: RODNÉ ČÍSLO (enable/disable podľa typu)
-        const birthNumberField = document.querySelector('input[name*="rodne_cislo"], input[name*="spa_member_birthdate"], input[placeholder*="rodné číslo"]');
+        // GF Field ID 8 = spa_member_birthdate
+        const birthNumberField = document.querySelector('input[name="spa_member_birthdate"]');
+
+        console.log('[SPA Section Control] Birth number field found:', !!birthNumberField);
+        if (birthNumberField) {
+            console.log('[SPA Section Control] Birth number field:', {
+                name: birthNumberField.name,
+                disabled: birthNumberField.disabled,
+                value: birthNumberField.value
+            });
+        }
 
         if (birthNumberField) {
             // Zisti aktuálnu hodnotu spa_registration_type

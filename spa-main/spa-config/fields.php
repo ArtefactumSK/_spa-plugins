@@ -18,6 +18,7 @@ return [
     /* ==========================
        ÚČASTNÍK – KONTAKT
        ========================== */
+    'spa_member_birthdate' => 'input_8',
     'spa_client_email' => 'input_15',
     'spa_client_phone' => 'input_19',
 
