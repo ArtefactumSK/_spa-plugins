@@ -39,7 +39,6 @@
         jQuery(document).on('gform_post_render', function() {
             initInfobox();
             watchFormChanges();
-            // updateSectionVisibility() sa teraz volá VNÚTRI initInfobox() s timeoutom
         });
     }
 
@@ -101,20 +100,17 @@
             infoboxContainer.appendChild(loaderDiv);
         }
     
-             // Načítaj úvodný stav
-            loadInfoboxContent(0);
+        loadInfoboxContent(0);
 
-            // Oneskorené skrytie sekcií (po GF render) - DLHŠÍ timeout kvôli AJAX
-            setTimeout(function() {
-                updateSectionVisibility();
-            }, 1000);
+        setTimeout(function() {
+            updateSectionVisibility();
+        }, 1000);
 
-        // Observuj DOM a nastav page break keď sa zobrazí
         const observer = new MutationObserver(() => {
             const btn = document.querySelector('.gform_next_button');
             if (btn) {
                 updatePageBreakVisibility();
-                observer.disconnect(); // Prestať observovať po prvom nájdení
+                observer.disconnect();
             }
         });
 
@@ -124,7 +120,7 @@
         });
 
         console.log('[SPA Infobox] Inicializovaný.');
- }
+    }
 
     /**
      * Obnovenie wizardData z hidden backup polí
@@ -132,22 +128,18 @@
     function restoreWizardData() {
         console.log('[SPA Restore] ========== START ==========');
         
-        
-        
         console.log('[SPA Restore] Backup fields:', {
             cityBackupValue: cityBackup?.value,
             programBackupValue: programBackup?.value
         });
         
-        // Ak nemáme žiadne backup hodnoty, ukonči
         if (!cityBackup?.value && !programBackup?.value) {
             console.log('[SPA Restore] No backup values, skipping');
             return;
         }
         
-        // Počkaj na načítanie selectov (GF AJAX)
         let attempts = 0;
-        const maxAttempts = 20; // 20 * 100ms = 2 sekundy max
+        const maxAttempts = 20;
         
         const waitForSelects = setInterval(() => {
             attempts++;
@@ -155,7 +147,6 @@
             const citySelect = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
             const programSelect = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
             
-            // Skontroluj, či majú selecty options
             const cityHasOptions = citySelect && citySelect.options.length > 1;
             const programHasOptions = programSelect && programSelect.options.length > 1;
             
@@ -166,7 +157,6 @@
                 programOptionsCount: programSelect?.options.length
             });
             
-            // Ak máme options ALEBO sme skúšali príliš dlho
             if ((cityHasOptions && programHasOptions) || attempts >= maxAttempts) {
                 clearInterval(waitForSelects);
                 
@@ -175,7 +165,6 @@
                     return;
                 }
                 
-                // OBNOV MESTO
                 if (cityBackup?.value && citySelect) {
                     citySelect.value = cityBackup.value;
                     
@@ -191,7 +180,6 @@
                     }
                 }
                 
-                // OBNOV PROGRAM
                 if (programBackup?.value && programSelect) {
                     programSelect.value = programBackup.value;
                     
@@ -201,7 +189,6 @@
                         wizardData.program_id = selectedOption.getAttribute('data-program-id') || selectedOption.value;
                         window.spaFormState.program = true;
                         
-                        // Parsuj vek
                         const ageMatch = selectedOption.text.match(/(\d+)[–-](\d+)/);
                         if (ageMatch) {
                             wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
@@ -220,7 +207,6 @@
                     }
                 }
                 
-                // Načítaj infobox ak máme dáta
                 if (currentState > 0) {
                     console.log('[SPA Restore] Loading infobox for state:', currentState);
                     loadInfoboxContent(currentState);
@@ -235,13 +221,13 @@
                     spaFormState: window.spaFormState
                 });
             }
-        }, 100); // Skúšaj každých 100ms
+        }, 100);
     }
+
     /**
- * Ovládanie viditeľnosti GF page break
- */
+     * Ovládanie viditeľnosti GF page break
+     */
     function updatePageBreakVisibility() {
-        // Počkaj kým sa tlačidlo renderuje
         setTimeout(() => {
             const pageBreakButtons = document.querySelectorAll('.gform_page_footer .gform_next_button');
             
@@ -250,7 +236,6 @@
                 return;
             }
             
-            // PODMIENKA: mesto + program + frekvencia
             const isComplete = window.spaFormState.city && 
                               window.spaFormState.program && 
                               window.spaFormState.frequency;
@@ -264,7 +249,7 @@
                     btn.style.cursor = 'pointer';
                 } else {
                     btn.disabled = true;
-                    btn.style.display = 'none'; // ← KRITICKÉ: SKRY TLAČIDLO
+                    btn.style.display = 'none';
                     btn.style.opacity = '0';
                     btn.style.pointerEvents = 'none';
                     btn.style.cursor = 'not-allowed';
@@ -278,13 +263,13 @@
                 enabled: isComplete,
                 buttonsFound: pageBreakButtons.length
             });
-        }, 200); // Počkaj 200ms na render
+        }, 200);
     }
+
     /**
      * Sledovanie zmien vo formulári
      */
     function watchFormChanges() {
-        // Sleduj zmenu mesta
         const cityField = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
         if (cityField) {
             cityField.addEventListener('change', function() {
@@ -295,18 +280,22 @@
                     window.spaFormState.city = true;
                     currentState = 1;
                 } else {
-                    // Reset - vyčisti všetko
                     wizardData.city_name = '';
                     wizardData.program_name = '';
                     wizardData.program_id = null;
                     wizardData.program_age = '';
                     wizardData.frequency = '';
+                    window.spaFormState.city = false;
+                    window.spaFormState.program = false;
+                    window.spaFormState.frequency = false;
                     currentState = 0;
                     
-                    // RESET state frekvencie
-                    window.spaFormState.frequency = false;
-
-                    // VYČISTI frekvenčný selector
+                    const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
+                    if (frequencyField) {
+                        frequencyField.value = '';
+                        frequencyField.selectedIndex = 0;
+                    }
+                    
                     const frequencySelector = document.querySelector('.spa-frequency-selector');
                     if (frequencySelector) {
                         frequencySelector.innerHTML = '';
@@ -317,8 +306,6 @@
                 updatePageBreakVisibility();
             });
         }
-        
-        // Sleduj zmenu programu
         const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
 
         console.log('[SPA Infobox] Program field selector:', `[name="${spaConfig.fields.spa_program}"]`);
@@ -336,7 +323,6 @@
                     wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
                     window.spaFormState.program = true;
                     
-                    // BACKUP do hidden field
                     const backupField = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
                     if (backupField) {
                         backupField.value = this.value;
@@ -347,7 +333,6 @@
                     
                     console.log('[SPA Infobox] Program ID:', wizardData.program_id);
                     
-                    // Parsuj vek z názvu programu
                     const ageMatch = selectedOption.text.match(/(\d+)[–-](\d+)/);
                     if (ageMatch) {
                         wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
@@ -360,11 +345,7 @@
                     
                     currentState = 2;
                     console.log('[SPA Infobox] State changed to 2, wizardData:', wizardData);
-                    // RESET frekvencie pri zmene programu
-                    window.spaFormState.frequency = false;
-                    updateSectionVisibility(); // ← PRIDAJ TENTO RIADOK
                 } else {
-                    // RESET PROGRAMU
                     wizardData.program_name = '';
                     wizardData.program_id = null;
                     wizardData.program_age = '';
@@ -372,27 +353,26 @@
                     window.spaFormState.frequency = false;
                     currentState = wizardData.city_name ? 1 : 0;
                     
-                    // Vyčisti backup
                     const backupField = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
                     if (backupField) {
                         backupField.value = '';
                     }
 
-                    // VYČISTI frekvenčný selector
                     const frequencySelector = document.querySelector('.spa-frequency-selector');
                     if (frequencySelector) {
                         frequencySelector.innerHTML = '';
                     }
 
-                    // OKAMŽITE AKTUALIZUJ SEKCIE
                     updateSectionVisibility();
                 }
-                // RESET DOM hodnoty frequency fieldu
+                
                 const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
                 if (frequencyField) {
                     frequencyField.value = '';
                     frequencyField.selectedIndex = 0;
                 }
+                
+                window.spaFormState.frequency = false;
                 
                 loadInfoboxContent(currentState);
                 updatePageBreakVisibility();
@@ -400,8 +380,7 @@
         } else {
             console.error('[SPA Infobox] Program field NOT FOUND!');
         }
-        // Sleduj typ registrácie (Dieťa / Dospelá osoba)
-        // POUŽIJ priamy selector pre GF radio
+        
         const registrationTypeFields = document.querySelectorAll('input[name="input_14"]');
         registrationTypeFields.forEach(function(radio) {
             radio.addEventListener('change', function() {
@@ -451,319 +430,269 @@
     }
 
     /**
- * Vykreslenie infoboxu
- */
-function renderInfobox(data, icons, capacityFree, price) {
-    console.log('[renderInfobox] ========== START ==========');
-    console.log('[renderInfobox] State:', currentState);
-    console.log('[renderInfobox] wizardData:', JSON.stringify(wizardData));
-    console.log('[renderInfobox] programData:', data.program);
-    console.log('[renderInfobox] programData.title:', data.program?.title);
-    console.log('[renderInfobox] programData.primary_color:', data.program?.primary_color);
-    console.log('[renderInfobox] capacityFree:', capacityFree);
-    console.log('[renderInfobox] price:', price);
-    
-    const content = data.content;
-    const programData = data.program;
-    
-    const container = document.getElementById('spa-infobox-container');
-    if (!container) {
-        hideLoader();
-        return;
-    }
-
-    // Vyčisti kontajner - OKREM loadera - Ulož programData do global scope
-    window.spaCurrentProgramData = programData;
-
-    // Vyčisti kontajner - OKREM loadera
-    Array.from(container.children).forEach(child => {
-        if (child.id !== 'spa-infobox-loader') {
-            child.remove();
-        }
-    });
-    
-
-   /* ==================================================
-    1. OBSAH – WP stránka (SPA Infobox Wizard)
-    ================================================== */
-    if (!wizardData.program_name) {
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'spa-infobox-content';
-        contentDiv.innerHTML = content;
-        container.appendChild(contentDiv);
+     * Vykreslenie infoboxu
+     */
+    function renderInfobox(data, icons, capacityFree, price) {
+        console.log('[renderInfobox] ========== START ==========');
+        console.log('[renderInfobox] State:', currentState);
+        console.log('[renderInfobox] wizardData:', JSON.stringify(wizardData));
+        console.log('[renderInfobox] programData:', data.program);
+        console.log('[renderInfobox] programData.title:', data.program?.title);
+        console.log('[renderInfobox] programData.primary_color:', data.program?.primary_color);
+        console.log('[renderInfobox] capacityFree:', capacityFree);
+        console.log('[renderInfobox] price:', price);
         
-        // STATE 1: Zobraz mesto v SUMMARY
-        if (currentState === 1 && wizardData.city_name) {
+        const content = data.content;
+        const programData = data.program;
+        
+        const container = document.getElementById('spa-infobox-container');
+        if (!container) {
+            hideLoader();
+            return;
+        }
+
+        window.spaCurrentProgramData = programData;
+
+        Array.from(container.children).forEach(child => {
+            if (child.id !== 'spa-infobox-loader') {
+                child.remove();
+            }
+        });
+
+        if (!wizardData.program_name) {
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'spa-infobox-content';
+            contentDiv.innerHTML = content;
+            container.appendChild(contentDiv);
+            
+            if (currentState === 1 && wizardData.city_name) {
+                const summaryDiv = document.createElement('div');
+                summaryDiv.className = 'spa-infobox-summary';
+                
+                const locationIcon = icons && icons.location ? icons.location : '';
+                
+                summaryDiv.innerHTML = `
+                    <hr>
+                    <ul class="spa-summary-list">
+                        <li class="spa-summary-item spa-summary-city">
+                            <span class="spa-summary-icon">${locationIcon}</span>
+                            ${wizardData.city_name}
+                        </li>
+                    </ul>
+                `;
+                
+                container.appendChild(summaryDiv);
+            }
+            
+            hideLoader();
+            return;
+        }
+        
+        if (currentState === 2 && wizardData.program_name && programData) {
+            console.log('[renderInfobox] Rendering program data:', programData);
+            
+            const programDiv = document.createElement('div');
+            programDiv.className = 'spa-infobox-program';
+            
+            let programHtml = '';
+            
+            if (programData.icon) {
+                const colorStyle = [
+                    programData.primary_color ? `--program-primary-color: ${programData.primary_color};` : '',
+                    programData.secondary_color ? `--program-secondary-color: ${programData.secondary_color};` : ''
+                ].filter(Boolean).join(' ');
+                
+                programHtml += `<div class="spa-program-icon-large" style="${colorStyle}">${programData.icon}</div>`;
+            }
+            
+            if (wizardData.program_age) {
+                const primaryColor = programData.primary_color || '#6d71b2';
+                programHtml += `<div class="spa-age-range-text" style="color: ${primaryColor};">${wizardData.program_age} r.</div>`;
+            }
+            
+            if (programData.title) {
+                const spaLogoSvg = icons && icons.spa_logo ? icons.spa_logo : '';
+                programHtml += `<h4 class="spa-program-title">${spaLogoSvg}${programData.title}</h4>`;
+            }
+            
+            if (programData.content) {
+                programHtml += `<div class="spa-program-content">${programData.content}</div>`;
+            }
+            
+            programDiv.innerHTML = programHtml;
+            container.appendChild(programDiv);
+        }
+        
+        if (wizardData.city_name || wizardData.program_age) {
+
             const summaryDiv = document.createElement('div');
             summaryDiv.className = 'spa-infobox-summary';
-            
-            const locationIcon = icons && icons.location ? icons.location : '';
-            
-            summaryDiv.innerHTML = `
-                <hr>
-                <ul class="spa-summary-list">
+
+            let summaryHtml = '<hr><ul class="spa-summary-list">';
+
+            if (wizardData.city_name) {
+                const locationIcon = icons && icons.location ? icons.location : '';
+                
+                let locationText = wizardData.city_name;
+                
+                if (data.place && currentState === 2) {
+                    const addressParts = [];
+                    if (data.place.name) addressParts.push(data.place.name);
+                    if (data.place.address) addressParts.push(data.place.address);
+                    
+                    const cityPart = data.place.city ? `<strong>${data.place.city}</strong>` : wizardData.city_name;
+                    const addressText = addressParts.filter(Boolean).join(', ');
+                    
+                    locationText = addressText ? `${cityPart} • ${addressText}` : cityPart;
+                }
+                
+                summaryHtml += `
                     <li class="spa-summary-item spa-summary-city">
                         <span class="spa-summary-icon">${locationIcon}</span>
-                        ${wizardData.city_name}
-                    </li>
-                </ul>
-            `;
-            
-            container.appendChild(summaryDiv);
-        }
-        
-        hideLoader();
-        return; // Skončiť render pre state 0/1
-    }
-    
-    /* ==================================================
-    1.3 ÚDAJE PROGRAMU (ikona, názov, obsah)
-    ================================================== */
-    if (currentState === 2 && wizardData.program_name && programData) {
-        console.log('[renderInfobox] Rendering program data:', programData);
-        
-        const programDiv = document.createElement('div');
-        programDiv.className = 'spa-infobox-program';
-        
-        let programHtml = '';
-        
-        // Ikona programu (zväčšená) + aplikácia CSS premenných
-        if (programData.icon) {
-            const colorStyle = [
-                programData.primary_color ? `--program-primary-color: ${programData.primary_color};` : '',
-                programData.secondary_color ? `--program-secondary-color: ${programData.secondary_color};` : ''
-            ].filter(Boolean).join(' ');
-            
-            programHtml += `<div class="spa-program-icon-large" style="${colorStyle}">${programData.icon}</div>`;
-        }
-        
-        // VEĽKÝ TEXT VEKU POD SVG
-        if (wizardData.program_age) {
-            const primaryColor = programData.primary_color || '#6d71b2';
-            programHtml += `<div class="spa-age-range-text" style="color: ${primaryColor};">${wizardData.program_age} r.</div>`;
-        }
-        
-        // Názov programu s SPA logom
-        if (programData.title) {
-            const spaLogoSvg = icons && icons.spa_logo ? icons.spa_logo : '';
-            programHtml += `<h4 class="spa-program-title">${spaLogoSvg}${programData.title}</h4>`;
-        }
-        
-        // Obsah CPT (čistý WordPress content)
-        if (programData.content) {
-            programHtml += `<div class="spa-program-content">${programData.content}</div>`;
-        }
-        // AUTOMATICKÉ OZNAČENIE TYPU ÚČASTNÍKA podľa veku programu
-        if (programData.age_max && programData.age_max < 18) {
-            // Program je pre deti - označ "Dieťa"
-            setTimeout(() => {
-                const childRadio = document.querySelector('input[name="input_14"][value*="Dieťa"], input[name="input_14"]:first-of-type');
-                if (childRadio && !childRadio.checked) {
-                    childRadio.checked = true;
-                    console.log('[SPA Auto-select] Child option selected for age < 18');
-                    updateSectionVisibility();
-                }
-            }, 500);
-        } else if (programData.age_min && programData.age_min >= 18) {
-            // Program je pre dospelých - označ "Dospelá osoba"
-            setTimeout(() => {
-                const adultRadio = document.querySelector('input[name="input_14"][value*="Dospelá"], input[name="input_14"]:last-of-type');
-                if (adultRadio && !adultRadio.checked) {
-                    adultRadio.checked = true;
-                    console.log('[SPA Auto-select] Adult option selected for age >= 18');
-                    updateSectionVisibility();
-                }
-            }, 500);
-        }
-        programDiv.innerHTML = programHtml;
-        container.appendChild(programDiv);
-    }
-    
-    /* ==================================================
-    1.5 DYNAMICKÝ SUMMARY (mesto, vek, kapacita)
-    ================================================== */
-    if (wizardData.city_name || wizardData.program_age) {
-
-        const summaryDiv = document.createElement('div');
-        summaryDiv.className = 'spa-infobox-summary';
-
-        let summaryHtml = '<hr><ul class="spa-summary-list">';
-
-        // MESTO s inline ikonou
-        if (wizardData.city_name) {
-            const locationIcon = icons && icons.location ? icons.location : '';
-            
-            let locationText = wizardData.city_name;
-            
-            if (data.place && currentState === 2) {
-                const addressParts = [];
-                if (data.place.name) addressParts.push(data.place.name);
-                if (data.place.address) addressParts.push(data.place.address);
-                
-                const cityPart = data.place.city ? `<strong>${data.place.city}</strong>` : wizardData.city_name;
-                const addressText = addressParts.filter(Boolean).join(', ');
-                
-                locationText = addressText ? `${cityPart} • ${addressText}` : cityPart;
+                        ${locationText}
+                    </li>`;
             }
-            
-            summaryHtml += `
-                <li class="spa-summary-item spa-summary-city">
-                    <span class="spa-summary-icon">${locationIcon}</span>
-                    ${locationText}
+
+            if (wizardData.program_age) {
+                const ageLabel = wizardData.program_age.includes('+') ? 'rokov' : 'roky';
+                const ageIconSvg = icons && icons.age ? icons.age : '<span class="spa-icon-placeholder">👶</span>';
+                
+                summaryHtml += `
+                <li class="spa-summary-item spa-summary-age">
+                    <span class="spa-summary-icon">${ageIconSvg}</span>
+                    <strong>${wizardData.program_age}</strong> ${ageLabel}
                 </li>`;
-        }
-
-        // VEK s ikonou
-        if (wizardData.program_age) {
-            const ageLabel = wizardData.program_age.includes('+') ? 'rokov' : 'roky';
-            const ageIconSvg = icons && icons.age ? icons.age : '<span class="spa-icon-placeholder">👶</span>';
-            
-            summaryHtml += `
-            <li class="spa-summary-item spa-summary-age">
-                <span class="spa-summary-icon">${ageIconSvg}</span>
-                <strong>${wizardData.program_age}</strong> ${ageLabel}
-            </li>`;
-        }
-
-        if (currentState === 2 && programData) {
-            renderFrequencySelector(programData);
-        } else {
-            renderFrequencySelector(null);
-        }
-
-        // KAPACITA (len v stave 2)
-        if (currentState === 2 && wizardData.program_name && capacityFree !== null && capacityFree !== undefined) {                
-            const capacityIconSvg = icons && icons.capacity ? icons.capacity : '';
-            const capacityLabel = getCapacityLabel(capacityFree);
-        
-            summaryHtml += `
-                <li class="spa-summary-item spa-summary-capacity">
-                    <span class="spa-summary-icon">${capacityIconSvg}</span>
-                    <strong>${capacityFree}</strong> ${capacityLabel}
-                </li>`;
-        }            
-       
-        // CENA (len ak je vybraný program)
-        if (price && wizardData.program_name) {
-            const priceIconSvg = icons && icons.price ? icons.price : '<span class="spa-icon-placeholder">€</span>';
-            const priceFormatted = price.replace(/(\d+\s*€)/g, '<strong>$1</strong>');
-
-            summaryHtml += `
-                <li class="spa-summary-item spa-summary-price">
-                    <span class="spa-summary-icon">${priceIconSvg}</span>
-                    ${priceFormatted}
-                </li>`;
-        }
-
-        // VEKOVÝ ROZSAH (len v stave 2)
-        if (currentState === 2 && wizardData.program_name && data.program) {
-            const ageFrom = data.program.age_min;
-            const ageTo = data.program.age_max;
-            
-            let ageText = '';
-            
-            if (ageFrom && ageTo) {
-                ageText = ageFrom.toString().replace('.', ',') + ' - ' + ageTo.toString().replace('.', ',') + ' r.';
-            } else if (ageFrom) {
-                ageText = ageFrom.toString().replace('.', ',') + '+ r.';
             }
-            
-            if (ageText) {
-                setTimeout(function() {
-                    const iconLarge = container.querySelector('.spa-program-icon-large');
-                    if (iconLarge) {
-                        if (!iconLarge.querySelector('.spa-age-range-text')) {
-                            let ageRangeText = container.querySelector('.spa-age-range-text');
-                            
-                            if (ageRangeText) {
-                                ageRangeText.parentElement.removeChild(ageRangeText);
-                            } else {
-                                ageRangeText = document.createElement('div');
-                                ageRangeText.className = 'spa-age-range-text';
-                                ageRangeText.textContent = ageText;
-                            }
 
-                            const svg = iconLarge.querySelector('svg');
-                            if (svg) {
-                                if (svg.nextSibling) {
-                                    iconLarge.insertBefore(ageRangeText, svg.nextSibling);
+            if (currentState === 2 && programData) {
+                renderFrequencySelector(programData);
+            } else {
+                renderFrequencySelector(null);
+            }
+
+            if (currentState === 2 && wizardData.program_name && capacityFree !== null && capacityFree !== undefined) {                
+                const capacityIconSvg = icons && icons.capacity ? icons.capacity : '';
+                const capacityLabel = getCapacityLabel(capacityFree);
+            
+                summaryHtml += `
+                    <li class="spa-summary-item spa-summary-capacity">
+                        <span class="spa-summary-icon">${capacityIconSvg}</span>
+                        <strong>${capacityFree}</strong> ${capacityLabel}
+                    </li>`;
+            }            
+           
+            if (price && wizardData.program_name) {
+                const priceIconSvg = icons && icons.price ? icons.price : '<span class="spa-icon-placeholder">€</span>';
+                const priceFormatted = price.replace(/(\d+\s*€)/g, '<strong>$1</strong>');
+
+                summaryHtml += `
+                    <li class="spa-summary-item spa-summary-price">
+                        <span class="spa-summary-icon">${priceIconSvg}</span>
+                        ${priceFormatted}
+                    </li>`;
+            }
+
+            if (currentState === 2 && wizardData.program_name && data.program) {
+                const ageFrom = data.program.age_min;
+                const ageTo = data.program.age_max;
+                
+                let ageText = '';
+                
+                if (ageFrom && ageTo) {
+                    ageText = ageFrom.toString().replace('.', ',') + ' - ' + ageTo.toString().replace('.', ',') + ' r.';
+                } else if (ageFrom) {
+                    ageText = ageFrom.toString().replace('.', ',') + '+ r.';
+                }
+                
+                if (ageText) {
+                    setTimeout(function() {
+                        const iconLarge = container.querySelector('.spa-program-icon-large');
+                        if (iconLarge) {
+                            if (!iconLarge.querySelector('.spa-age-range-text')) {
+                                let ageRangeText = container.querySelector('.spa-age-range-text');
+                                
+                                if (ageRangeText) {
+                                    ageRangeText.parentElement.removeChild(ageRangeText);
+                                } else {
+                                    ageRangeText = document.createElement('div');
+                                    ageRangeText.className = 'spa-age-range-text';
+                                    ageRangeText.textContent = ageText;
+                                }
+
+                                const svg = iconLarge.querySelector('svg');
+                                if (svg) {
+                                    if (svg.nextSibling) {
+                                        iconLarge.insertBefore(ageRangeText, svg.nextSibling);
+                                    } else {
+                                        iconLarge.appendChild(ageRangeText);
+                                    }
                                 } else {
                                     iconLarge.appendChild(ageRangeText);
                                 }
-                            } else {
-                                iconLarge.appendChild(ageRangeText);
                             }
                         }
-                    }
-                }, 0);
-            }
-        }
-
-        summaryHtml += '</ul>';
-
-        summaryDiv.innerHTML = summaryHtml;
-        container.appendChild(summaryDiv);
-    }
-
-    function getCapacityLabel(count) {
-        if (count === 1) {
-            return 'voľné miesto';
-        }
-        if (count >= 2 && count <= 4) {
-            return 'voľné miesta';
-        }
-        return 'voľných miest';
-    }
-
-    // Aplikuj farby na SVG elementy (override inline fill atribútov)
-    if (programData && (programData.primary_color || programData.secondary_color)) {
-        setTimeout(() => {
-            const iconContainer = container.querySelector('.spa-program-icon-large');
-            if (iconContainer) {
-                const svg = iconContainer.querySelector('svg');
-                if (svg) {
-                    // Shirt (primary color)
-                    const shirtPaths = svg.querySelectorAll('#shirt, #shirt path');
-                    shirtPaths.forEach(el => {
-                        if (programData.primary_color) {
-                            el.style.fill = programData.primary_color;
-                        }
-                    });
-                    
-                    // Shirt shadow (tmavšia primary)
-                    const shadowPaths = svg.querySelectorAll('#shirt-shadow path');
-                    if (programData.primary_color) {
-                        shadowPaths.forEach(path => {
-                            path.style.fill = `color-mix(in srgb, ${programData.primary_color} 70%, black)`;
-                        });
-                    }
-                    
-                    // Shirt highlight (svetlejšia primary)
-                    const highlightPaths = svg.querySelectorAll('#shirt-highlight path');
-                    if (programData.primary_color) {
-                        highlightPaths.forEach(path => {
-                            path.style.fill = `color-mix(in srgb, ${programData.primary_color} 70%, white)`;
-                        });
-                    }
-                    
-                    // Logo SPA (secondary color)
-                    const logoPaths = svg.querySelectorAll('#logoSPA path');
-                    if (programData.secondary_color) {
-                        logoPaths.forEach(path => {
-                            path.style.fill = programData.secondary_color;
-                        });
-                    }
+                    }, 0);
                 }
             }
-            
-            // Vypni loader AŽ PO aplikácii farieb
+
+            summaryHtml += '</ul>';
+
+            summaryDiv.innerHTML = summaryHtml;
+            container.appendChild(summaryDiv);
+        }
+
+        function getCapacityLabel(count) {
+            if (count === 1) {
+                return 'voľné miesto';
+            }
+            if (count >= 2 && count <= 4) {
+                return 'voľné miesta';
+            }
+            return 'voľných miest';
+        }
+
+        if (programData && (programData.primary_color || programData.secondary_color)) {
+            setTimeout(() => {
+                const iconContainer = container.querySelector('.spa-program-icon-large');
+                if (iconContainer) {
+                    const svg = iconContainer.querySelector('svg');
+                    if (svg) {
+                        const shirtPaths = svg.querySelectorAll('#shirt, #shirt path');
+                        shirtPaths.forEach(el => {
+                            if (programData.primary_color) {
+                                el.style.fill = programData.primary_color;
+                            }
+                        });
+                        
+                        const shadowPaths = svg.querySelectorAll('#shirt-shadow path');
+                        if (programData.primary_color) {
+                            shadowPaths.forEach(path => {
+                                path.style.fill = `color-mix(in srgb, ${programData.primary_color} 70%, black)`;
+                            });
+                        }
+                        
+                        const highlightPaths = svg.querySelectorAll('#shirt-highlight path');
+                        if (programData.primary_color) {
+                            highlightPaths.forEach(path => {
+                                path.style.fill = `color-mix(in srgb, ${programData.primary_color} 70%, white)`;
+                            });
+                        }
+                        
+                        const logoPaths = svg.querySelectorAll('#logoSPA path');
+                        if (programData.secondary_color) {
+                            logoPaths.forEach(path => {
+                                path.style.fill = programData.secondary_color;
+                            });
+                        }
+                    }
+                }
+                
+                hideLoader();
+            }, 100);
+        } else {
             hideLoader();
-        }, 100);
-    } else {
-        // Ak nie sú farby, vypni loader hneď
-        hideLoader();
+        }
     }
-}
 
     /**
      * Renderovanie frekvenčného selektora
@@ -844,19 +773,13 @@ function renderInfobox(data, icons, capacityFree, price) {
             if (activeFrequencies.length === 1) {
                 input.checked = true;
                 window.spaFormState.frequency = true;
-                
-                // OKAMŽITE AKTUALIZUJ VIDITEĽNOSŤ SEKCIÍ
-                setTimeout(() => {
-                    updateSectionVisibility();
-                }, 100);
             }
             
-            // EVENT LISTENER na zmenu frekvencie
             input.addEventListener('change', function() {
                 if (this.checked) {
                     window.spaFormState.frequency = true;
                     updatePageBreakVisibility();
-                    updateSectionVisibility(); // ← PRIDAJ TENTO RIADOK
+                    updateSectionVisibility();
                     console.log('[SPA Frequency] Selected:', this.value);
                 }
             });
@@ -869,7 +792,6 @@ function renderInfobox(data, icons, capacityFree, price) {
             selector.appendChild(label);
         });
 
-        // Skry/zobraz label poľa podľa počtu frekvencií
         setTimeout(() => {
             const gfieldRadio = document.querySelector('.gfield--type-radio');
             if (gfieldRadio) {
@@ -884,17 +806,14 @@ function renderInfobox(data, icons, capacityFree, price) {
                 }
             }
         }, 50);
-        // Aktualizuj stav page break po renderi frekvencie
+        
         if (activeFrequencies.length === 1) {
-            // Ak je len 1 frekvencia, je automaticky vybraná
             updatePageBreakVisibility();
         }
-        // TRIGGER pre sekcie - VŽDY po renderi frekvencie
-        // TRIGGER pre sekcie - VŽDY po renderi frekvencie
+        
         setTimeout(() => {
             console.log('[SPA Frequency] Triggering section visibility after render');
             
-            // Automaticky označ typ účastníka ak ešte nie je označený
             const registrationTypeChecked = document.querySelector('input[name="input_14"]:checked');
             
             if (!registrationTypeChecked) {
@@ -915,22 +834,20 @@ function renderInfobox(data, icons, capacityFree, price) {
                     if (targetRadio) {
                         targetRadio.checked = true;
                         
-                        // TRIGGER change event aby sa spustili listenery
                         const event = new Event('change', { bubbles: true });
                         targetRadio.dispatchEvent(event);
                     }
                 }
             }
             
-            // VŽDY aktualizuj sekcie
             updateSectionVisibility();
-        }, 500); // Zvýš timeout na 500ms
+        }, 500);
     }
 
-   /**
+    /**
      * Zobraz loader
      */
-   function showLoader() {
+    function showLoader() {
         console.log('[SPA LOADER] start');
         const loader = document.getElementById('spa-infobox-loader');
         if (loader) {
@@ -947,8 +864,7 @@ function renderInfobox(data, icons, capacityFree, price) {
         if (loader) {
             loader.classList.remove('active');
         }
-    }    
-
+    }
 
     /**
      * ========================================
@@ -962,7 +878,6 @@ function renderInfobox(data, icons, capacityFree, price) {
             frequency: window.spaFormState.frequency
         });
 
-        // SEKCIA 1: ÚDAJE O ÚČASTNÍKOVI
         const participantSection = findSectionByHeading('ÚDAJE O ÚČASTNÍKOVI TRÉNINGOV');
         
         if (participantSection) {
@@ -974,14 +889,14 @@ function renderInfobox(data, icons, capacityFree, price) {
             
             toggleSection(participantSection, showParticipant);
             console.log('[SPA Section Control] Participant section:', showParticipant ? 'VISIBLE' : 'HIDDEN');
+        } else {
+            console.warn('[SPA Section Control] Participant section NOT FOUND in DOM');
         }
 
-        // SEKCIA 2: ÚDAJE O RODIČOVI
         const guardianSection = findSectionByHeading('ÚDAJE O RODIČOVI / ZÁKONNOM ZÁSTUPCOVI');
         
         if (guardianSection) {
-            // GF používa input_X_Y formát pre radio
-            const registrationTypeField = document.querySelector(`input[name="input_14"]:checked`);
+            const registrationTypeField = document.querySelector('input[name="input_14"]:checked');
             
             let isChild = false;
             
@@ -989,18 +904,26 @@ function renderInfobox(data, icons, capacityFree, price) {
                 const label = registrationTypeField.closest('label') || registrationTypeField.parentElement;
                 const labelText = label ? label.textContent.trim().toLowerCase() : '';
                 
-                // "Dieťa (mladší ako 18 rokov)" → zobraz sekciu
+                console.log('[SPA Section Control] Registration type label:', labelText);
+                
                 isChild = labelText.includes('dieťa') || labelText.includes('diet') || labelText.includes('mladš');
             }
             
             toggleSection(guardianSection, isChild);
             console.log('[SPA Section Control] Guardian section:', isChild ? 'VISIBLE (child)' : 'HIDDEN (adult)');
+        } else {
+            console.warn('[SPA Section Control] Guardian section NOT FOUND in DOM');
         }
-        // SEKCIA 3: RODNÉ ČÍSLO (enable/disable podľa typu)
-        // Použi config namiesto hardcoded name
-        const birthNumberField = document.querySelector(`input[name="${spaConfig.fields.spa_member_birthdate}"]`);
+        
+        const birthNumberFieldName = spaConfig.fields.spa_member_birthdate || 'spa_member_birthdate';
+        const birthNumberField = document.querySelector(`input[name="${birthNumberFieldName}"]`);
 
-        console.log('[SPA Section Control] Birth number field found:', !!birthNumberField);
+        console.log('[SPA Section Control] Birth number field search:', {
+            configValue: spaConfig.fields.spa_member_birthdate,
+            finalName: birthNumberFieldName,
+            found: !!birthNumberField
+        });
+        
         if (birthNumberField) {
             console.log('[SPA Section Control] Birth number field:', {
                 name: birthNumberField.name,
@@ -1010,7 +933,6 @@ function renderInfobox(data, icons, capacityFree, price) {
         }
 
         if (birthNumberField) {
-            // Zisti aktuálnu hodnotu spa_registration_type
             const registrationTypeField = document.querySelector('input[name="input_14"]:checked');
             
             let isChild = false;
@@ -1033,6 +955,8 @@ function renderInfobox(data, icons, capacityFree, price) {
                 birthNumberField.style.pointerEvents = 'none';
                 console.log('[SPA Section Control] Birth number field: DISABLED (adult)');
             }
+        } else {
+            console.error('[SPA Section Control] Birth number field NOT FOUND with name:', birthNumberFieldName);
         }
     }
 
@@ -1069,5 +993,5 @@ function renderInfobox(data, icons, capacityFree, price) {
             nextElement.style.display = show ? 'block' : 'none';
             nextElement = nextElement.nextElementSibling;
         }
-    }    
+    }
 })();
