@@ -997,8 +997,8 @@ function renderInfobox(data, icons, capacityFree, price) {
             console.log('[SPA Section Control] Guardian section:', isChild ? 'VISIBLE (child)' : 'HIDDEN (adult)');
         }
         // SEKCIA 3: RODNÉ ČÍSLO (enable/disable podľa typu)
-        // GF Field ID 8 = spa_member_birthdate
-        const birthNumberField = document.querySelector('input[name="spa_member_birthdate"]');
+        // Použi config namiesto hardcoded name
+        const birthNumberField = document.querySelector(`input[name="${spaConfig.fields.spa_member_birthdate}"]`);
 
         console.log('[SPA Section Control] Birth number field found:', !!birthNumberField);
         if (birthNumberField) {

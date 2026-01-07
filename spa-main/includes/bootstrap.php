@@ -107,12 +107,15 @@ function spa_enqueue_gf_scripts($form) {
     );
     
     // Poskytnutie konfigurácie do JS
+    // Načítaj VŠETKY fieldy z configu
+    $js_fields = [];
+    foreach ($field_config as $key => $value) {
+        $js_fields[$key] = $value;
+    }
+
     wp_localize_script('spa-registration', 'spaConfig', [
         'ajaxUrl' => admin_url('admin-ajax.php'),
-        'fields' => [
-            'spa_city' => $field_config['spa_city'] ?? '',
-            'spa_program' => $field_config['spa_program'] ?? '',
-        ],
+        'fields' => $js_fields,
         'nonce' => wp_create_nonce('spa_ajax_nonce'),
     ]);
 }
