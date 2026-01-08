@@ -560,6 +560,25 @@ function renderInfobox(data, icons, capacityFree, price) {
         // ⭐ PRIAME OVLÁDANIE NA ZÁKLADE VEKU PROGRAMU (bez spoliehania sa na GF conditional logic)
             setTimeout(() => {
                 const isChild = programData.age_min && programData.age_min < 18;
+
+                // ⭐ ZAVOLAJ ZOBRAZENIE SPRÁVNEHO E-MAIL POĽA
+                if (typeof handleEmailFieldVisibility === 'function') {
+                    handleEmailFieldVisibility(programData.age_min);
+                } else {
+                    // Fallback – priame nastavenie
+                    const childEmailField = document.querySelector('#field_1_15');
+                    const adultEmailField = document.querySelector('#field_1_16');
+                    
+                    if (childEmailField && adultEmailField) {
+                        if (isChild) {
+                            childEmailField.style.display = '';
+                            adultEmailField.style.display = 'none';
+                        } else {
+                            childEmailField.style.display = 'none';
+                            adultEmailField.style.display = '';
+                        }
+                    }
+                }
                 
                 console.log('[SPA Program Type] Age-based detection:', {
                     age_min: programData.age_min,
@@ -590,17 +609,34 @@ function renderInfobox(data, icons, capacityFree, price) {
                 
                 // 3. ENABLE/DISABLE rodného čísla
                 const birthNumberField = document.querySelector('input[name="input_8"]');
+                const birthNumberWrapper = birthNumberField ? birthNumberField.closest('.gfield') : null;
+
                 if (birthNumberField) {
                     if (isChild) {
                         birthNumberField.disabled = false;
+                        birthNumberField.readOnly = false;
                         birthNumberField.style.opacity = '1';
                         birthNumberField.style.pointerEvents = 'auto';
+                        birthNumberField.style.backgroundColor = '';
+                        
+                        if (birthNumberWrapper) {
+                            birthNumberWrapper.style.display = '';
+                            birthNumberWrapper.style.opacity = '1';
+                        }
+                        
                         console.log('[SPA Program Type] Birth number: ENABLED (child program)');
                     } else {
                         birthNumberField.disabled = true;
+                        birthNumberField.readOnly = true;
                         birthNumberField.value = '';
                         birthNumberField.style.opacity = '0.5';
                         birthNumberField.style.pointerEvents = 'none';
+                        birthNumberField.style.backgroundColor = '#f5f5f5';
+                        
+                        if (birthNumberWrapper) {
+                            birthNumberWrapper.style.opacity = '0.5';
+                        }
+                        
                         console.log('[SPA Program Type] Birth number: DISABLED (adult program)');
                     }
                 }
@@ -971,8 +1007,7 @@ function renderInfobox(data, icons, capacityFree, price) {
         if (participantSection) {
             const showParticipant = !!(
                 wizardData.city_name && 
-                wizardData.program_name && 
-                window.spaFormState.frequency
+                wizardData.program_name
             );
             
             toggleSection(participantSection, showParticipant);
