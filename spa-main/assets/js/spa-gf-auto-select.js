@@ -54,13 +54,22 @@
         autoFillEmailIfChild('child');
     }
 
-    function setResolvedType(type) {
+    function resetResolvedType() {
+        // 1. Vyčisti hidden field
         const hiddenField = document.querySelector(`[name="${spaConfig.fields.spa_resolved_type}"]`);
-        
         if (hiddenField) {
-            hiddenField.value = type;
+            hiddenField.value = '';
         }
-
+    
+        // 2. Odznač všetky radio buttony
+        const radioName = spaConfig.fields.spa_registration_type;
+        const radios = document.querySelectorAll(`input[name="${radioName}"]`);
+        
+        radios.forEach(radio => {
+            radio.checked = false;
+        });
+    
+        // 3. Trigger refresh
         if (typeof jQuery !== 'undefined') {
             jQuery(document).trigger('gform_post_render');
         }

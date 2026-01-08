@@ -116,6 +116,7 @@ add_action('plugins_loaded', 'spa_init', 5); // Priorita 5 = skoršie ako téma
             'fields' => [
                 'spa_city' => $field_config['spa_city'] ?? '',
                 'spa_program' => $field_config['spa_program'] ?? '',
+                'spa_registration_type' => $field_config['spa_registration_type'] ?? '',
                 'spa_resolved_type' => $field_config['spa_resolved_type'] ?? '',
                 'spa_client_email' => $field_config['spa_client_email'] ?? '',
             ],
