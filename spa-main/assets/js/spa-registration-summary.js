@@ -70,7 +70,7 @@
             loadPrograms(cityId, programField);
         });
 
-        // Event listener na zmenu programu → automatická voľba typu účastníka
+        // Event listener na zmenu programu
         programField.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
             
@@ -78,9 +78,16 @@
                 return;
             }
             
-            // Získaj data-target z option elementu
+            // Získaj age_min
+            const ageMin = parseInt(selectedOption.getAttribute('data-age-min'));
             const target = selectedOption.getAttribute('data-target');
             
+            // Zobraz správne e-mail pole
+            if (ageMin) {
+                handleEmailFieldVisibility(ageMin);
+            }
+            
+            // Automatická voľba typu účastníka
             if (target) {
                 handleParticipantTypeSelection(target);
             }
@@ -161,6 +168,42 @@
     }
 
     /**
+     * Nastavenie listenerov na blur meno/priezvisko
+     */
+    function setupNameFieldListeners() {
+        const firstNameField = document.querySelector('input[name*="meno"], input[placeholder*="meno"]');
+        const lastNameField = document.querySelector('input[name*="priezvisko"], input[placeholder*="priezvisko"]');
+        
+        if (!firstNameField || !lastNameField) {
+            return;
+        }
+        
+        [firstNameField, lastNameField].forEach(field => {
+            // Odstráň starý listener (ak existuje)
+            field.removeEventListener('blur', handleNameBlur);
+            // Pridaj nový
+            field.addEventListener('blur', handleNameBlur);
+        });
+    }
+
+    /**
+     * Handler pre blur na meno/priezvisko
+     */
+    function handleNameBlur() {
+        const programField = document.querySelector(getFieldSelector(programInputId));
+        
+        if (!programField || !programField.value) {
+            return;
+        }
+        
+        const selectedOption = programField.options[programField.selectedIndex];
+        const ageMin = parseInt(selectedOption.getAttribute('data-age-min'));
+        
+        if (ageMin) {
+            autoFillChildEmail(ageMin);
+        }
+    }
+    /**
      * Naplnenie program fieldu
      */
     function populateProgramField(selectElement, programs) {
@@ -178,6 +221,9 @@
             selectElement.appendChild(option);
         });
         selectElement.disabled = false;
+        
+        // Nastav listenery pre meno/priezvisko (blur)
+        setupNameFieldListeners();
     }
 
     /**
@@ -247,4 +293,94 @@
         console.error('[SPA]', message);
     }
 
+
+    /**
+     * Odstránenie diakritiky
+     */
+    function removeDiacritics(str) {
+        const diacriticsMap = {
+            'á': 'a', 'ä': 'a', 'č': 'c', 'ď': 'd', 'é': 'e',
+            'í': 'i', 'ľ': 'l', 'ĺ': 'l', 'ň': 'n', 'ó': 'o',
+            'ô': 'o', 'ŕ': 'r', 'š': 's', 'ť': 't', 'ú': 'u',
+            'ý': 'y', 'ž': 'z'
+        };
+        
+        return str.replace(/[^\w\s]/g, char => diacriticsMap[char] || char)
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]/g, '');
+    }
+
+    /**
+     * Generovanie e-mailu pre CHILD
+     */
+    function generateChildEmail() {
+        const firstNameField = document.querySelector('input[name*="meno"], input[placeholder*="meno"]');
+        const lastNameField = document.querySelector('input[name*="priezvisko"], input[placeholder*="priezvisko"]');
+        
+        if (!firstNameField || !lastNameField) {
+            return null;
+        }
+        
+        const firstName = firstNameField.value.trim();
+        const lastName = lastNameField.value.trim();
+        
+        if (!firstName || !lastName) {
+            return null;
+        }
+        
+        const firstPart = removeDiacritics(firstName);
+        const lastPart = removeDiacritics(lastName);
+        
+        return `${firstPart}.${lastPart}@piaseckyacademy.sk`;
+    }
+
+    /**
+     * Zobrazenie správneho e-mail poľa podľa age_min
+     */
+    function handleEmailFieldVisibility(ageMin) {
+        const isChild = ageMin && ageMin < 18;
+        
+        const childEmailField = document.querySelector('#field_1_15');
+        const adultEmailField = document.querySelector('#field_1_16');
+        
+        if (!childEmailField || !adultEmailField) {
+            return;
+        }
+        
+        if (isChild) {
+            childEmailField.style.display = '';
+            adultEmailField.style.display = 'none';
+            
+            const adultInput = adultEmailField.querySelector('input[type="email"]');
+            if (adultInput) adultInput.value = '';
+        } else {
+            childEmailField.style.display = 'none';
+            adultEmailField.style.display = '';
+            
+            const childInput = childEmailField.querySelector('input[type="email"]');
+            if (childInput) childInput.value = '';
+        }
+    }
+
+    /**
+     * Automatické vyplnenie e-mailu pre CHILD
+     */
+    function autoFillChildEmail(ageMin) {
+        if (!ageMin || ageMin >= 18) {
+            return;
+        }
+        
+        const childEmailInput = document.querySelector('#input_1_15');
+        
+        if (!childEmailInput || childEmailInput.value.trim() !== '') {
+            return;
+        }
+        
+        const generatedEmail = generateChildEmail();
+        
+        if (generatedEmail) {
+            childEmailInput.value = generatedEmail;
+            console.log('[SPA] E-mail pre CHILD vygenerovaný:', generatedEmail);
+        }
+    }
 })();
