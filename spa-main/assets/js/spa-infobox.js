@@ -16,10 +16,13 @@
         console.error('[SPA Infobox] spaConfig nie je definovaný.');
         return;
     }
-    if (typeof spaConfig === 'undefined') {
-        console.error('[SPA Infobox] spaConfig nie je definovaný.');
-        return;
+    
+    // ⭐ TOP-LEVEL GUARD: Koniec ak nie je infobox container
+    if (!document.getElementById('spa-infobox-container')) {
+        return; // Ticho skonči, žiadne logy, žiadne listenery
     }
+    let initialized = false; // ⭐ Flag proti duplicitným inicializáciám
+    let listenersAttached = false; // ⭐ Flag proti duplicitným listenerom
     let lastCapacityFree = null;
     let currentState = 0;
     let wizardData = {
@@ -30,16 +33,19 @@
     };
 
     document.addEventListener('DOMContentLoaded', function() {
+        if (initialized) return; // ⭐ Už inicializované
         initInfobox();
         watchFormChanges();
+        initialized = true; // ⭐ Označ ako hotové
     });
-
+    
     // Gravity Forms AJAX callback
     if (typeof jQuery !== 'undefined') {
         jQuery(document).on('gform_post_render', function() {
+            if (initialized) return; // ⭐ Už inicializované, nevol znova
             initInfobox();
             watchFormChanges();
-            // updateSectionVisibility() sa teraz volá VNÚTRI initInfobox() s timeoutom
+            initialized = true; // ⭐ Označ ako hotové
         });
     }
 
@@ -283,123 +289,136 @@
     /**
      * Sledovanie zmien vo formulári
      */
-    function watchFormChanges() {
-        // Sleduj zmenu mesta
-        const cityField = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
-        if (cityField) {
-            cityField.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
+    /**
+ * Sledovanie zmien vo formulári
+ */
+function watchFormChanges() {
+    // ⭐ GUARD: Zabraň duplicitným event listenerom
+    if (listenersAttached) {
+        console.log('[SPA Infobox] Listeners already attached, skipping');
+        return;
+    }
+    
+    // Sleduj zmenu mesta
+    const cityField = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
+    if (cityField) {
+        cityField.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            
+            if (this.value && this.value !== '0') {
+                wizardData.city_name = selectedOption.text;
+                window.spaFormState.city = true;
+                currentState = 1;
+            } else {
+                // Reset - vyčisti všetko
+                wizardData.city_name = '';
+                wizardData.program_name = '';
+                wizardData.program_id = null;
+                wizardData.program_age = '';
+                wizardData.frequency = '';
+                currentState = 0;
                 
-                if (this.value && this.value !== '0') {
-                    wizardData.city_name = selectedOption.text;
-                    window.spaFormState.city = true;
-                    currentState = 1;
-                } else {
-                    // Reset - vyčisti všetko
-                    wizardData.city_name = '';
-                    wizardData.program_name = '';
-                    wizardData.program_id = null;
-                    wizardData.program_age = '';
-                    wizardData.frequency = '';
-                    currentState = 0;
-                    
-                    // RESET state frekvencie
-                    window.spaFormState.frequency = false;
+                // RESET state frekvencie
+                window.spaFormState.frequency = false;
 
-                    // VYČISTI frekvenčný selector
-                    const frequencySelector = document.querySelector('.spa-frequency-selector');
-                    if (frequencySelector) {
-                        frequencySelector.innerHTML = '';
-                    }
+                // VYČISTI frekvenčný selector
+                const frequencySelector = document.querySelector('.spa-frequency-selector');
+                if (frequencySelector) {
+                    frequencySelector.innerHTML = '';
                 }
-                
-                loadInfoboxContent(currentState);
-                updatePageBreakVisibility();
-            });
-        }
-        
-        // Sleduj zmenu programu
-        const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
-
-        console.log('[SPA Infobox] Program field selector:', `[name="${spaConfig.fields.spa_program}"]`);
-        console.log('[SPA Infobox] Program field element:', programField);
-
-        if (programField) {
-            programField.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                
-                console.log('[SPA Infobox] Program changed - value:', this.value);
-                console.log('[SPA Infobox] Program changed - text:', selectedOption.text);
-                
-                if (this.value) {
-                    wizardData.program_name = selectedOption.text;
-                    wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
-                    window.spaFormState.program = true;
-                    
-                    // BACKUP do hidden field
-                    const backupField = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
-                    if (backupField) {
-                        backupField.value = this.value;
-                        console.log('[SPA Backup] Program backup set:', this.value);
-                    } else {
-                        console.error('[SPA Backup] Program backup field NOT FOUND!');
-                    }
-                    
-                    console.log('[SPA Infobox] Program ID:', wizardData.program_id);
-                    
-                    // Parsuj vek z názvu programu
-                    const ageMatch = selectedOption.text.match(/(\d+)[–-](\d+)/);
-                    if (ageMatch) {
-                        wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
-                    } else {
-                        const agePlusMatch = selectedOption.text.match(/(\d+)\+/);
-                        if (agePlusMatch) {
-                            wizardData.program_age = agePlusMatch[1] + '+';
-                        }
-                    }
-                    
-                    currentState = 2;
-                    console.log('[SPA Infobox] State changed to 2, wizardData:', wizardData);
-                } else {
-                    // RESET PROGRAMU
-                    wizardData.program_name = '';
-                    wizardData.program_id = null;
-                    wizardData.program_age = '';
-                    window.spaFormState.program = false;
-                    window.spaFormState.frequency = false;
-                    currentState = wizardData.city_name ? 1 : 0;
-                    
-                    // Vyčisti backup
-                    const backupField = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
-                    if (backupField) {
-                        backupField.value = '';
-                    }
-                }
-                // RESET DOM hodnoty frequency fieldu
-                const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
-                if (frequencyField) {
-                    frequencyField.value = '';
-                    frequencyField.selectedIndex = 0;
-                }
-                
-                loadInfoboxContent(currentState);
-                updatePageBreakVisibility();
-            });
-        } else {
-            console.error('[SPA Infobox] Program field NOT FOUND!');
-        }
-        // Sleduj typ registrácie (Dieťa / Dospelá osoba)
-        // POUŽIJ priamy selector pre GF radio
-        const registrationTypeFields = document.querySelectorAll('input[name="input_14"]');
-        registrationTypeFields.forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                if (this.checked) {
-                    console.log('[SPA Section Control] Registration type changed');
-                    updateSectionVisibility();
-                }
-            });
+            }
+            
+            loadInfoboxContent(currentState);
+            updatePageBreakVisibility();
         });
     }
+    
+    // Sleduj zmenu programu
+    const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+
+    console.log('[SPA Infobox] Program field selector:', `[name="${spaConfig.fields.spa_program}"]`);
+    console.log('[SPA Infobox] Program field element:', programField);
+
+    if (programField) {
+        programField.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            
+            console.log('[SPA Infobox] Program changed - value:', this.value);
+            console.log('[SPA Infobox] Program changed - text:', selectedOption.text);
+            
+            if (this.value) {
+                wizardData.program_name = selectedOption.text;
+                wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
+                window.spaFormState.program = true;
+                
+                // BACKUP do hidden field
+                const backupField = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
+                if (backupField) {
+                    backupField.value = this.value;
+                    console.log('[SPA Backup] Program backup set:', this.value);
+                } else {
+                    console.error('[SPA Backup] Program backup field NOT FOUND!');
+                }
+                
+                console.log('[SPA Infobox] Program ID:', wizardData.program_id);
+                
+                // Parsuj vek z názvu programu
+                const ageMatch = selectedOption.text.match(/(\d+)[–-](\d+)/);
+                if (ageMatch) {
+                    wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
+                } else {
+                    const agePlusMatch = selectedOption.text.match(/(\d+)\+/);
+                    if (agePlusMatch) {
+                        wizardData.program_age = agePlusMatch[1] + '+';
+                    }
+                }
+                
+                currentState = 2;
+                console.log('[SPA Infobox] State changed to 2, wizardData:', wizardData);
+            } else {
+                // RESET PROGRAMU
+                wizardData.program_name = '';
+                wizardData.program_id = null;
+                wizardData.program_age = '';
+                window.spaFormState.program = false;
+                window.spaFormState.frequency = false;
+                currentState = wizardData.city_name ? 1 : 0;
+                
+                // Vyčisti backup
+                const backupField = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
+                if (backupField) {
+                    backupField.value = '';
+                }
+            }
+            // RESET DOM hodnoty frequency fieldu
+            const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
+            if (frequencyField) {
+                frequencyField.value = '';
+                frequencyField.selectedIndex = 0;
+            }
+            
+            loadInfoboxContent(currentState);
+            updatePageBreakVisibility();
+        });
+    } else {
+        console.error('[SPA Infobox] Program field NOT FOUND!');
+    }
+    // Sleduj typ registrácie (Dieťa / Dospelá osoba)
+    // POUŽIJ priamy selector pre GF radio
+    const registrationTypeFields = document.querySelectorAll('input[name="input_14"]');
+    registrationTypeFields.forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                console.log('[SPA Section Control] Registration type changed');
+                updateSectionVisibility();
+            }
+        });
+    });
+    
+    // ⭐ OZNAČ, že listenery sú pripojené
+    listenersAttached = true;
+    console.log('[SPA Infobox] Event listeners attached');
+}
 
     /**
      * Načítanie obsahu infoboxu cez AJAX
