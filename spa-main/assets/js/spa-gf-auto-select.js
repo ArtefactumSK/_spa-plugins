@@ -32,10 +32,11 @@
             const target = option.getAttribute('data-target');
             if (!target) return;
 
-            const resolvedType = (target === 'adult') ? 'adult' : 'child';
+            // Mapovanie: adult → 'adult', ostatné → 'child'
+            const registrationType = (target === 'adult') ? 'adult' : 'child';
             
-            setResolvedType(resolvedType);
-            autoFillEmailIfChild(resolvedType);
+            setResolvedType(registrationType);
+            autoFillEmailIfChild(registrationType);
         });
     }
 
@@ -48,19 +49,69 @@
     }
 
     function checkAutoFillEmail() {
-        const hiddenField = document.querySelector(`[name="${spaConfig.fields.spa_resolved_type}"]`);
-        if (!hiddenField || hiddenField.value !== 'child') return;
+        const radioName = spaConfig.fields.spa_registration_type;
+        const checkedRadio = document.querySelector(`input[name="${radioName}"]:checked`);
+        
+        if (!checkedRadio || checkedRadio.value !== 'child') return;
         
         autoFillEmailIfChild('child');
     }
 
+    function setResolvedType(type) {
+        console.log('[SPA Auto-Select] Setting type:', type);
+        
+        // 1. Nastav hidden field (pre backend)
+        const hiddenField = document.querySelector(`[name="${spaConfig.fields.spa_resolved_type}"]`);
+        if (hiddenField) {
+            hiddenField.value = type;
+            console.log('[SPA Auto-Select] Hidden field set:', hiddenField.name, '=', type);
+        } else {
+            console.error('[SPA Auto-Select] Hidden field NOT FOUND:', spaConfig.fields.spa_resolved_type);
+        }
+
+        // 2. Nastav radio button (pre GF conditional logic)
+        const radioName = spaConfig.fields.spa_registration_type;
+        const radios = document.querySelectorAll(`input[name="${radioName}"]`);
+        
+        console.log('[SPA Auto-Select] Radio buttons found:', radios.length);
+        
+        let radioSet = false;
+        radios.forEach(radio => {
+            console.log('[SPA Auto-Select] Radio value:', radio.value);
+            
+            if (radio.value === type) {
+                radio.checked = true;
+                radioSet = true;
+                
+                console.log('[SPA Auto-Select] Radio checked:', radio.value);
+                
+                // Trigger GF change event
+                if (typeof jQuery !== 'undefined') {
+                    jQuery(radio).trigger('change');
+                }
+            }
+        });
+        
+        if (!radioSet) {
+            console.error('[SPA Auto-Select] No radio matched value:', type);
+        }
+
+        // 3. Trigger global refresh
+        if (typeof jQuery !== 'undefined') {
+            jQuery(document).trigger('gform_post_render');
+            console.log('[SPA Auto-Select] GF refresh triggered');
+        }
+    }
+
     function resetResolvedType() {
+        console.log('[SPA Auto-Select] Resetting type');
+        
         // 1. Vyčisti hidden field
         const hiddenField = document.querySelector(`[name="${spaConfig.fields.spa_resolved_type}"]`);
         if (hiddenField) {
             hiddenField.value = '';
         }
-    
+
         // 2. Odznač všetky radio buttony
         const radioName = spaConfig.fields.spa_registration_type;
         const radios = document.querySelectorAll(`input[name="${radioName}"]`);
@@ -68,27 +119,15 @@
         radios.forEach(radio => {
             radio.checked = false;
         });
-    
+
         // 3. Trigger refresh
         if (typeof jQuery !== 'undefined') {
             jQuery(document).trigger('gform_post_render');
         }
     }
 
-    function resetResolvedType() {
-        const hiddenField = document.querySelector(`[name="${spaConfig.fields.spa_resolved_type}"]`);
-        
-        if (hiddenField) {
-            hiddenField.value = '';
-        }
-
-        if (typeof jQuery !== 'undefined') {
-            jQuery(document).trigger('gform_post_render');
-        }
-    }
-
-    function autoFillEmailIfChild(resolvedType) {
-        if (resolvedType !== 'child') return;
+    function autoFillEmailIfChild(registrationType) {
+        if (registrationType !== 'child') return;
 
         const emailField = document.querySelector(`[name="${spaConfig.fields.spa_client_email}"]`);
         if (!emailField || emailField.value !== '') return;
@@ -103,6 +142,7 @@
 
         if (meno && priezvisko) {
             emailField.value = `${meno}.${priezvisko}@piaseckyacademy.sk`;
+            console.log('[SPA Auto-Select] Email auto-filled:', emailField.value);
         }
     }
 
