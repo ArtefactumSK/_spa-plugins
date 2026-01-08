@@ -559,7 +559,7 @@ function renderInfobox(data, icons, capacityFree, price) {
         }
         // ⭐ PRIAME OVLÁDANIE NA ZÁKLADE VEKU PROGRAMU (bez spoliehania sa na GF conditional logic)
             setTimeout(() => {
-                const isChild = programData.age_max && programData.age_max < 18;
+                const isChild = programData.age_min && programData.age_min < 18;
                 
                 console.log('[SPA Program Type] Age-based detection:', {
                     age_min: programData.age_min,
