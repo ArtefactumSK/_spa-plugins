@@ -84,43 +84,36 @@ add_action('plugins_loaded', 'spa_init', 5); // Priorita 5 = skoršie ako téma
 /**
  * Enqueue JavaScript pre Gravity Forms
  */
-    function spa_enqueue_gf_scripts($form) {
-        $field_config = spa_load_field_config();
-        
-        wp_enqueue_script(
-            'spa-registration',
-            SPA_PLUGIN_URL . 'assets/js/spa-registration-summary.js',
-            ['jquery'],
-            SPA_PLUGIN_VERSION,
-            true
-        );
-        
-        wp_enqueue_script(
-            'spa-infobox',
-            SPA_PLUGIN_URL . 'assets/js/spa-infobox.js',
-            ['spa-registration'],
-            SPA_PLUGIN_VERSION,
-            true
-        );
-        
-        wp_enqueue_script(
-            'spa-gf-auto-select',
-            SPA_PLUGIN_URL . 'assets/js/spa-gf-auto-select.js',
-            ['jquery'],
-            SPA_PLUGIN_VERSION,
-            true
-        );
-        
-        wp_localize_script('spa-registration', 'spaConfig', [
-            'ajaxUrl' => admin_url('admin-ajax.php'),
-            'fields' => [
-                'spa_city' => $field_config['spa_city'] ?? '',
-                'spa_program' => $field_config['spa_program'] ?? '',
-                'spa_registration_type' => $field_config['spa_registration_type'] ?? '',
-                'spa_resolved_type' => $field_config['spa_resolved_type'] ?? '',
-                'spa_client_email' => $field_config['spa_client_email'] ?? '',
-            ],
-            'nonce' => wp_create_nonce('spa_ajax_nonce'),
-        ]);
-    }
+function spa_enqueue_gf_scripts($form) {
+    // Načítanie field mappingu z spa-config
+    $field_config = spa_load_field_config();
+    
+    // Enqueue hlavného JS súboru
+    wp_enqueue_script(
+        'spa-registration',
+        SPA_PLUGIN_URL . 'assets/js/spa-registration-summary.js',
+        ['jquery'],
+        SPA_PLUGIN_VERSION,
+        true
+    );
+    
+    // Enqueue infobox JS
+    wp_enqueue_script(
+        'spa-infobox',
+        SPA_PLUGIN_URL . 'assets/js/spa-infobox.js',
+        ['spa-registration'],
+        SPA_PLUGIN_VERSION,
+        true
+    );
+    
+    // Poskytnutie konfigurácie do JS
+    wp_localize_script('spa-registration', 'spaConfig', [
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'fields' => [
+            'spa_city' => $field_config['spa_city'] ?? '',
+            'spa_program' => $field_config['spa_program'] ?? '',
+        ],
+        'nonce' => wp_create_nonce('spa_ajax_nonce'),
+    ]);
+}
 add_action('gform_enqueue_scripts', 'spa_enqueue_gf_scripts', 10, 1);

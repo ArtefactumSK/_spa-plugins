@@ -12,14 +12,12 @@ return [
        ========================== */
     'spa_city'    => 'input_1',   // ✅ OPRAVENÉ: reálne GF field ID
     'spa_program' => 'input_2',   // ✅ OPRAVENÉ: reálne GF field ID    
-    'spa_registration_type' => 'input_4',
+    'spa_registration_type' => 'input_14',
     'spa_frequency' => 'input_31',
-    'spa_resolved_type' => 'input_34',
 
     /* ==========================
        ÚČASTNÍK – KONTAKT
        ========================== */
-    'spa_member_birthdate' => 'input_8',
     'spa_client_email' => 'input_15',
     'spa_client_phone' => 'input_19',
 
