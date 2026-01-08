@@ -306,7 +306,6 @@
                 updatePageBreakVisibility();
             });
         }
-        // Sleduj zmenu programu
         const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
 
         console.log('[SPA Infobox] Program field selector:', `[name="${spaConfig.fields.spa_program}"]`);
@@ -322,10 +321,18 @@
                 if (this.value) {
                     wizardData.program_name = selectedOption.text;
                     wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
+                    window.spaFormState.program = true;
+                    
+                    const backupField = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
+                    if (backupField) {
+                        backupField.value = this.value;
+                        console.log('[SPA Backup] Program backup set:', this.value);
+                    } else {
+                        console.error('[SPA Backup] Program backup field NOT FOUND!');
+                    }
                     
                     console.log('[SPA Infobox] Program ID:', wizardData.program_id);
                     
-                    // Parsuj vek z názvu programu
                     const ageMatch = selectedOption.text.match(/(\d+)[–-](\d+)/);
                     if (ageMatch) {
                         wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
@@ -338,23 +345,37 @@
                     
                     currentState = 2;
                     console.log('[SPA Infobox] State changed to 2, wizardData:', wizardData);
-                    
-                    // ⭐ PRIDAJ TENTO RIADOK:
-                    setResolvedTypeFromProgram(selectedOption);
-                    
                 } else {
-                    // Reset programu - vráť sa do stavu 1 (mesto) alebo 0
                     wizardData.program_name = '';
                     wizardData.program_id = null;
                     wizardData.program_age = '';
+                    window.spaFormState.program = false;
+                    window.spaFormState.frequency = false;
                     currentState = wizardData.city_name ? 1 : 0;
                     
-                    // ⭐ PRIDAJ TENTO RIADOK (reset hidden field):
-                    window.spaResolvedParticipantType = null;
-                    setHiddenResolvedType('');
+                    const backupField = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
+                    if (backupField) {
+                        backupField.value = '';
+                    }
+
+                    const frequencySelector = document.querySelector('.spa-frequency-selector');
+                    if (frequencySelector) {
+                        frequencySelector.innerHTML = '';
+                    }
+
+                    updateSectionVisibility();
                 }
                 
+                const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
+                if (frequencyField) {
+                    frequencyField.value = '';
+                    frequencyField.selectedIndex = 0;
+                }
+                
+                window.spaFormState.frequency = false;
+                
                 loadInfoboxContent(currentState);
+                updatePageBreakVisibility();
             });
         } else {
             console.error('[SPA Infobox] Program field NOT FOUND!');
@@ -1090,74 +1111,6 @@
 
             nextElement.style.display = show ? 'block' : 'none';
             nextElement = nextElement.nextElementSibling;
-        }
-    }
-    /**
-     * Určenie typu účastníka na základe programu a nastavenie hidden field
-     */
-    function setResolvedTypeFromProgram(programOption) {
-        if (!programOption || !programOption.value) {
-            console.log('[SPA Infobox] Program nie je vybraný, resolved type sa nenastavuje.');
-            return;
-        }
-        
-        // Získaj data-target z option elementu
-        const target = programOption.getAttribute('data-target');
-        
-        if (!target) {
-            console.warn('[SPA Infobox] Program nemá data-target atribút.');
-            return;
-        }
-        
-        // Mapovanie sports category → registration type
-        let resolvedType = 'child'; // default
-        
-        if (target === 'adult') {
-            resolvedType = 'adult';
-        } else if (target === 'youth' || target === 'child') {
-            resolvedType = 'child';
-        }
-        
-        // Nastav globálnu premennú
-        window.spaResolvedParticipantType = resolvedType;
-        
-        console.log('[SPA Infobox] Resolved participant type:', resolvedType, '(target:', target + ')');
-        
-        // Zapíš do hidden field
-        setHiddenResolvedType(resolvedType);
-        
-        // Trigger GF refresh
-        triggerGravityFormsRefresh();
-    }
-
-    /**
-     * Nastavenie hidden field spa_resolved_type
-     */
-    function setHiddenResolvedType(type) {
-        if (typeof spaConfig === 'undefined' || !spaConfig.fields || !spaConfig.fields.spa_resolved_type) {
-            console.error('[SPA Infobox] spa_resolved_type nie je definovaný v spaConfig.');
-            return;
-        }
-        
-        const inputName = spaConfig.fields.spa_resolved_type; // napr. "input_27"
-        const hiddenField = document.querySelector(`input[name="${inputName}"]`);
-        
-        if (hiddenField) {
-            hiddenField.value = type;
-            console.log('[SPA Infobox] Hidden field nastavený:', inputName, '=', type);
-        } else {
-            console.error('[SPA Infobox] Hidden field nenájdený:', inputName);
-        }
-    }
-
-    /**
-     * Trigger Gravity Forms refresh
-     */
-    function triggerGravityFormsRefresh() {
-        if (typeof jQuery !== 'undefined') {
-            // Trigger jQuery event pre GF AJAX
-            jQuery(document).trigger('gform_post_render');
-            console.log('[SPA Infobox] GF refresh triggered.');
         }
     }
 })();
