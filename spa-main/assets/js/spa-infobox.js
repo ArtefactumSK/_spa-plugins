@@ -1034,125 +1034,149 @@ function renderInfobox(data, icons, capacityFree, price) {
 
 
     /**
-     * ========================================
-     * RIADENIE VIDITEĽNOSTI SEKCIÍ
-     * ========================================
-     */
-    function updateSectionVisibility() {
-        console.log('[SPA Section Control] ========== UPDATE START ==========');
-        console.log('[SPA Section Control] State:', {
-            city: wizardData.city_name,
-            program: wizardData.program_name,
-            frequency: window.spaFormState.frequency
-        });
+ * RIADENIE VIDITEĽNOSTI SEKCIÍ – OPRAVENÁ VERZIA
+ * Nahraď funkciu updateSectionVisibility() v spa-infobox.js
+ */
+function updateSectionVisibility() {
+    console.log('[SPA Section Control] ========== UPDATE START ==========');
+    console.log('[SPA Section Control] State:', {
+        city: wizardData.city_name,
+        program: wizardData.program_name,
+        frequency: window.spaFormState.frequency
+    });
 
-        // ⭐ KRITICKÁ PODMIENKA: Mesto + Program + Frekvencia MUSIA byť vyplnené
-        const allSelected = !!(
-            wizardData.city_name && 
-            wizardData.program_name && 
-            window.spaFormState.frequency
-        );
+    // KRITICKÁ PODMIENKA: Mesto + Program + Frekvencia MUSIA byť vyplnené
+    const allSelected = !!(
+        wizardData.city_name && 
+        wizardData.program_name && 
+        window.spaFormState.frequency
+    );
 
-        // POLE "Kto bude účastníkom tréningov?" (input_4)
-        const registrationTypeField = document.querySelector('.gfield--input-type-radio');
-        if (registrationTypeField) {
-            if (allSelected) {
-                registrationTypeField.style.display = '';
-                
-                // ⭐ AUTOMATICKY OZNAČ správny radio button na základe age_min
-                const childRadio = document.querySelector('input[name="input_4"][data-default="child"]');
-                const adultRadio = document.querySelector('input[name="input_4"][data-default="adult"]');
-                
-                if (childRadio && !document.querySelector('input[name="input_4"]:checked')) {
-                    childRadio.checked = true;
-                    console.log('[SPA Section Control] Auto-checked CHILD radio');
-                } else if (adultRadio && !document.querySelector('input[name="input_4"]:checked')) {
-                    adultRadio.checked = true;
-                    console.log('[SPA Section Control] Auto-checked ADULT radio');
-                }
-                
-                console.log('[SPA Section Control] Registration type field: VISIBLE');
-            } else {
-                registrationTypeField.style.display = 'none';
-                console.log('[SPA Section Control] Registration type field: HIDDEN');
-            }
-        }
+    console.log('[SPA Section Control] allSelected:', allSelected);
 
-        // ⭐ EMAIL POLIA - kontrola pomocou data-is-child
-        const birthNumberField = document.querySelector('input[name="input_8"]');
-        const isChildProgram = birthNumberField?.getAttribute('data-is-child') === 'true';
-        
-        console.log('[SPA Email Control] isChildProgram:', isChildProgram);
-        console.log('[SPA Email Control] birthNumberField data-is-child:', birthNumberField?.getAttribute('data-is-child'));
-        
-        const childEmailField = document.querySelector('input[name="input_15"]')?.closest('.gfield');
-        const adultEmailField = document.querySelector('input[name="input_16"]')?.closest('.gfield');
-        
-        console.log('[SPA Email Control] childEmailField found:', !!childEmailField);
-        console.log('[SPA Email Control] adultEmailField found:', !!adultEmailField);
-        
+    // POLE "Kto bude účastníkom tréningov?" (input_4)
+    const registrationTypeField = document.querySelector('.gfield--input-type-radio');
+    
+    if (registrationTypeField) {
         if (allSelected) {
-            if (isChildProgram) {
-                // DIEŤA: zobraz IBA input_15
-                if (childEmailField) childEmailField.style.display = '';
-                if (adultEmailField) adultEmailField.style.display = 'none';
-                console.log('[SPA Section Control] Email: CHILD (input_15) visible');
-            } else {
-                // DOSPELÝ: zobraz IBA input_16 (alebo fallback input_15)
-                if (adultEmailField) {
-                    adultEmailField.style.display = '';
-                    if (childEmailField) childEmailField.style.display = 'none';
-                } else {
-                    // Fallback ak neexistuje input_16
-                    if (childEmailField) childEmailField.style.display = '';
-                }
-                console.log('[SPA Section Control] Email: ADULT visible');
+            // 1. NAJPRV ZOBRAZ pole
+            registrationTypeField.style.display = '';
+            console.log('[SPA Section Control] Registration type field: VISIBLE');
+            
+            // 2. POTOM AUTOMATICKY OZNAČ správny radio button
+            const birthNumberField = document.querySelector('input[name="input_8"]');
+            const isChildProgram = birthNumberField?.getAttribute('data-is-child') === 'true';
+            
+            const childRadio = document.querySelector('input[name="input_4"]:first-of-type');
+            const adultRadio = document.querySelector('input[name="input_4"]:last-of-type');
+            
+            console.log('[SPA Section Control] Radio buttons found:', {
+                childRadio: !!childRadio,
+                adultRadio: !!adultRadio,
+                isChildProgram: isChildProgram
+            });
+            
+            if (isChildProgram && childRadio) {
+                childRadio.checked = true;
+                if (adultRadio) adultRadio.checked = false;
+                console.log('[SPA Section Control] ✅ CHILD radio CHECKED');
+            } else if (!isChildProgram && adultRadio) {
+                adultRadio.checked = true;
+                if (childRadio) childRadio.checked = false;
+                console.log('[SPA Section Control] ✅ ADULT radio CHECKED');
             }
+            
         } else {
-            // Skry obidve ak nie je všetko vybrané
-            if (childEmailField) childEmailField.style.display = 'none';
-            if (adultEmailField) adultEmailField.style.display = 'none';
-        }
-
-        // SEKCIA 1: ÚDAJE O ÚČASTNÍKOVI
-        const participantSection = findSectionByHeading('ÚDAJE O ÚČASTNÍKOVI TRÉNINGOV');
-        if (participantSection) {
-            toggleSection(participantSection, allSelected);
-            console.log('[SPA Section Control] Participant section:', allSelected ? 'VISIBLE' : 'HIDDEN');
-        }
-
-        // ⭐ SEKCIA 2: ÚDAJE O RODIČOVI
-        const guardianSection = findSectionByHeading('ÚDAJE O RODIČOVI / ZÁKONNOM ZÁSTUPCOVI');
-        if (guardianSection && allSelected && isChildProgram) {
-            // Zobraz IBA ak je dieťa a všetko vybrané
-            toggleSection(guardianSection, true);
-            console.log('[SPA Section Control] Guardian section: VISIBLE (child program)');
+            // Skry pole a odznač radio buttony
+            registrationTypeField.style.display = 'none';
             
-            // ⭐ RODNÉ ČÍSLO - teraz ZOBRAZ pre dieťa
-            const birthNumberWrapper = birthNumberField?.closest('.gfield');
-            if (birthNumberField && birthNumberWrapper) {
-                birthNumberWrapper.style.display = '';
-                birthNumberWrapper.style.opacity = '1';
-                birthNumberField.disabled = false;
-                birthNumberField.readOnly = false;
-                birthNumberField.style.opacity = '1';
-                birthNumberField.style.pointerEvents = 'auto';
-                birthNumberField.style.backgroundColor = '';
-                console.log('[SPA Section Control] Birth number: VISIBLE (child program)');
-            }
-        } else if (guardianSection) {
-            toggleSection(guardianSection, false);
-            console.log('[SPA Section Control] Guardian section: HIDDEN');
+            const allRadios = document.querySelectorAll('input[name="input_4"]');
+            allRadios.forEach(radio => radio.checked = false);
             
-            // ⭐ RODNÉ ČÍSLO - skry
-            const birthNumberWrapper = birthNumberField?.closest('.gfield');
-            if (birthNumberWrapper) {
-                birthNumberWrapper.style.display = 'none';
-            }
+            console.log('[SPA Section Control] Registration type field: HIDDEN');
         }
-
-        console.log('[SPA Section Control] ========== UPDATE END ==========');
+    } else {
+        console.warn('[SPA Section Control] ⚠️ Registration type field NOT FOUND');
     }
+
+    // EMAIL POLIA - kontrola pomocou data-is-child
+    const birthNumberField = document.querySelector('input[name="input_8"]');
+    const isChildProgram = birthNumberField?.getAttribute('data-is-child') === 'true';
+    
+    const childEmailField = document.querySelector('input[name="input_15"]')?.closest('.gfield');
+    const adultEmailField = document.querySelector('input[name="input_16"]')?.closest('.gfield');
+    
+    console.log('[SPA Email Control]', {
+        isChildProgram,
+        childEmailFound: !!childEmailField,
+        adultEmailFound: !!adultEmailField
+    });
+    
+    if (allSelected) {
+        if (isChildProgram) {
+            // DIEŤA: zobraz IBA input_15
+            if (childEmailField) childEmailField.style.display = '';
+            if (adultEmailField) adultEmailField.style.display = 'none';
+            console.log('[SPA Section Control] Email: CHILD (input_15) visible');
+        } else {
+            // DOSPELÝ: zobraz IBA input_16 (alebo fallback input_15)
+            if (adultEmailField) {
+                adultEmailField.style.display = '';
+                if (childEmailField) childEmailField.style.display = 'none';
+            } else {
+                // Fallback ak neexistuje input_16
+                if (childEmailField) childEmailField.style.display = '';
+            }
+            console.log('[SPA Section Control] Email: ADULT visible');
+        }
+    } else {
+        // Skry obidve ak nie je všetko vybrané
+        if (childEmailField) childEmailField.style.display = 'none';
+        if (adultEmailField) adultEmailField.style.display = 'none';
+        console.log('[SPA Section Control] Emails: HIDDEN (not all selected)');
+    }
+
+    // SEKCIA 1: ÚDAJE O ÚČASTNÍKOVI
+    const participantSection = findSectionByHeading('ÚDAJE O ÚČASTNÍKOVI TRÉNINGOV');
+    if (participantSection) {
+        toggleSection(participantSection, allSelected);
+        console.log('[SPA Section Control] Participant section:', allSelected ? 'VISIBLE' : 'HIDDEN');
+    } else {
+        console.warn('[SPA Section Control] ⚠️ Participant section NOT FOUND');
+    }
+
+    // SEKCIA 2: ÚDAJE O RODIČOVI
+    const guardianSection = findSectionByHeading('ÚDAJE O RODIČOVI / ZÁKONNOM ZÁSTUPCOVI');
+    if (guardianSection && allSelected && isChildProgram) {
+        // Zobraz IBA ak je dieťa a všetko vybrané
+        toggleSection(guardianSection, true);
+        console.log('[SPA Section Control] Guardian section: VISIBLE (child program)');
+        
+        // RODNÉ ČÍSLO - teraz ZOBRAZ pre dieťa
+        const birthNumberWrapper = birthNumberField?.closest('.gfield');
+        if (birthNumberField && birthNumberWrapper) {
+            birthNumberWrapper.style.display = '';
+            birthNumberWrapper.style.opacity = '1';
+            birthNumberField.disabled = false;
+            birthNumberField.readOnly = false;
+            birthNumberField.style.opacity = '1';
+            birthNumberField.style.pointerEvents = 'auto';
+            birthNumberField.style.backgroundColor = '';
+            console.log('[SPA Section Control] Birth number: VISIBLE (child program)');
+        }
+    } else if (guardianSection) {
+        toggleSection(guardianSection, false);
+        console.log('[SPA Section Control] Guardian section: HIDDEN');
+        
+        // RODNÉ ČÍSLO - skry
+        const birthNumberWrapper = birthNumberField?.closest('.gfield');
+        if (birthNumberWrapper) {
+            birthNumberWrapper.style.display = 'none';
+        }
+    }
+
+    console.log('[SPA Section Control] ========== UPDATE END ==========');
+}
 
     /**
      * Nájdi sekciu podľa textu nadpisu
