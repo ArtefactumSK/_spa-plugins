@@ -84,6 +84,9 @@
     /**
      * Inicializácia infoboxu
      */
+    /**
+     * Inicializácia infoboxu
+     */
     function initInfobox() {
         const infoboxContainer = document.getElementById('spa-infobox-container');
         
@@ -107,20 +110,20 @@
             infoboxContainer.appendChild(loaderDiv);
         }
     
-             // Načítaj úvodný stav
-            loadInfoboxContent(0);
+        // Načítaj úvodný stav
+        loadInfoboxContent(0);
 
-            // Oneskorené skrytie sekcií (po GF render) - DLHŠÍ timeout kvôli AJAX
-            setTimeout(function() {
-                updateSectionVisibility();
-            }, 1000);
+        // ⭐ KRITICKÉ: Okamžite skry všetky sekcie pri načítaní
+        setTimeout(function() {
+            hideAllSectionsOnInit();
+        }, 100);
 
         // Observuj DOM a nastav page break keď sa zobrazí
         const observer = new MutationObserver(() => {
             const btn = document.querySelector('.gform_next_button');
             if (btn) {
                 updatePageBreakVisibility();
-                observer.disconnect(); // Prestať observovať po prvom nájdení
+                observer.disconnect();
             }
         });
 
@@ -130,8 +133,9 @@
         });
 
         console.log('[SPA Infobox] Inicializovaný.');
- }
+    }
 
+    
     /**
      * Obnovenie wizardData z hidden backup polí
      */
@@ -400,6 +404,34 @@
     }
 
     /**
+     * Skrytie všetkých sekcií pri inicializácii
+     */
+    function hideAllSectionsOnInit() {
+        console.log('[SPA Init] Hiding all sections on page load');
+        
+        // Skry pole "Kto bude účastníkom tréningov?"
+        const registrationTypeField = document.querySelector('.gfield--input-type-radio');
+        if (registrationTypeField) {
+            registrationTypeField.style.display = 'none';
+            console.log('[SPA Init] Hidden: Registration type field (input_14)');
+        }
+        
+        // Skry sekciu účastníka
+        const participantSection = findSectionByHeading('ÚDAJE O ÚČASTNÍKOVI TRÉNINGOV');
+        if (participantSection) {
+            toggleSection(participantSection, false);
+            console.log('[SPA Init] Hidden: Participant section');
+        }
+        
+        // Skry sekciu rodiča
+        const guardianSection = findSectionByHeading('ÚDAJE O RODIČOVI / ZÁKONNOM ZÁSTUPCOVI');
+        if (guardianSection) {
+            toggleSection(guardianSection, false);
+            console.log('[SPA Init] Hidden: Guardian section');
+        }
+    }
+
+    /**
      * Aktualizácia titulky sekcie podľa typu účastníka
      */
     function updateSectionTitle(participantType) {
@@ -434,12 +466,12 @@
             cityField.addEventListener('change', function() {
                 const selectedOption = this.options[this.selectedIndex];
                 
-                if (this.value && this.value !== '0') {
+                if (this.value && this.value !== '0' && this.value !== '') {
                     wizardData.city_name = selectedOption.text;
                     window.spaFormState.city = true;
                     currentState = 1;
                 } else {
-                    // Reset - vyčisti všetko
+                    // ⭐ KOMPLETNÝ RESET
                     wizardData.city_name = '';
                     wizardData.program_name = '';
                     wizardData.program_id = null;
@@ -447,7 +479,8 @@
                     wizardData.frequency = '';
                     currentState = 0;
                     
-                    // RESET state frekvencie
+                    window.spaFormState.city = false;
+                    window.spaFormState.program = false;
                     window.spaFormState.frequency = false;
 
                     // VYČISTI frekvenčný selector
@@ -455,10 +488,14 @@
                     if (frequencySelector) {
                         frequencySelector.innerHTML = '';
                     }
+                    
+                    // ⭐ VYČISTI VŠETKY POLIA V SEKCIÁCH
+                    clearAllSectionFields();
                 }
                 
                 loadInfoboxContent(currentState);
                 updatePageBreakVisibility();
+                updateSectionVisibility();
             });
         }
         
@@ -471,15 +508,12 @@
                 const selectedOption = this.options[this.selectedIndex];
                 
                 console.log('[SPA Infobox] Program changed - value:', this.value);
-                console.log('[SPA Infobox] Program changed - text:', selectedOption.text);
                 
-                if (this.value) {
+                if (this.value && this.value !== '' && this.value !== '0') {
                     wizardData.program_name = selectedOption.text;
                     wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
                     
-                    console.log('[SPA Infobox] Program ID:', wizardData.program_id);
-                    
-                    // Parsuj vek z názvu programu
+                    // Parsuj vek
                     const ageMatch = selectedOption.text.match(/(\d+)[–-](\d+)/);
                     if (ageMatch) {
                         wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
@@ -492,21 +526,28 @@
                     
                     window.spaFormState.program = true;
                     currentState = 2;
-                    console.log('[SPA Infobox] State changed to 2, wizardData:', wizardData);
                 } else {
-                    // Reset programu - vráť sa do stavu 1 (mesto) alebo 0
+                    // ⭐ RESET PROGRAMU
                     wizardData.program_name = '';
                     wizardData.program_id = null;
                     wizardData.program_age = '';
                     window.spaFormState.program = false;
+                    window.spaFormState.frequency = false;
                     currentState = wizardData.city_name ? 1 : 0;
+                    
+                    // VYČISTI frekvenčný selector
+                    const frequencySelector = document.querySelector('.spa-frequency-selector');
+                    if (frequencySelector) {
+                        frequencySelector.innerHTML = '';
+                    }
+                    
+                    // ⭐ VYČISTI POLIA
+                    clearAllSectionFields();
                 }
                 
                 loadInfoboxContent(currentState);
                 updatePageBreakVisibility();
-                
-                // Aktualizuj viditeľnosť sekcií
-                manageSectionVisibility();
+                updateSectionVisibility();
             });
         } else {
             console.error('[SPA Infobox] Program field NOT FOUND!');
@@ -1101,73 +1142,59 @@ function renderInfobox(data, icons, capacityFree, price) {
      * ========================================
      */
     function updateSectionVisibility() {
-        console.log('[SPA Section Control] Update sections', {
+        console.log('[SPA Section Control] ========== UPDATE START ==========');
+        console.log('[SPA Section Control] State:', {
             city: wizardData.city_name,
             program: wizardData.program_name,
             frequency: window.spaFormState.frequency
         });
 
-        // SEKCIA 1: ÚDAJE O ÚČASTNÍKOVI
-        const participantSection = findSectionByHeading('ÚDAJE O ÚČASTNÍKOVI TRÉNINGOV');
-        
-        if (participantSection) {
-            const showParticipant = !!(
-                wizardData.city_name && 
-                wizardData.program_name
-            );
-            
-            toggleSection(participantSection, showParticipant);
-            console.log('[SPA Section Control] Participant section:', showParticipant ? 'VISIBLE' : 'HIDDEN');
+        // ⭐ KRITICKÁ PODMIENKA: Mesto + Program + Frekvencia MUSIA byť vyplnené
+        const allSelected = !!(
+            wizardData.city_name && 
+            wizardData.program_name && 
+            window.spaFormState.frequency
+        );
+
+        // POLE "Kto bude účastníkom tréningov?" (input_14)
+        const registrationTypeField = document.querySelector('.gfield--input-type-radio');
+        if (registrationTypeField) {
+            if (allSelected) {
+                registrationTypeField.style.display = '';
+                console.log('[SPA Section Control] Registration type field: VISIBLE');
+            } else {
+                registrationTypeField.style.display = 'none';
+                console.log('[SPA Section Control] Registration type field: HIDDEN');
+            }
         }
 
-        // SEKCIA 2: ÚDAJE O RODIČOVI
+        // SEKCIA 1: ÚDAJE O ÚČASTNÍKOVI
+        const participantSection = findSectionByHeading('ÚDAJE O ÚČASTNÍKOVI TRÉNINGOV');
+        if (participantSection) {
+            toggleSection(participantSection, allSelected);
+            console.log('[SPA Section Control] Participant section:', allSelected ? 'VISIBLE' : 'HIDDEN');
+        }
+
+        // SEKCIA 2: ÚDAJE O RODIČOVI (len pre dieťa)
         const guardianSection = findSectionByHeading('ÚDAJE O RODIČOVI / ZÁKONNOM ZÁSTUPCOVI');
-        
-        if (guardianSection) {
-            // GF používa input_X_Y formát pre radio
-            const registrationTypeField = document.querySelector(`input[name="input_14"]:checked`);
+        if (guardianSection && allSelected) {
+            const registrationTypeChecked = document.querySelector('input[name="input_14"]:checked');
             
             let isChild = false;
-            
-            if (registrationTypeField) {
-                const label = registrationTypeField.closest('label') || registrationTypeField.parentElement;
+            if (registrationTypeChecked) {
+                const label = registrationTypeChecked.closest('label') || registrationTypeChecked.parentElement;
                 const labelText = label ? label.textContent.trim().toLowerCase() : '';
-                
-                // "Dieťa (mladší ako 18 rokov)" → zobraz sekciu
                 isChild = labelText.includes('dieťa') || labelText.includes('diet') || labelText.includes('mladš');
             }
             
             toggleSection(guardianSection, isChild);
             console.log('[SPA Section Control] Guardian section:', isChild ? 'VISIBLE (child)' : 'HIDDEN (adult)');
+        } else if (guardianSection) {
+            toggleSection(guardianSection, false);
+            console.log('[SPA Section Control] Guardian section: HIDDEN (not all selected)');
         }
-        // SEKCIA 3: RODNÉ ČÍSLO (enable/disable podľa typu)
-        const birthNumberField = document.querySelector('input[name*="rodne_cislo"], input[name*="birth_number"], input[placeholder*="rodné číslo"]');
 
-        if (birthNumberField) {
-            // Zisti aktuálnu hodnotu spa_registration_type
-            const registrationTypeField = document.querySelector('input[name="input_14"]:checked');
-            
-            let isChild = false;
-            
-            if (registrationTypeField) {
-                const label = registrationTypeField.closest('label') || registrationTypeField.parentElement;
-                const labelText = label ? label.textContent.trim().toLowerCase() : '';
-                isChild = labelText.includes('dieťa') || labelText.includes('diet') || labelText.includes('mladš');
-            }
-            
-            if (isChild) {
-                birthNumberField.disabled = false;
-                birthNumberField.style.opacity = '1';
-                birthNumberField.style.pointerEvents = 'auto';
-                console.log('[SPA Section Control] Birth number field: ENABLED (child)');
-            } else {
-                birthNumberField.disabled = true;
-                birthNumberField.value = '';
-                birthNumberField.style.opacity = '0.5';
-                birthNumberField.style.pointerEvents = 'none';
-                console.log('[SPA Section Control] Birth number field: DISABLED (adult)');
-            }
-        }
+        console.log('[SPA Section Control] ========== UPDATE END ==========');
     }
 
     /**
@@ -1225,4 +1252,27 @@ function renderInfobox(data, icons, capacityFree, price) {
         
         console.log('[SPA toggleSection]', show ? 'ENABLED' : 'DISABLED', 'fields in section');
     }    
+
+    /**
+     * Vyčistenie všetkých polí v sekciách
+     */
+    function clearAllSectionFields() {
+        console.log('[SPA Clear] Clearing all section fields');
+        
+        // Vyčisti účastníka
+        const participantInputs = document.querySelectorAll(
+            '[name^="input_"]:not([name="input_1"]):not([name="input_2"]):not([name="input_14"])'
+        );
+        
+        participantInputs.forEach(input => {
+            if (input.type === 'checkbox' || input.type === 'radio') {
+                input.checked = false;
+            } else {
+                input.value = '';
+            }
+        });
+        
+        console.log('[SPA Clear] Cleared', participantInputs.length, 'fields');
+    }
+    
 })();
