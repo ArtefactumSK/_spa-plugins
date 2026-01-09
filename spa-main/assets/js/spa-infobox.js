@@ -116,20 +116,6 @@
             hideAllSectionsOnInit();
         }, 100);
 
-        // Observuj DOM a nastav page break keď sa zobrazí
-        const observer = new MutationObserver(() => {
-            const btn = document.querySelector('.gform_next_button');
-            if (btn) {
-                updatePageBreakVisibility();
-                observer.disconnect();
-            }
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-
         console.log('[SPA Infobox] Inicializovaný.');
     }
 
@@ -232,7 +218,7 @@
                 if (currentState > 0) {
                     console.log('[SPA Restore] Loading infobox for state:', currentState);
                     loadInfoboxContent(currentState);
-                    updatePageBreakVisibility();
+                    
                 } else {
                     console.warn('[SPA Restore] ⚠️ currentState is 0, NOT loading infobox');
                 }
@@ -245,49 +231,7 @@
             }
         }, 100); // Skúšaj každých 100ms
     }
-    /**
- * Ovládanie viditeľnosti GF page break
- */
-    function updatePageBreakVisibility() {
-        // Počkaj kým sa tlačidlo renderuje
-        setTimeout(() => {
-            const pageBreakButtons = document.querySelectorAll('.gform_page_footer .gform_next_button');
-            
-            if (pageBreakButtons.length === 0) {
-                console.warn('[SPA Page Break] Tlačidlo ešte nie je v DOM');
-                return;
-            }
-            
-            // PODMIENKA: mesto + program + frekvencia
-            const isComplete = window.spaFormState.city && 
-                              window.spaFormState.program && 
-                              window.spaFormState.frequency;
-            
-            pageBreakButtons.forEach(btn => {
-                if (isComplete) {
-                    btn.disabled = false;
-                    btn.style.display = '';
-                    btn.style.opacity = '1';
-                    btn.style.pointerEvents = 'auto';
-                    btn.style.cursor = 'pointer';
-                } else {
-                    btn.disabled = true;
-                    btn.style.display = 'none'; // ← KRITICKÉ: SKRY TLAČIDLO
-                    btn.style.opacity = '0';
-                    btn.style.pointerEvents = 'none';
-                    btn.style.cursor = 'not-allowed';
-                }
-            });
-            
-            console.log('[SPA Page Break]', {
-                city: window.spaFormState.city,
-                program: window.spaFormState.program,
-                frequency: window.spaFormState.frequency,
-                enabled: isComplete,
-                buttonsFound: pageBreakButtons.length
-            });
-        }, 200); // Počkaj 200ms na render
-    }
+   
     /**
      * Správa viditeľnosti sekcií formulára
      * Riadi zobrazovanie na základe stavu výberu a age_min programu
@@ -505,7 +449,7 @@
                 }
                 
                 loadInfoboxContent(currentState);
-                updatePageBreakVisibility();
+                
                 updateSectionVisibility();
             });
         }
@@ -557,7 +501,7 @@
                 }
                 
                 loadInfoboxContent(currentState);
-                updatePageBreakVisibility();
+                
                 updateSectionVisibility();
             });
         } else {
@@ -1022,7 +966,7 @@ function renderInfobox(data, icons, capacityFree, price) {
                 // ⭐ OKAMŽITE AKTUALIZUJ VIDITEĽNOSŤ SEKCIÍ + PAGE BREAK
                 setTimeout(() => {
                     updateSectionVisibility();
-                    updatePageBreakVisibility();
+                    
                 }, 150);
             }
             
@@ -1030,7 +974,7 @@ function renderInfobox(data, icons, capacityFree, price) {
             input.addEventListener('change', function() {
                 if (this.checked) {
                     window.spaFormState.frequency = true;
-                    updatePageBreakVisibility();
+                    
                     updateSectionVisibility(); // ← PRIDAJ TENTO RIADOK
                     console.log('[SPA Frequency] Selected:', this.value);
                 }
@@ -1062,7 +1006,7 @@ function renderInfobox(data, icons, capacityFree, price) {
         // Aktualizuj stav page break po renderi frekvencie
         if (activeFrequencies.length === 1) {
             // Ak je len 1 frekvencia, je automaticky vybraná
-            updatePageBreakVisibility();
+            
         }
     }
 
@@ -1138,8 +1082,14 @@ function renderInfobox(data, icons, capacityFree, price) {
         const birthNumberField = document.querySelector('input[name="input_8"]');
         const isChildProgram = birthNumberField?.getAttribute('data-is-child') === 'true';
         
+        console.log('[SPA Email Control] isChildProgram:', isChildProgram);
+        console.log('[SPA Email Control] birthNumberField data-is-child:', birthNumberField?.getAttribute('data-is-child'));
+        
         const childEmailField = document.querySelector('input[name="input_15"]')?.closest('.gfield');
         const adultEmailField = document.querySelector('input[name="input_16"]')?.closest('.gfield');
+        
+        console.log('[SPA Email Control] childEmailField found:', !!childEmailField);
+        console.log('[SPA Email Control] adultEmailField found:', !!adultEmailField);
         
         if (allSelected) {
             if (isChildProgram) {
