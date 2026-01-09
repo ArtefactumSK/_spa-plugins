@@ -1101,7 +1101,8 @@ function renderInfobox(data, icons, capacityFree, price) {
         if (participantSection) {
             const showParticipant = !!(
                 wizardData.city_name && 
-                wizardData.program_name
+                wizardData.program_name && 
+                window.spaFormState.frequency
             );
             
             toggleSection(participantSection, showParticipant);
