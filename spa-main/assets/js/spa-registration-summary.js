@@ -75,20 +75,16 @@
             const selectedOption = this.options[this.selectedIndex];
             
             if (!selectedOption || !selectedOption.value) {
+                // Reset pri zrušení výberu
+                hideAllEmailFields();
                 return;
             }
             
-            // Získaj age_min
-            const ageMin = parseInt(selectedOption.getAttribute('data-age-min'));
+            // Získaj target (child/youth/adult)
             const target = selectedOption.getAttribute('data-target');
             
-            // Zobraz správne e-mail pole
-            if (ageMin) {
-                handleEmailFieldVisibility(ageMin);
-            }
-            
-            // Automatická voľba typu účastníka
             if (target) {
+                // Označ radio button + zobraz email pole
                 handleParticipantTypeSelection(target);
             }
         });
@@ -227,41 +223,72 @@
     }
 
     /**
- * Automatická voľba typu účastníka + riadenie viditeľnosti emailových polí
- */
-function handleParticipantTypeSelection(target) {
-    console.log('[SPA] handleParticipantTypeSelection called with target:', target);
-    
-    // 1. RADIO BUTTONY pre typ účastníka
-    const radioButtons = document.querySelectorAll('input[type="radio"][name*="input_14"]');
-    
-    radioButtons.forEach(radio => {
-        const label = radio.parentElement.textContent.trim().toLowerCase();
-        const isChildOption = label.includes('dieťa') || label.includes('diet') || label.includes('mladš');
-        const isAdultOption = label.includes('dospel') || label.includes('18+') || label.includes('adult');
+     * Skrytie všetkých emailových polí
+     */
+    function hideAllEmailFields() {
+        const childEmailInput = document.querySelector('input[name="input_15"]');
+        const adultEmailInput = document.querySelector('input[name="input_16"]');
         
-        if (target === 'child' || target === 'youth') {
-            if (isChildOption) {
-                radio.checked = true;
-                radio.disabled = false;
-            } else if (isAdultOption) {
-                radio.checked = false;
-                radio.disabled = true;
-            }
-        } else if (target === 'adult') {
-            if (isAdultOption) {
-                radio.checked = true;
-                radio.disabled = false;
-            } else if (isChildOption) {
-                radio.checked = false;
-                radio.disabled = true;
-            }
+        if (childEmailInput) {
+            const wrapper = childEmailInput.closest('.gfield');
+            if (wrapper) wrapper.style.display = 'none';
         }
-    });
+        if (adultEmailInput) {
+            const wrapper = adultEmailInput.closest('.gfield');
+            if (wrapper) wrapper.style.display = 'none';
+        }
+    }
     
-    // 2. EMAILOVÉ POLIA – priame riadenie viditeľnosti
-    handleEmailFieldVisibility(target);
-}
+    /**
+     * Automatická voľba typu účastníka + riadenie viditeľnosti emailových polí
+     */
+    function handleParticipantTypeSelection(target) {
+        console.log('[SPA] handleParticipantTypeSelection called with target:', target);
+        
+        // 1. RADIO BUTTONY pre typ účastníka
+        const radioButtons = document.querySelectorAll('input[type="radio"]');
+        
+        let selectedRadio = null;
+        
+        radioButtons.forEach(radio => {
+            // Získaj parent label alebo closest label element
+            const labelElement = radio.closest('label') || radio.parentElement;
+            if (!labelElement) return;
+            
+            const label = labelElement.textContent.trim().toLowerCase();
+            const isChildOption = label.includes('dieťa') || label.includes('diet') || label.includes('mladš');
+            const isAdultOption = label.includes('dospel') || label.includes('18+') || label.includes('adult');
+            
+            if (target === 'child' || target === 'youth') {
+                if (isChildOption) {
+                    radio.checked = true;
+                    radio.disabled = false;
+                    selectedRadio = radio;
+                } else if (isAdultOption) {
+                    radio.checked = false;
+                    radio.disabled = true;
+                }
+            } else if (target === 'adult') {
+                if (isAdultOption) {
+                    radio.checked = true;
+                    radio.disabled = false;
+                    selectedRadio = radio;
+                } else if (isChildOption) {
+                    radio.checked = false;
+                    radio.disabled = true;
+                }
+            }
+        });
+        
+        // Trigger change event na označenom radio buttonu
+        if (selectedRadio) {
+            const event = new Event('change', { bubbles: true });
+            selectedRadio.dispatchEvent(event);
+        }
+        
+        // 2. EMAILOVÉ POLIA – priame riadenie viditeľnosti
+        handleEmailFieldVisibility(target);
+    }
 
     /**
      * Riadenie viditeľnosti emailových polí na základe veku programu
