@@ -15,6 +15,8 @@ return [
     'spa_registration_type' => 'input_4',
     'spa_frequency' => 'input_31',
     'spa_resolved_type' => 'input_34',
+    'spa_participant_first_name' => 'input_6', // Meno dieťaťa
+    'spa_participant_last_name'  => 'input_7', // Priezvisko dieťaťa
 
     /* ==========================
        ÚČASTNÍK – KONTAKT

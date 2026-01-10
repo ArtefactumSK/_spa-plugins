@@ -103,112 +103,152 @@ function spa_get_error_field_mapping() {
     return $mapping;
 }
 
-/**
- * Auto-generovanie emailu pre dieťa pred validáciou
- * Hook: gform_pre_validation (priorita 10, pred validáciou GF)
- */
-add_filter('gform_pre_validation', 'spa_autofill_child_email_before_validation');
 
-function spa_autofill_child_email_before_validation($form) {
-    error_log('[SPA REG] gform_pre_validation triggered');
-    error_log('[SPA REG] POST KEYS: ' . implode(', ', array_keys($_POST)));
-    
-    // Načítaj field config
-    $field_config = spa_load_field_config();
-    
-    if (empty($field_config)) {
-        return $form;
-    }
-    
-    // Získaj child email field ID
-    $child_email_id = str_replace('input_', '', isset($field_config['spa_client_email']) ? $field_config['spa_client_email'] : '');
-    
-    if (!$child_email_id) {
-        return $form;
-    }
-    
-    // ČÍTAJ PARTICIPANT TYPE Z input_34 (spa_resolved_type hidden field)
-    $resolved_type = isset($_POST['input_34']) ? $_POST['input_34'] : '';
 
-    error_log('[SPA REG] resolved_type (input_34): ' . $resolved_type);
-    
-    // Ak nie je child, nerob nič
-    if ($resolved_type !== 'child') {
-        return $form;
-    }
-    
-    error_log('[SPA REG] Participant type: CHILD');
-    
-    // Zisti, či je email dieťaťa prázdny
-    $child_email = rgpost("input_{$child_email_id}");
-    
-    if (!empty(trim($child_email))) {
-        // Email už je vyplnený, nerob nič
-        error_log('[SPA REG] Child email already filled: ' . $child_email);
-        return $form;
-    }
-    
-    // Získaj meno a priezvisko
-    $first_name = '';
-    $last_name = '';
-    
-    // Hľadaj Name field (zvyčajne má subfields .3 a .6)
-    foreach ($form['fields'] as $field) {
-        if ($field->type === 'name') {
-            $first_name = rgpost("input_{$field->id}_3"); // First Name
-            $last_name = rgpost("input_{$field->id}_6");  // Last Name
-            break;
+    /**
+     * Auto-generovanie emailu pre dieťa pred validáciou
+     * Hook: gform_pre_validation (priorita 10, pred validáciou GF)
+     */
+    add_filter('gform_pre_validation', 'spa_autofill_child_email_before_validation');
+
+    function spa_autofill_child_email_before_validation($form) {
+        error_log('[SPA REG] gform_pre_validation triggered');
+        
+        // Načítaj field config
+        $field_config = spa_load_field_config();
+        
+        if (empty($field_config)) {
+            return $form;
         }
-    }
-    
-    // Ak nie sú meno/priezvisko, skús text fields
-    if (empty($first_name) || empty($last_name)) {
-        foreach ($_POST as $key => $value) {
-            if (stripos($key, 'meno') !== false && empty($first_name)) {
-                $first_name = $value;
-            }
-            if (stripos($key, 'priezvisko') !== false && empty($last_name)) {
-                $last_name = $value;
+        
+        // Získaj child email field ID
+        $child_email_id = str_replace('input_', '', isset($field_config['spa_client_email']) ? $field_config['spa_client_email'] : '');
+        
+        if (!$child_email_id) {
+            return $form;
+        }
+        
+        // ČÍTAJ PARTICIPANT TYPE Z input_34 (spa_resolved_type hidden field)
+        $resolved_type = isset($_POST['input_34']) ? $_POST['input_34'] : '';
+
+        error_log('[SPA REG] resolved_type (input_34): ' . $resolved_type);
+        
+        // Ak nie je child, nerob nič
+        if ($resolved_type !== 'child') {
+            return $form;
+        }
+        
+        error_log('[SPA REG] Participant type: CHILD');
+        
+        // Zisti, či je email dieťaťa prázdny
+        $child_email = rgpost("input_{$child_email_id}");
+        
+        if (!empty(trim($child_email))) {
+            // Email už je vyplnený, nerob nič
+            error_log('[SPA REG] Child email already filled: ' . $child_email);
+            return $form;
+        }
+        
+        // Získaj meno a priezvisko
+        $first_name = '';
+        $last_name = '';
+        
+        // Hľadaj Name field (zvyčajne má subfields .3 a .6)
+        foreach ($form['fields'] as $field) {
+            if ($field->type === 'name') {
+                $first_name = rgpost("input_{$field->id}_3"); // First Name
+                $last_name = rgpost("input_{$field->id}_6");  // Last Name
+                break;
             }
         }
+        
+        error_log('[SPA REG] First name: ' . $first_name . ', Last name: ' . $last_name);
+        
+        if (empty($first_name) || empty($last_name)) {
+            error_log('[SPA REG] Missing name data, cannot generate email');
+            return $form;
+        }
+        
+        // Odstráň diakritiku
+        $first_name_clean = spa_remove_diacritics_for_email($first_name);
+        $last_name_clean = spa_remove_diacritics_for_email($last_name);
+        
+        // Vygeneruj email
+        $generated_email = strtolower($first_name_clean . '.' . $last_name_clean . '@piaseckyacademy.sk');
+        
+        error_log('[SPA REG] Generated child email: ' . $generated_email);
+        
+        // Zapíš do $_POST (GF číta odtiaľ pri validácii)
+        $_POST["input_{$child_email_id}"] = $generated_email;
+        
+        // ULOŽIŤ DO TRANSIENT pre field validation hook
+        set_transient('spa_generated_child_email_' . $form['id'], $generated_email, 300); // 5 minút
+        
+        error_log('[SPA REG] Written to POST input_' . $child_email_id);
+        
+        return $form;
     }
-    
-    error_log('[SPA REG] First name: ' . $first_name . ', Last name: ' . $last_name);
-    
-    // Odstráň diakritiku
-    $first_name_clean = spa_remove_diacritics_for_email($first_name);
-    $last_name_clean = spa_remove_diacritics_for_email($last_name);
-    
-    // Vygeneruj email
-    $generated_email = strtolower($first_name_clean . '.' . $last_name_clean . '@piaseckyacademy.sk');
-    
-    error_log('[SPA REG] Generated child email: ' . $generated_email);
-    
-    // Zapíš do $_POST (GF číta odtiaľ pri validácii)
-    $_POST["input_{$child_email_id}"] = $generated_email;
-    
-    error_log('[SPA REG] Written to POST input_' . $child_email_id);
-    
-    return $form;
-}
 
-/**
- * Helper: Odstránenie diakritiky pre email
- */
-function spa_remove_diacritics_for_email($string) {
-    $diacritics = array(
-        'á' => 'a', 'ä' => 'a', 'č' => 'c', 'ď' => 'd', 'é' => 'e',
-        'í' => 'i', 'ľ' => 'l', 'ĺ' => 'l', 'ň' => 'n', 'ó' => 'o',
-        'ô' => 'o', 'ŕ' => 'r', 'š' => 's', 'ť' => 't', 'ú' => 'u',
-        'ý' => 'y', 'ž' => 'z',
-        'Á' => 'A', 'Ä' => 'A', 'Č' => 'C', 'Ď' => 'D', 'É' => 'E',
-        'Í' => 'I', 'Ľ' => 'L', 'Ĺ' => 'L', 'Ň' => 'N', 'Ó' => 'O',
-        'Ô' => 'O', 'Ŕ' => 'R', 'Š' => 'S', 'Ť' => 'T', 'Ú' => 'U',
-        'Ý' => 'Y', 'Ž' => 'Z'
-    );
-    
-    $string = strtr($string, $diacritics);
-    $string = preg_replace('/[^a-zA-Z0-9]/', '', $string);
-    
-    return $string;
-}
+    /**
+     * Bypass validácie pre auto-generovaný child email
+     * Hook: gform_field_validation
+     */
+    add_filter('gform_field_validation', 'spa_bypass_child_email_validation', 10, 4);
+
+    function spa_bypass_child_email_validation($result, $value, $form, $field) {
+        // Načítaj field config
+        $field_config = spa_load_field_config();
+        $child_email_id = str_replace('input_', '', isset($field_config['spa_client_email']) ? $field_config['spa_client_email'] : '');
+        
+        // Ak toto nie je child email field, nerob nič
+        if ($field->id != $child_email_id) {
+            return $result;
+        }
+        
+        // Zisti typ účastníka
+        $resolved_type = isset($_POST['input_34']) ? $_POST['input_34'] : '';
+        
+        if ($resolved_type !== 'child') {
+            return $result; // Adult - nechaj normálnu validáciu
+        }
+        
+        // Pre child - over či máme vygenerovaný email
+        $generated_email = get_transient('spa_generated_child_email_' . $form['id']);
+        
+        if ($generated_email) {
+            // Nastav field value na vygenerovaný email
+            $result['is_valid'] = true;
+            $result['message'] = '';
+            
+            // Zaregistruj hodnotu do entry
+            $_POST["input_{$child_email_id}"] = $generated_email;
+            
+            error_log('[SPA REG VALIDATION] Bypassed validation for child email: ' . $generated_email);
+            
+            // Vyčisti transient
+            delete_transient('spa_generated_child_email_' . $form['id']);
+        }
+        
+        return $result;
+    }
+
+    /**
+     * Helper: Odstránenie diakritiky pre email
+     */
+    function spa_remove_diacritics_for_email($string) {
+        $diacritics = array(
+            'á' => 'a', 'ä' => 'a', 'č' => 'c', 'ď' => 'd', 'é' => 'e',
+            'í' => 'i', 'ľ' => 'l', 'ĺ' => 'l', 'ň' => 'n', 'ó' => 'o',
+            'ô' => 'o', 'ŕ' => 'r', 'š' => 's', 'ť' => 't', 'ú' => 'u',
+            'ý' => 'y', 'ž' => 'z',
+            'Á' => 'A', 'Ä' => 'A', 'Č' => 'C', 'Ď' => 'D', 'É' => 'E',
+            'Í' => 'I', 'Ľ' => 'L', 'Ĺ' => 'L', 'Ň' => 'N', 'Ó' => 'O',
+            'Ô' => 'O', 'Ŕ' => 'R', 'Š' => 'S', 'Ť' => 'T', 'Ú' => 'U',
+            'Ý' => 'Y', 'Ž' => 'Z'
+        );
+        
+        $string = strtr($string, $diacritics);
+        $string = preg_replace('/[^a-zA-Z0-9]/', '', $string);
+        
+        return $string;
+    }
