@@ -507,15 +507,7 @@
         } else {
             console.error('[SPA Infobox] Program field NOT FOUND!');
         }
-
-        // ⭐ Sleduj zmenu typu účastníka (input_4)
-        const registrationTypeRadios = document.querySelectorAll('input[name="input_4"]');
-        registrationTypeRadios.forEach(radio => {
-            radio.addEventListener('change', function() {
-                console.log('[SPA] Registration type changed');
-                updateSectionVisibility();
-            });
-        });
+        
         
         // ⭐ OZNAČ, že listenery sú pripojené
         listenersAttached = true;
@@ -669,28 +661,18 @@ function renderInfobox(data, icons, capacityFree, price) {
                 isChild: isChild
             });
             
-            // Pre-označ správny radio button (BEZ checked = bez trigger eventu)
-            const childRadio = document.querySelector('input[name="input_4"][value*="Dieťa"], input[name="input_4"]:first-of-type');
-            const adultRadio = document.querySelector('input[name="input_4"][value*="Dospelá"], input[name="input_4"]:last-of-type');
-            
-            if (isChild && childRadio) {
-                // Nastav hodnotu, ale NETRIGGERUJ change event
-                childRadio.setAttribute('data-default', 'child');
-                if (adultRadio) adultRadio.removeAttribute('data-default');
-            } else if (!isChild && adultRadio) {
-                adultRadio.setAttribute('data-default', 'adult');
-                if (childRadio) childRadio.removeAttribute('data-default');
-            }
-            
-            // ⭐ RODNÉ ČÍSLO - SKRY až do výberu frekvencie
+            // ⭐ RODNÉ ČÍSLO - ulož info o type programu
             const birthNumberField = document.querySelector('input[name="input_8"]');
             const birthNumberWrapper = birthNumberField ? birthNumberField.closest('.gfield') : null;
-
+        
             if (birthNumberField && birthNumberWrapper) {
                 // Vždy SKRY pri prvotnom výbere programu
                 birthNumberWrapper.style.display = 'none';
                 birthNumberField.setAttribute('data-is-child', isChild ? 'true' : 'false');
+                console.log('[SPA] Saved program type:', isChild ? 'CHILD' : 'ADULT');
             }
+            
+            // ⭐ NEOZNAČUJ RADIO BUTTONY – to sa spraví až v updateSectionVisibility()
         }, 100);
         
         programDiv.innerHTML = programHtml;
