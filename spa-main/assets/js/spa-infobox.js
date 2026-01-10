@@ -1057,6 +1057,16 @@ function renderInfobox(data, icons, capacityFree, price) {
             isChildProgram,
             source: programField?.value ? 'age_min' : 'data-is-child'
         });
+
+        // ⭐ ZAPÍŠ RESOLVED TYPE DO HIDDEN FIELD (input_34)
+        const resolvedTypeField = document.querySelector('input[name="input_34"]');
+        if (resolvedTypeField) {
+            const resolvedValue = isChildProgram ? 'child' : 'adult';
+            resolvedTypeField.value = resolvedValue;
+            console.log('[SPA Section Control] Resolved type written to input_34:', resolvedValue);
+        } else {
+            console.warn('[SPA Section Control] ⚠️ Hidden field input_34 NOT FOUND');
+        }
     
         // ⭐ POLE "Kto bude účastníkom tréningov?" (input_4)
         // Zobrazuje sa hneď po výbere PROGRAMU (nie až po frekvencii)
