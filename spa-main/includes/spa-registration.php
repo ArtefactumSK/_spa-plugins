@@ -109,6 +109,10 @@ function spa_get_error_field_mapping() {
 add_filter('gform_pre_validation', 'spa_autofill_child_email_before_validation');
 
 function spa_autofill_child_email_before_validation($form) {
+    error_log('[SPA REG] gform_pre_validation triggered');
+    error_log('[SPA REG] POST KEYS: ' . implode(', ', array_keys($_POST)));
+
+    
     // Načítaj field config
     $field_config = spa_load_field_config();
     
@@ -131,6 +135,8 @@ function spa_autofill_child_email_before_validation($form) {
     if (!$registration_type || !str_contains(strtolower($registration_type), 'dieťa')) {
         return $form;
     }
+    
+    error_log('[SPA REG] Participant type: CHILD');
     
     // Zisti, či je email dieťaťa prázdny
     $child_email = rgpost("input_{$child_email_id}");
@@ -165,13 +171,6 @@ function spa_autofill_child_email_before_validation($form) {
         }
     }
     
-    // Ak stále nie sú dáta, použiť fallback
-    if (empty($first_name) || empty($last_name)) {
-        // Nastaví technický fallback email
-        $_POST["input_{$child_email_id}"] = 'child.' . time() . '@piaseckyacademy.sk';
-        return $form;
-    }
-    
     // Odstráň diakritiku
     $first_name_clean = spa_remove_diacritics_for_email($first_name);
     $last_name_clean = spa_remove_diacritics_for_email($last_name);
@@ -179,8 +178,12 @@ function spa_autofill_child_email_before_validation($form) {
     // Vygeneruj email
     $generated_email = strtolower($first_name_clean . '.' . $last_name_clean . '@piaseckyacademy.sk');
     
+    error_log('[SPA REG] Generated child email: ' . $generated_email);
+    
     // Zapíš do $_POST (GF číta odtiaľ pri validácii)
     $_POST["input_{$child_email_id}"] = $generated_email;
+    
+    error_log('[SPA REG] Child email written to POST input_' . $child_email_id);
     
     return $form;
 }
