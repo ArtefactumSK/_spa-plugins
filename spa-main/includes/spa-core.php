@@ -26,10 +26,10 @@ function spa_create_registration_object($entry) {
         'created_at' => current_time('mysql'),
     ];
     
-    // Program a variant
+    // Program a frekvencia (nie variant!)
     $registration['program'] = spa_get_field_value($entry, 'spa_program');
-    $registration['variant'] = spa_get_field_value($entry, 'spa_variant');
-    
+    $registration['frequency'] = spa_get_field_value($entry, 'spa_frequency');
+
     // Kontaktné údaje
     $registration['client_email'] = spa_get_field_value($entry, 'spa_client_email');
     $registration['client_phone'] = spa_get_field_value($entry, 'spa_client_phone');
@@ -72,9 +72,9 @@ function spa_validate_registration($registration) {
         $errors['program'] = 'Program je povinný.';
     }
     
-    // Kontrola variant
-    if (empty($registration['variant'])) {
-        $errors['variant'] = 'Variant je povinný.';
+    // Kontrola frekvencie
+    if (empty($registration['frequency'])) {
+        $errors['frequency'] = 'Frekvencia je povinná.';
     }
     
     // Kontrola email

@@ -5,10 +5,11 @@
   "spa_frequency": "input_31",
   "spa_resolved_type": "input_34",
 
-  "spa_participant_first_name": "input_6",
-  "spa_participant_last_name": "input_7",
+  "spa_participant_first_name": "input_6_3",
+  "spa_participant_last_name": "input_6_6",
+
   
-  "spa_client_email": "input_15",
+  "spa_client_email": "input_16",
   "spa_client_phone": "input_19",
   "spa_client_address": "input_17",
 

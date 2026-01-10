@@ -19,16 +19,17 @@ return [
     'spa_participant_last_name'  => 'input_7', // Priezvisko dieťaťa
 
     /* ==========================
-       ÚČASTNÍK – KONTAKT
+       ÚČASTNÍK – MENO
        ========================== */
-    'spa_client_email' => 'input_15',
-    'spa_client_phone' => 'input_19',
-
-    /* ==========================
-       ÚČASTNÍK – ADRESA
-       (GF Address – array)
-       ========================== */
-    'spa_client_address' => 'input_17',
+       'spa_participant_first_name' => 'input_6_3',  // ✅ PRIDAJ (Name field - First)
+       'spa_participant_last_name'  => 'input_6_6',  // ✅ PRIDAJ (Name field - Last)
+   
+       /* ==========================
+          ÚČASTNÍK – KONTAKT
+          ========================== */
+       'spa_client_email' => 'input_16',   // ✅ Už opravené
+       'spa_client_phone' => 'input_19',
+       'spa_client_address' => 'input_17',
 
     /* ==========================
        SÚHLASY

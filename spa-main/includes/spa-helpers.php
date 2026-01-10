@@ -51,20 +51,31 @@ function spa_validate_address($address) {
     return true;
 }
 
-/**
- * Získanie hodnoty z GF entry pomocou spa-config mapingu
- */
-function spa_get_field_value($entry, $logical_name) {
-    $config = spa_load_field_config();
-    
-    if (!isset($config[$logical_name])) {
-        return null;
+    /**
+     * Získanie hodnoty z GF entry pomocou spa-config mapingu
+     */
+    function spa_get_field_value($entry, $logical_name) {
+        $config = spa_load_field_config();
+        
+        if (!isset($config[$logical_name])) {
+            error_log('[SPA HELPER] Logical name not found in config: ' . $logical_name);
+            return null;
+        }
+        
+        $field_id_with_input = $config[$logical_name]; // napr. "input_2"
+        
+        // Extrahuj číselné ID (input_2 → 2, input_6_3 → 6.3)
+        $field_id = str_replace('input_', '', $field_id_with_input);
+        
+        // Pre subfields (napr. 6_3) zmeň _ na . (GF používa bodku)
+        $field_id = str_replace('_', '.', $field_id);
+        
+        $value = rgar($entry, $field_id);
+        
+        error_log('[SPA HELPER] Getting field: ' . $logical_name . ' (ID: ' . $field_id . ') = ' . print_r($value, true));
+        
+        return $value;
     }
-    
-    $field_id = $config[$logical_name];
-    
-    return rgar($entry, $field_id);
-}
 
 /**
  * Kontrola, či je checkbox/consent zaškrtnutý
