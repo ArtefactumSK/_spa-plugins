@@ -102,3 +102,106 @@ function spa_get_error_field_mapping() {
     
     return $mapping;
 }
+/**
+ * Auto-generovanie emailu pre dieťa pred validáciou
+ * Hook: gform_pre_validation (priorita 10, pred validáciou GF)
+ */
+add_filter('gform_pre_validation', 'spa_autofill_child_email_before_validation');
+
+function spa_autofill_child_email_before_validation($form) {
+    // Načítaj field config
+    $field_config = spa_load_field_config();
+    
+    if (empty($field_config)) {
+        return $form;
+    }
+    
+    // Získaj field IDs
+    $registration_type_id = str_replace('input_', '', $field_config['spa_registration_type'] ?? '');
+    $child_email_id = str_replace('input_', '', $field_config['spa_client_email'] ?? '');
+    
+    if (!$registration_type_id || !$child_email_id) {
+        return $form;
+    }
+    
+    // Zisti typ účastníka
+    $registration_type = rgpost("input_{$registration_type_id}");
+    
+    // Ak nie je dieťa, nerob nič
+    if (!$registration_type || !str_contains(strtolower($registration_type), 'dieťa')) {
+        return $form;
+    }
+    
+    // Zisti, či je email dieťaťa prázdny
+    $child_email = rgpost("input_{$child_email_id}");
+    
+    if (!empty(trim($child_email))) {
+        // Email už je vyplnený, nerob nič
+        return $form;
+    }
+    
+    // Získaj meno a priezvisko
+    $first_name = '';
+    $last_name = '';
+    
+    // Hľadaj Name field (zvyčajne má subfields .3 a .6)
+    foreach ($form['fields'] as $field) {
+        if ($field->type === 'name') {
+            $first_name = rgpost("input_{$field->id}_3"); // First Name
+            $last_name = rgpost("input_{$field->id}_6");  // Last Name
+            break;
+        }
+    }
+    
+    // Ak nie sú meno/priezvisko, skús text fields
+    if (empty($first_name) || empty($last_name)) {
+        foreach ($_POST as $key => $value) {
+            if (stripos($key, 'meno') !== false && empty($first_name)) {
+                $first_name = $value;
+            }
+            if (stripos($key, 'priezvisko') !== false && empty($last_name)) {
+                $last_name = $value;
+            }
+        }
+    }
+    
+    // Ak stále nie sú dáta, použiť fallback
+    if (empty($first_name) || empty($last_name)) {
+        // Nastaví technický fallback email
+        $_POST["input_{$child_email_id}"] = 'child.' . time() . '@piaseckyacademy.sk';
+        return $form;
+    }
+    
+    // Odstráň diakritiku
+    $first_name_clean = spa_remove_diacritics_for_email($first_name);
+    $last_name_clean = spa_remove_diacritics_for_email($last_name);
+    
+    // Vygeneruj email
+    $generated_email = strtolower($first_name_clean . '.' . $last_name_clean . '@piaseckyacademy.sk');
+    
+    // Zapíš do $_POST (GF číta odtiaľ pri validácii)
+    $_POST["input_{$child_email_id}"] = $generated_email;
+    
+    return $form;
+}
+
+/**
+ * Helper: Odstránenie diakritiky pre email
+ */
+function spa_remove_diacritics_for_email($string) {
+    $diacritics = [
+        'á' => 'a', 'ä' => 'a', 'č' => 'c', 'ď' => 'd', 'é' => 'e',
+        'í' => 'i', 'ľ' => 'l', 'ĺ' => 'l', 'ň' => 'n', 'ó' => 'o',
+        'ô' => 'o', 'ŕ' => 'r', 'š' => 's', 'ť' => 't', 'ú' => 'u',
+        'ý' => 'y', 'ž' => 'z',
+        'Á' => 'A', 'Ä' => 'A', 'Č' => 'C', 'Ď' => 'D', 'É' => 'E',
+        'Í' => 'I', 'Ľ' => 'L', 'Ĺ' => 'L', 'Ň' => 'N', 'Ó' => 'O',
+        'Ô' => 'O', 'Ŕ' => 'R', 'Š' => 'S', 'Ť' => 'T', 'Ú' => 'U',
+        'Ý' => 'Y', 'Ž' => 'Z'
+    ];
+    
+    $string = strtr($string, $diacritics);
+    $string = preg_replace('/[^a-zA-Z0-9]/', '', $string);
+    
+    return $string;
+}
