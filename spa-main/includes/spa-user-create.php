@@ -80,7 +80,8 @@ function spa_get_or_create_child_user($data, $parent_user_id, $meta_data = []) {
     
     error_log('[SPA USER] CHILD created user_id=' . $user_id);
     
-    update_user_meta($user_id, 'parent_user_id', $parent_user_id);
+    update_user_meta($user_id, 'parent_id', $parent_user_id);
+    error_log('[SPA META] parent_id saved child=' . $user_id . ' parent=' . $parent_user_id);
     
     spa_update_child_meta($user_id, $meta_data);
     
@@ -106,8 +107,23 @@ function spa_get_or_create_adult_user($data, $meta_data = []) {
     $existing_user = get_user_by('email', $data['user_email']);
     
     if ($existing_user) {
-        error_log('[SPA USER] ADULT existing user_id=' . $existing_user->ID);
-        spa_update_adult_meta($existing_user->ID, $meta_data);
+        error_log('[SPA USER] CHILD existing user_id=' . $existing_user->ID);
+        
+        if (!get_user_meta($existing_user->ID, 'parent_id', true)) {
+            update_user_meta($existing_user->ID, 'parent_id', $parent_user_id);
+            error_log('[SPA META] parent_id saved child=' . $existing_user->ID . ' parent=' . $parent_user_id);
+        }
+        
+        spa_update_child_meta($existing_user->ID, $meta_data);
+        
+        if (!get_user_meta($existing_user->ID, 'spa_pin', true)) {
+            spa_generate_and_store_pin($existing_user->ID);
+        }
+        
+        if (!get_user_meta($existing_user->ID, 'variabilny_symbol', true)) {
+            spa_generate_and_store_vs($existing_user->ID);
+        }
+        
         return $existing_user->ID;
     }
     
@@ -152,10 +168,13 @@ function spa_update_parent_meta($user_id, $meta_data) {
 function spa_update_child_meta($user_id, $meta_data) {
     if (!empty($meta_data['birthdate'])) {
         update_user_meta($user_id, 'birthdate', sanitize_text_field($meta_data['birthdate']));
+        error_log('[SPA META] birthdate saved for user_id=' . $user_id);
     }
     
     if (!empty($meta_data['birth_number'])) {
-        update_user_meta($user_id, 'birth_number', sanitize_text_field($meta_data['birth_number']));
+        $birth_number_clean = preg_replace('/[^0-9]/', '', $meta_data['birth_number']);
+        update_user_meta($user_id, 'rodne_cislo', $birth_number_clean);
+        error_log('[SPA META] rodne_cislo saved for user_id=' . $user_id);
     }
 }
 
@@ -184,18 +203,31 @@ function spa_update_adult_meta($user_id, $meta_data) {
  * Generovanie a uloženie PIN pre child
  */
 function spa_generate_and_store_pin($user_id) {
-    $existing_pin = get_user_meta($user_id, 'pin', true);
+    $existing_pin_hash = get_user_meta($user_id, 'spa_pin', true);
     
-    if (!empty($existing_pin)) {
-        error_log('[SPA PIN] existing pin=' . $existing_pin . ' for user_id=' . $user_id);
-        return $existing_pin;
+    if (!empty($existing_pin_hash)) {
+        $existing_pin_plain = get_user_meta($user_id, 'spa_pin_plain', true);
+        error_log('[SPA PIN] existing for user_id=' . $user_id);
+        return $existing_pin_plain;
     }
     
-    $pin = sprintf('%03d', wp_rand(100, 999));
+    if (function_exists('spa_generate_pin')) {
+        $pin = spa_generate_pin();
+    } else {
+        $pin = str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
+    }
     
-    update_user_meta($user_id, 'pin', $pin);
+    if (function_exists('spa_hash_pin')) {
+        $pin_hash = spa_hash_pin($pin);
+    } else {
+        $pin_hash = wp_hash_password($pin);
+    }
     
-    error_log('[SPA PIN] generated pin=' . $pin . ' for user_id=' . $user_id);
+    update_user_meta($user_id, 'spa_pin', $pin_hash);
+    update_user_meta($user_id, 'spa_pin_plain', $pin);
+    
+    error_log('[SPA META] spa_pin saved for child_id=' . $user_id);
+    error_log('[SPA META] spa_pin_plain saved for child_id=' . $user_id);
     
     return $pin;
 }
@@ -204,44 +236,37 @@ function spa_generate_and_store_pin($user_id) {
  * Generovanie a uloženie variabilného symbolu (VS)
  */
 function spa_generate_and_store_vs($user_id) {
-    $existing_vs = get_user_meta($user_id, 'variable_symbol', true);
+    $existing_vs = get_user_meta($user_id, 'variabilny_symbol', true);
     
     if (!empty($existing_vs)) {
-        if (strlen($existing_vs) === 3) {
-            $new_vs = '1' . $existing_vs;
-            update_user_meta($user_id, 'variable_symbol', $new_vs);
-            error_log('[SPA VS] upgraded 3-digit vs=' . $new_vs . ' for user_id=' . $user_id);
-            return $new_vs;
-        }
-        
-        error_log('[SPA VS] existing vs=' . $existing_vs . ' for user_id=' . $user_id);
+        error_log('[SPA META] variabilny_symbol existing value=' . $existing_vs . ' for user_id=' . $user_id);
         return $existing_vs;
     }
     
-    global $wpdb;
-    
-    $max_attempts = 100;
-    $attempt = 0;
-    
-    while ($attempt < $max_attempts) {
-        $vs = wp_rand(1000, 9999);
+    if (function_exists('spa_generate_variabilny_symbol')) {
+        $vs = spa_generate_variabilny_symbol();
+    } else {
+        global $wpdb;
         
-        $exists = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$wpdb->usermeta} 
-             WHERE meta_key = 'variable_symbol' 
-             AND meta_value = %s",
-            $vs
-        ));
+        $max_vs = $wpdb->get_var("
+            SELECT MAX(CAST(meta_value AS UNSIGNED)) 
+            FROM {$wpdb->usermeta} 
+            WHERE meta_key = 'variabilny_symbol'
+            AND meta_value REGEXP '^[0-9]+$'
+        ");
         
-        if (!$exists) {
-            update_user_meta($user_id, 'variable_symbol', $vs);
-            error_log('[SPA VS] generated vs=' . $vs . ' for user_id=' . $user_id);
-            return $vs;
+        $vs = $max_vs ? intval($max_vs) + 1 : 100;
+        
+        if ($vs < 100) {
+            $vs = 100;
         }
         
-        $attempt++;
+        $vs = str_pad($vs, 3, '0', STR_PAD_LEFT);
     }
     
-    error_log('[SPA ERROR] VS generation failed after ' . $max_attempts . ' attempts for user_id=' . $user_id);
-    return false;
+    update_user_meta($user_id, 'variabilny_symbol', $vs);
+    
+    error_log('[SPA META] variabilny_symbol saved value=' . $vs . ' for user_id=' . $user_id);
+    
+    return $vs;
 }
