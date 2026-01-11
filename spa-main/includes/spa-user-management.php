@@ -34,29 +34,41 @@ function spa_handle_registration_submission($entry, $form) {
     error_log('[SPA User Management] Registration type: ' . $registration_type);
     
     // Základné dáta z entry
-    // E-maily podľa field ID
-    $parent_email = rgar($entry, '12'); // input_12
-    $child_email_input = rgar($entry, '15'); // input_15
-    $adult_email = rgar($entry, '16'); // input_16
+    // E-maily podľa field ID a typu registrácie
+    $parent_email = '';
+    $child_email_final = '';
+    $adult_email = '';
     
-    // Generovanie child emailu ak nie je vyplnený
-    $child_email_final = $child_email_input;
-    $child_email_source = 'input_15';
-    
-    if (empty($child_email_input) && $registration_type === 'child') {
-        $first = rgar($entry, '6.3');
-        $last = rgar($entry, '6.6');
+    if ($registration_type === 'child') {
+        // CHILD MODE
+        $parent_email = rgar($entry, '12'); // input_12 (spa_parent_email)
+        $child_email_input = rgar($entry, '15'); // input_15 (spa_client_email)
         
-        if (!empty($first) && !empty($last)) {
-            $child_email_final = spa_generate_child_email($first, $last);
-            $child_email_source = 'generated';
+        // Child email: input_15 ALEBO vygenerovať
+        if (!empty($child_email_input)) {
+            $child_email_final = $child_email_input;
+            $child_email_source = 'input_15';
+        } else {
+            $first = rgar($entry, '6.3');
+            $last = rgar($entry, '6.6');
+            
+            if (!empty($first) && !empty($last)) {
+                $child_email_final = spa_generate_child_email($first, $last);
+                $child_email_source = 'generated';
+            }
         }
+        
+        // LOG pre CHILD
+        error_log('[SPA MAP] parent_email=' . ($parent_email ?: 'EMPTY'));
+        error_log('[SPA MAP] child_email=' . ($child_email_final ?: 'EMPTY') . ' (source: ' . $child_email_source . ')');
+        
+    } elseif ($registration_type === 'adult') {
+        // ADULT MODE
+        $adult_email = rgar($entry, '16'); // input_16 (spa_client_email_required)
+        
+        // LOG pre ADULT
+        error_log('[SPA MAP] adult_email=' . ($adult_email ?: 'EMPTY'));
     }
-    
-    // LOG mapovanie
-    error_log('[SPA MAP] parent_email=' . ($parent_email ?: 'EMPTY'));
-    error_log('[SPA MAP] child_email=' . ($child_email_final ?: 'EMPTY') . ' (source: ' . $child_email_source . ')');
-    error_log('[SPA MAP] adult_email=' . ($adult_email ?: 'EMPTY'));
     
     // Základné dáta z entry
     $entry_data = [
@@ -219,13 +231,17 @@ function spa_create_child_user_skeleton($data) {
  * @return string Email
  */
 function spa_generate_child_email($first_name, $last_name) {
-    // Odstránenie diakritiky
-    $first = remove_accents($first_name);
-    $last = remove_accents($last_name);
+    // Lowercase najprv
+    $first_lower = strtolower($first_name);
+    $last_lower = strtolower($last_name);
     
-    // Lowercase + odstránenie nealfanumerických znakov
-    $first_clean = strtolower(preg_replace('/[^a-z0-9]/', '', $first));
-    $last_clean = strtolower(preg_replace('/[^a-z0-9]/', '', $last));
+    // Odstránenie diakritiky
+    $first_no_accents = remove_accents($first_lower);
+    $last_no_accents = remove_accents($last_lower);
+    
+    // Odstránenie nealfanumerických znakov
+    $first_clean = preg_replace('/[^a-z0-9]/', '', $first_no_accents);
+    $last_clean = preg_replace('/[^a-z0-9]/', '', $last_no_accents);
     
     return $first_clean . '.' . $last_clean . '@piaseckyacademy.sk';
 }
