@@ -89,6 +89,14 @@ function spa_handle_registration_submission($entry, $form) {
         'registration_type' => $registration_type,
         'member_name_first' => rgar($entry, '6.3'),
         'member_name_last' => rgar($entry, '6.6'),
+        'member_birthdate' => rgar($entry, '7'),
+        'member_birthnumber' => rgar($entry, '8'),
+        'client_address' => [
+            'street' => rgar($entry, '17.1'),
+            'city' => rgar($entry, '17.3'),
+            'zip' => rgar($entry, '17.5'),
+        ],
+        'client_phone' => rgar($entry, '19'),
         'member_email' => $child_email_final,
         'member_email_adult' => $adult_email,
         'guardian_name_first' => ($registration_type === 'child' && !empty($parent_first_raw)) ? $parent_first_raw : rgar($entry, '18.3'),
@@ -114,10 +122,15 @@ function spa_handle_registration_submission($entry, $form) {
             }
         }
     } elseif ($registration_type === 'adult') {
-        $user_id = spa_create_parent_user_skeleton($entry_data);
+        // ADULT FLOW - vytvor adult usera (spa_client)
+        $adult_data = spa_prepare_adult_user_data($entry_data);
         
-        if ($user_id) {
-            error_log('[SPA REGISTRATION] SUCCESS: Adult user=' . $user_id);
+        if ($adult_data) {
+            $user_id = spa_get_or_create_adult_user($adult_data['user_data'], $adult_data['meta_data']);
+            
+            if ($user_id) {
+                error_log('[SPA REGISTRATION] SUCCESS: Adult user=' . $user_id);
+            }
         }
     }
 }
@@ -190,8 +203,27 @@ function spa_create_parent_user_skeleton($data) {
     
     error_log('[SPA Parent User] Prepared data: ' . print_r($user_data, true));
     
+    // Príprava meta dát
+    $meta_data = [];
+    
+    if (!empty($data['guardian_phone'])) {
+        $meta_data['phone'] = $data['guardian_phone'];
+    }
+    
+    if (isset($data['client_address']) && is_array($data['client_address'])) {
+        if (!empty($data['client_address']['street'])) {
+            $meta_data['address_street'] = $data['client_address']['street'];
+        }
+        if (!empty($data['client_address']['city'])) {
+            $meta_data['address_city'] = $data['client_address']['city'];
+        }
+        if (!empty($data['client_address']['zip'])) {
+            $meta_data['address_zip'] = $data['client_address']['zip'];
+        }
+    }
+    
     // Vytvorenie alebo získanie usera
-    $user_id = spa_get_or_create_parent_user($user_data);
+    $user_id = spa_get_or_create_parent_user($user_data, $meta_data);
     
     if (!$user_id) {
         error_log('[SPA Parent User] === END (FAILED) ===');
@@ -255,8 +287,19 @@ function spa_create_child_user_skeleton($data) {
         return false;
     }
     
+    // Príprava meta dát
+    $meta_data = [];
+    
+    if (!empty($data['member_birthdate'])) {
+        $meta_data['birthdate'] = $data['member_birthdate'];
+    }
+    
+    if (!empty($data['member_birthnumber'])) {
+        $meta_data['birth_number'] = $data['member_birthnumber'];
+    }
+    
     // Vytvorenie alebo získanie usera
-    $user_id = spa_get_or_create_child_user($user_data, $parent_user_id);
+    $user_id = spa_get_or_create_child_user($user_data, $parent_user_id, $meta_data);
     
     if (!$user_id) {
         error_log('[SPA Child User] === END (FAILED) ===');
@@ -294,4 +337,47 @@ function spa_generate_child_email($first_name, $last_name) {
     $last_clean = preg_replace('/[^a-z0-9]/', '', $last_no_accents);
     
     return $first_clean . '.' . $last_clean . '@piaseckyacademy.sk';
+}
+
+/**
+ * Príprava dát pre adult usera
+ */
+function spa_prepare_adult_user_data($data) {
+    if (empty($data['member_email_adult'])) {
+        error_log('[SPA ERROR] Adult email missing in prepare');
+        return false;
+    }
+    
+    $user_data = [
+        'user_login' => sanitize_user($data['member_email_adult']),
+        'user_email' => sanitize_email($data['member_email_adult']),
+        'first_name' => sanitize_text_field($data['member_name_first']),
+        'last_name' => sanitize_text_field($data['member_name_last']),
+        'display_name' => sanitize_text_field($data['member_name_first'] . ' ' . $data['member_name_last']),
+        'role' => 'spa_client',
+        'user_pass' => wp_generate_password(12, true, true),
+    ];
+    
+    $meta_data = [];
+    
+    if (!empty($data['client_phone'])) {
+        $meta_data['phone'] = $data['client_phone'];
+    }
+    
+    if (isset($data['client_address']) && is_array($data['client_address'])) {
+        if (!empty($data['client_address']['street'])) {
+            $meta_data['address_street'] = $data['client_address']['street'];
+        }
+        if (!empty($data['client_address']['city'])) {
+            $meta_data['address_city'] = $data['client_address']['city'];
+        }
+        if (!empty($data['client_address']['zip'])) {
+            $meta_data['address_zip'] = $data['client_address']['zip'];
+        }
+    }
+    
+    return [
+        'user_data' => $user_data,
+        'meta_data' => $meta_data,
+    ];
 }
