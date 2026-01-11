@@ -29,6 +29,7 @@ function spa_get_or_create_parent_user($data, $meta_data = []) {
         return $existing_user->ID;
     }
     
+    $data['user_login'] = spa_generate_unique_username($data['first_name'], $data['last_name']);
     $user_id = wp_insert_user($data);
     
     if (is_wp_error($user_id)) {
@@ -71,6 +72,7 @@ function spa_get_or_create_child_user($data, $parent_user_id, $meta_data = []) {
         return $existing_user->ID;
     }
     
+    $data['user_login'] = spa_generate_unique_username($data['first_name'], $data['last_name']);
     $user_id = wp_insert_user($data);
     
     if (is_wp_error($user_id)) {
@@ -127,6 +129,7 @@ function spa_get_or_create_adult_user($data, $meta_data = []) {
         return $existing_user->ID;
     }
     
+    $data['user_login'] = spa_generate_unique_username($data['first_name'], $data['last_name']);
     $user_id = wp_insert_user($data);
     
     if (is_wp_error($user_id)) {
@@ -269,4 +272,29 @@ function spa_generate_and_store_vs($user_id) {
     error_log('[SPA META] variabilny_symbol saved value=' . $vs . ' for user_id=' . $user_id);
     
     return $vs;
+}
+
+/**
+ * Generovanie unikátneho user_login z mena a priezviska
+ * 
+ * @param string $first_name Meno
+ * @param string $last_name Priezvisko
+ * @return string Unikátny user_login
+ */
+function spa_generate_unique_username($first_name, $last_name) {
+    $first_clean = sanitize_title($first_name);
+    $last_clean = sanitize_title($last_name);
+    
+    $base_username = $first_clean . '.' . $last_clean;
+    $username = $base_username;
+    $suffix = 1;
+    
+    while (username_exists($username)) {
+        $suffix++;
+        $username = $base_username . $suffix;
+    }
+    
+    error_log('[SPA USERNAME] generated user_login=' . $username);
+    
+    return $username;
 }
