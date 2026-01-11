@@ -77,6 +77,10 @@ function spa_init() {
     
     // Inicializácia infobox modulu
     spa_infobox_init();
+
+    // Inicializácia user managementu
+    require_once SPA_PLUGIN_DIR . 'includes/spa-user-management.php';
+    spa_user_management_init();
 }
 
 add_action('plugins_loaded', 'spa_init', 5); // Priorita 5 = skoršie ako téma
