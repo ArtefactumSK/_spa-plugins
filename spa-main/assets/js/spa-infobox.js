@@ -647,7 +647,7 @@ function renderInfobox(data, icons, capacityFree, price) {
         else {
             // Pre program bez veku použij &nbsp;, inak zobraz vek
             const ageText = wizardData.program_age ? wizardData.program_age : '&nbsp;';
-            programHtml += `<div class="spa-age-range-text" style="margin-top: 200px;">${ageText}</div>`;
+            programHtml += `<div class="spa-age-range-text no-svg-icon">${ageText}</div>`;
         }
         
         // VEĽKÝ TEXT VEKU POD SVG
