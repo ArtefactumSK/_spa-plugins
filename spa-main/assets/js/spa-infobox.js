@@ -371,19 +371,21 @@
             console.log('[SPA Init] Hidden: Adult email field (input_16)');
         }
         
-        // Skry sekciu účastníka
-        const participantSection = findSectionByHeading('ÚDAJE O ÚČASTNÍKOVI TRÉNINGOV');
-        if (participantSection) {
-            toggleSection(participantSection, false);
-            console.log('[SPA Init] Hidden: Participant section');
-        }
-        
-        // Skry sekciu rodiča
-        const guardianSection = findSectionByHeading('ÚDAJE O RODIČOVI / ZÁKONNOM ZÁSTUPCOVI');
-        if (guardianSection) {
-            toggleSection(guardianSection, false);
-            console.log('[SPA Init] Hidden: Guardian section');
-        }
+        // Skry všetky sekcie podľa CSS tried
+        const sections = [
+            'spa-section-common',
+            'spa-section-adult',
+            'spa-section-child',
+            'spa-section-guardian'
+        ];
+
+        sections.forEach(cssClass => {
+            const section = findSectionByClass(cssClass);
+            if (section) {
+                toggleSection(section, false);
+                console.log(`[SPA Init] Hidden: ${cssClass}`);
+            }
+        });
     }
 
     /**
@@ -1231,54 +1233,68 @@ function renderInfobox(data, icons, capacityFree, price) {
         }
     
         // ⭐ SEKCIE - zobrazujú sa až po výbere FREKVENCIE
-        const participantSection = findSectionByHeading('ÚDAJE O ÚČASTNÍKOVI TRÉNINGOV');
-        if (participantSection) {
-            toggleSection(participantSection, allSelected);
-            console.log('[SPA Section Control] Participant section:', allSelected ? 'VISIBLE' : 'HIDDEN');
-        }
-    
-        const guardianSection = findSectionByHeading('ÚDAJE O RODIČOVI / ZÁKONNOM ZÁSTUPCOVI');
-        if (guardianSection && allSelected && isChildProgram) {
-            toggleSection(guardianSection, true);
-            console.log('[SPA Section Control] Guardian section: VISIBLE (child program)');
-            
-            const birthNumberWrapper = birthNumberField?.closest('.gfield');
-            if (birthNumberField && birthNumberWrapper) {
-                birthNumberWrapper.style.display = '';
-                birthNumberWrapper.style.opacity = '1';
-                birthNumberField.disabled = false;
-                birthNumberField.readOnly = false;
-                birthNumberField.style.opacity = '1';
-                birthNumberField.style.pointerEvents = 'auto';
-                birthNumberField.style.backgroundColor = '';
-                console.log('[SPA Section Control] Birth number: VISIBLE');
+        const commonSection = findSectionByClass('spa-section-common');
+        const adultSection = findSectionByClass('spa-section-adult');
+        const childSection = findSectionByClass('spa-section-child');
+        const guardianSection = findSectionByClass('spa-section-guardian');
+
+        // LOGIKA ZOBRAZOVANIA
+        if (allSelected) {
+            // SPOLOČNÁ SEKCIA: vždy zobrazená
+            if (commonSection) {
+                toggleSection(commonSection, true);
+                console.log('[SPA Section Control] Common section: VISIBLE');
             }
-        } else if (guardianSection) {
-            toggleSection(guardianSection, false);
-            console.log('[SPA Section Control] Guardian section: HIDDEN');
             
-            const birthNumberWrapper = birthNumberField?.closest('.gfield');
-            if (birthNumberWrapper) {
-                birthNumberWrapper.style.display = 'none';
+            if (isChildProgram) {
+                // CHILD: zobraz child + guardian, skry adult
+                if (childSection) {
+                    toggleSection(childSection, true);
+                    console.log('[SPA Section Control] Child section: VISIBLE');
+                }
+                if (guardianSection) {
+                    toggleSection(guardianSection, true);
+                    console.log('[SPA Section Control] Guardian section: VISIBLE');
+                }
+                if (adultSection) {
+                    toggleSection(adultSection, false);
+                    console.log('[SPA Section Control] Adult section: HIDDEN');
+                }
+            } else {
+                // ADULT: zobraz adult, skry child + guardian
+                if (adultSection) {
+                    toggleSection(adultSection, true);
+                    console.log('[SPA Section Control] Adult section: VISIBLE');
+                }
+                if (childSection) {
+                    toggleSection(childSection, false);
+                    console.log('[SPA Section Control] Child section: HIDDEN');
+                }
+                if (guardianSection) {
+                    toggleSection(guardianSection, false);
+                    console.log('[SPA Section Control] Guardian section: HIDDEN');
+                }
             }
+        } else {
+            // Skry všetky sekcie
+            if (commonSection) toggleSection(commonSection, false);
+            if (adultSection) toggleSection(adultSection, false);
+            if (childSection) toggleSection(childSection, false);
+            if (guardianSection) toggleSection(guardianSection, false);
+            console.log('[SPA Section Control] All sections: HIDDEN (frequency not selected)');
         }
+        
     
         console.log('[SPA Section Control] ========== UPDATE END ==========');
     }
 
     /**
-     * Nájdi sekciu podľa textu nadpisu
+     * Nájdi sekciu podľa CSS triedy
+     * @param {string} cssClass - CSS trieda (napr. 'spa-section-common')
+     * @returns {HTMLElement|null}
      */
-    function findSectionByHeading(headingText) {
-        const allHeadings = document.querySelectorAll('.gfield--type-section .gsection_title');
-        
-        for (let heading of allHeadings) {
-            if (heading.textContent.trim().includes(headingText)) {
-                return heading.closest('.gfield--type-section') || heading.closest('.gfield');
-            }
-        }
-        
-        return null;
+    function findSectionByClass(cssClass) {
+        return document.querySelector(`.${cssClass}`);
     }
 
     /**
