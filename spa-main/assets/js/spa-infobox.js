@@ -624,6 +624,10 @@ function renderInfobox(data, icons, capacityFree, price) {
         programDiv.className = 'spa-infobox-program';
         
         let programHtml = '';
+          
+        // Wrapper pre ikonu/vek
+        programHtml += '<div class="spa-program-icon">';
+        
         
         // Ikona programu (zväčšená) + aplikácia CSS premenných
         if (programData.icon) {
@@ -640,7 +644,7 @@ function renderInfobox(data, icons, capacityFree, price) {
             const primaryColor = programData.primary_color || '#6d71b2';
             programHtml += `<div class="spa-age-range-text" style="color: ${primaryColor};">${wizardData.program_age} r.</div>`;
         }
-        
+        programHtml += '</div>'; // .spa-program-icon
         // Názov programu s SPA logom
         if (programData.title) {
             const spaLogoSvg = icons && icons.spa_logo ? icons.spa_logo : '';
@@ -766,6 +770,8 @@ function renderInfobox(data, icons, capacityFree, price) {
                 ageText = ageFrom.toString().replace('.', ',') + ' - ' + ageTo.toString().replace('.', ',') + ' r.';
             } else if (ageFrom) {
                 ageText = ageFrom.toString().replace('.', ',') + '+ r.';
+            } else {
+                ageText = '';
             }
             
             if (ageText) {

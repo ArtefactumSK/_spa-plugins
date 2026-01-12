@@ -339,6 +339,41 @@ function spa_determine_participant_type($age_from, $age_to) {
  * Helper: Formátovanie labelu programu
  * 
  * FORMÁTY:
+ * - S vekom: "3–5 r. / Názov" alebo "8+ r. / Názov"
+ * - Bez veku: "Názov"
+ * 
+ * @param string $title Názov programu
+ * @param int|string $age_from Min vek
+ * @param int|string $age_to Max vek
+ * @param string $target Typ účastníka (IGNOROVANÝ)
+ * @return string Formátovaný label
+ */
+function spa_format_program_label($title, $age_from, $age_to, $target = null) {
+    $age_from = intval($age_from);
+    $age_to = !empty($age_to) ? intval($age_to) : null;
+    
+    // Ak je definovaný vek, vytvor prefix
+    $age_prefix = '';
+    
+    if ($age_from > 0 && $age_to !== null) {
+        // Rozsah: "3–5 r."
+        $age_prefix = "{$age_from}–{$age_to} r.";
+    } elseif ($age_from > 0) {
+        // Otvorený rozsah: "8+ r."
+        $age_prefix = "{$age_from}+ r.";
+    }
+    
+    // Výsledný formát
+    if (!empty($age_prefix)) {
+        return $age_prefix . ' / ' . $title;
+    }
+    
+    return $title;
+}
+/**
+ * Helper: Formátovanie labelu programu
+ * 
+ * FORMÁTY:
  * - DETI: "pre deti X–Y r. / Názov" alebo "pre deti X+ r. / Názov"
  * - MLÁDEŽ: "pre mládež X–Y r. / Názov"
  * - DOSPELÍ: "pre dospelých X+ r. / Názov"
@@ -349,7 +384,7 @@ function spa_determine_participant_type($age_from, $age_to) {
  * @param string $target Typ účastníka
  * @return string Formátovaný label
  */
-function spa_format_program_label($title, $age_from, $age_to, $target) {
+/* function spa_format_program_label($title, $age_from, $age_to, $target) {
     // Konverzia na float a zachovanie desatinnej časti
     $age_from_float = !empty($age_from) ? floatval($age_from) : 0;
     $age_to_float = !empty($age_to) ? floatval($age_to) : null;
@@ -394,7 +429,7 @@ function spa_format_program_label($title, $age_from, $age_to, $target) {
     }
     
     return $prefix . ' / ' . $title;
-}
+} */
 
 function spa_format_age_display($age) {
     // Ak je celé číslo (napr. 3.0), zobraz bez desatinnej časti
