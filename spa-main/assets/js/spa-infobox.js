@@ -236,7 +236,7 @@
      * Správa viditeľnosti sekcií formulára
      * Riadi zobrazovanie na základe stavu výberu a age_min programu
      */
-    function manageSectionVisibility() {
+    /* function manageSectionVisibility() {
         // Zisti program a jeho metadata
         const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
         const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_registration_type}"]`);
@@ -343,7 +343,7 @@
 
         // PRAVIDLO 3: Aktualizácia titulky sekcie
         updateSectionTitle(participantType);
-    }
+    } */
 
     /**
      * Skrytie všetkých sekcií pri inicializácii
@@ -390,7 +390,7 @@
     /**
      * Aktualizácia titulky sekcie podľa typu účastníka
      */
-    function updateSectionTitle(participantType) {
+    /* function updateSectionTitle(participantType) {
         const participantSection = document.querySelector('.gfield--type-section[class*="participant"], li[id*="participant"]');
         
         if (!participantSection) return;
@@ -404,7 +404,7 @@
         } else if (participantType === 'adult') {
             titleElement.textContent = 'Údaje o účastníkovi tréningov (dospelá osoba)';
         }
-    }
+    } */
     
      /**
      * Sledovanie zmien vo formulári
@@ -1252,7 +1252,7 @@ function renderInfobox(data, icons, capacityFree, price) {
             
             // 2. CHILD alebo ADULT sekcia podľa age_from
             if (isChildProgram) {
-                // CHILD program: zobraz CHILD, skry ADULT
+                // CHILD: zobraz CHILD, skry ADULT
                 if (childSection) {
                     toggleSection(childSection, true);
                     console.log('[SPA Section Control] ✅ Child section: VISIBLE');
@@ -1262,7 +1262,7 @@ function renderInfobox(data, icons, capacityFree, price) {
                     console.log('[SPA Section Control] ❌ Adult section: HIDDEN');
                 }
             } else {
-                // ADULT program: zobraz ADULT, skry CHILD
+                // ADULT: zobraz ADULT, skry CHILD
                 if (adultSection) {
                     toggleSection(adultSection, true);
                     console.log('[SPA Section Control] ✅ Adult section: VISIBLE');
