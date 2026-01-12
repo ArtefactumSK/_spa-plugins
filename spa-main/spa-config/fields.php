@@ -47,7 +47,7 @@ return [
     'spa_consent_health' => 'input_35.2',    // Zdravotné údaje
     'spa_consent_statutes' => 'input_35.3',  // Stanovy OZ
     'spa_consent_terms' => 'input_35.4',     // Podmienky zápisu
-    'spa_consent_guardian' => 'input_35.5',  // Potvrdenie zástupcu
+    'spa_consent_guardian' => 'input_42.1',  // Potvrdenie zástupcu
     'spa_consent_marketing' => 'input_37.1', // Marketing (nepovinný)
 
 ];
