@@ -206,8 +206,12 @@ function spa_create_parent_user_skeleton($data) {
     // Príprava meta dát
     $meta_data = [];
     
-    if (!empty($data['guardian_phone'])) {
-        $meta_data['phone'] = $data['guardian_phone'];
+    if (!empty($data['member_birthdate'])) {
+        $meta_data['birthdate'] = sanitize_text_field($data['member_birthdate']);
+    }
+    
+    if (!empty($data['client_phone'])) {
+        $meta_data['phone'] = $data['client_phone'];
     }
     
     if (isset($data['client_address']) && is_array($data['client_address'])) {

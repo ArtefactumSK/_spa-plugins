@@ -49,6 +49,7 @@ function spa_bypass_child_fields_for_adult($result, $value, $form, $field) {
         $child_fields = [
             6,   // Child Name (field 6)
             7,   // Child Birth Date
+            8,   // Birth Number (Rodné číslo)
             12,  // Guardian Relation
             13,  // Parent Phone
             18,  // Guardian Name (podľa logu: "Meno, Priezvisko")
