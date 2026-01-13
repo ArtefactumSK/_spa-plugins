@@ -244,7 +244,7 @@ function spa_gf_after_submission($entry, $form) {
             'user_email' => $parent_email,
             'first_name' => $parent_first_name,
             'last_name' => $parent_last_name,
-            'role' => 'spa_client',
+            'role' => 'spa_parent',
         ];
         
         $parent_meta = [
@@ -266,7 +266,7 @@ function spa_gf_after_submission($entry, $form) {
             'user_email' => $child_email,
             'first_name' => $first_name,
             'last_name' => $last_name,
-            'role' => 'spa_client',
+            'role' => 'spa_child',
         ];
         
         // Konverzia dátumu z GF formátu (d.m.Y) na ISO (Y-m-d)
