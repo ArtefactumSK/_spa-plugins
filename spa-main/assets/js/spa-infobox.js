@@ -32,7 +32,63 @@
         program_age: ''
     };
 
-    document.addEventListener('DOMContentLoaded', function() {
+    /**
+     * Filtrovanie programových options podľa mesta
+     */
+    function filterProgramsByCity(cityName) {
+        const programField = document.querySelector('[name="input_2"]');
+        
+        if (!programField) {
+            console.warn('[SPA Filter] Program field not found');
+            return;
+        }
+        
+        if (!window.spaConfig || !window.spaConfig.programCities) {
+            console.warn('[SPA Filter] programCities map not available');
+            return;
+        }
+        
+        const options = programField.querySelectorAll('option');
+        let visibleCount = 0;
+        
+        options.forEach(option => {
+            const programSlug = option.value;
+            
+            // Prázdna option - vždy zobraz
+            if (!programSlug) {
+                option.style.display = '';
+                return;
+            }
+            
+            // Získaj mesto pre tento program
+            const programCity = window.spaConfig.programCities[programSlug];
+            
+            if (!programCity) {
+                console.warn('[SPA Filter] No city found for program:', programSlug);
+                option.style.display = 'none';
+                return;
+            }
+            
+            // Porovnaj mesto
+            if (programCity === cityName) {
+                option.style.display = '';
+                visibleCount++;
+            } else {
+                option.style.display = 'none';
+            }
+        });
+        
+        console.log('[SPA Filter] Filtered for city:', cityName, '- visible programs:', visibleCount);
+        
+        // Ak žiadne programy, disable select
+        programField.disabled = (visibleCount === 0);
+        
+        if (visibleCount === 0) {
+            console.warn('[SPA Filter] No programs available for:', cityName);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {    
         if (initialized) return; // ⭐ Už inicializované
         initInfobox();
         watchFormChanges();
@@ -296,6 +352,13 @@
             return;
         }
         
+        // ⭐ DELEGOVANÝ listener pre mesto (funguje aj po GF rerenderi)
+        document.addEventListener('change', function(e) {
+            // Skontroluj či ide o city field
+            if (e.target.name === 'input_1') {
+                handleCityChange(e.target);
+            }
+        });
         // Sleduj zmenu mesta
         const cityField = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
         if (cityField) {
