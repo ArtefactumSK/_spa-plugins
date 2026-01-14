@@ -134,15 +134,52 @@ function spa_enqueue_frontend_scripts() {
         'nonce' => wp_create_nonce('spa_ajax_nonce'),
     ]);   
     
+    // ⭐ FORCE spaConfig PRIAMO DO OUTPUT
+    add_action('wp_footer', function() use ($program_cities, $field_config) {
+        $program_cities_json = json_encode($program_cities, JSON_UNESCAPED_UNICODE);
+        $ajax_url = admin_url('admin-ajax.php');
+        $nonce = wp_create_nonce('spa_ajax_nonce');
+        
+        $spa_city = $field_config['spa_city'] ?? 'input_1';
+        $spa_program = $field_config['spa_program'] ?? 'input_2';
+        $spa_registration_type = $field_config['spa_registration_type'] ?? 'input_4';
+        $spa_resolved_type = $field_config['spa_resolved_type'] ?? 'input_34';
+        $spa_client_email = $field_config['spa_client_email'] ?? 'input_15';
+        
+        echo "\n<script id='spa-config-inline'>\n";
+        echo "console.log('[SPA INLINE] Forcing spaConfig...');\n";
+        echo "if (typeof spaConfig === 'undefined') {\n";
+        echo "    window.spaConfig = {\n";
+        echo "        ajaxUrl: '" . esc_js($ajax_url) . "',\n";
+        echo "        fields: {\n";
+        echo "            spa_city: '" . esc_js($spa_city) . "',\n";
+        echo "            spa_program: '" . esc_js($spa_program) . "',\n";
+        echo "            spa_registration_type: '" . esc_js($spa_registration_type) . "',\n";
+        echo "            spa_resolved_type: '" . esc_js($spa_resolved_type) . "',\n";
+        echo "            spa_client_email: '" . esc_js($spa_client_email) . "'\n";
+        echo "        },\n";
+        echo "        programCities: " . $program_cities_json . ",\n";
+        echo "        nonce: '" . esc_js($nonce) . "'\n";
+        echo "    };\n";
+        echo "} else {\n";
+        echo "    spaConfig.programCities = " . $program_cities_json . ";\n";
+        echo "}\n";
+        echo "console.log('[SPA INLINE] spaConfig:', spaConfig);\n";
+        echo "console.log('[SPA INLINE] programCities:', spaConfig.programCities);\n";
+        echo "</script>\n";
+    }, 999);
+    
     error_log('[SPA Enqueue] === SCRIPTS DONE ===');
+
 }
 
 /**
  * FORCE spaConfig v HEAD - PRED načítaním JS súborov
  */
-add_action('wp_head', 'spa_force_config_in_head', 5);
+add_action('wp_head', 'spa_force_config_in_footer', 5);
 
-function spa_force_config_in_head() {
+function spa_force_config_in_footer() {
+    error_log('[SPA HEAD] Function called - is_admin: ' . (is_admin() ? 'YES' : 'NO'));
     if (is_admin()) {
         return;
     }
