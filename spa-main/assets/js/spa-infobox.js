@@ -66,7 +66,7 @@
             console.log('[SPA DEBUG] Program ID:', programID, '→ City:', programCity, '| Comparing to:', cityName);
             
             if (!programCity) {
-                console.warn('[SPA Filter] No city found for program:', programSlug);
+                console.warn('[SPA Filter] No city found for program:', programID);
                 option.style.display = 'none';
                 return;
             }
