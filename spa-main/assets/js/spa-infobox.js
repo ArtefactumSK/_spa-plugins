@@ -47,7 +47,9 @@
             console.warn('[SPA Filter] programCities map not available');
             return;
         }
-        
+        console.log('[SPA DEBUG] === FILTERING START ===');
+        console.log('[SPA DEBUG] Selected city:', cityName);
+        console.log('[SPA DEBUG] Program cities map:', window.spaConfig.programCities);
         const options = programField.querySelectorAll('option');
         let visibleCount = 0;
         
@@ -62,6 +64,7 @@
             
             // Získaj mesto pre tento program
             const programCity = window.spaConfig.programCities[programSlug];
+            console.log('[SPA DEBUG] Program:', programSlug, '→ City:', programCity, '| Match:', programCity === cityName);
             
             if (!programCity) {
                 console.warn('[SPA Filter] No city found for program:', programSlug);
@@ -345,6 +348,9 @@
      /**
      * Sledovanie zmien vo formulári
      */
+    /**
+     * Sledovanie zmien vo formulári
+     */
     function watchFormChanges() {
         // ⭐ GUARD: Zabraň duplicitným event listenerom
         if (listenersAttached) {
@@ -354,17 +360,15 @@
         
         // ⭐ DELEGOVANÝ listener pre mesto (funguje aj po GF rerenderi)
         document.addEventListener('change', function(e) {
+            console.log('[SPA DEBUG] Change event:', e.target.name, e.target.value);
             // Skontroluj či ide o city field
             if (e.target.name === 'input_1') {
-                handleCityChange(e.target);
-            }
-        });
-        // Sleduj zmenu mesta
-        const cityField = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
-        if (cityField) {
-            cityField.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const selectedCityName = selectedOption.text; // ⭐ TEXT mesta, nie value
+                console.log('[SPA DEBUG] City field detected!');
+                const cityField = e.target;
+                const selectedOption = cityField.options[cityField.selectedIndex];
+                const selectedCityName = selectedOption ? selectedOption.text : '';
+                
+                console.log('[SPA City Change] Selected:', selectedCityName);
                 
                 // ⭐ VŽDY RESETUJ PROGRAM pri zmene mesta
                 wizardData.program_name = '';
@@ -375,12 +379,14 @@
                 window.spaFormState.frequency = false;
                 
                 // Vyčisti program select
-                const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+                const programField = document.querySelector('[name="input_2"]');
                 if (programField) {
                     programField.value = '';
                     
                     // ⭐ FILTRUJ options podľa mesta
-                    spa_filter_program_options(programField, selectedCityName);
+                    if (selectedCityName && selectedCityName.trim() !== '') {
+                        filterProgramsByCity(selectedCityName);
+                    }
                 }
                 
                 // VYČISTI frekvenčný selector
@@ -392,7 +398,7 @@
                 // ⭐ VYČISTI VŠETKY POLIA V SEKCIÁCH
                 clearAllSectionFields();
                 
-                if (this.value && this.value !== '0' && this.value !== '') {
+                if (cityField.value && cityField.value !== '0' && cityField.value !== '') {
                     wizardData.city_name = selectedCityName;
                     window.spaFormState.city = true;
                     currentState = 1;
@@ -405,8 +411,8 @@
                 
                 loadInfoboxContent(currentState);
                 updateSectionVisibility();
-            });
-        }
+            }
+        });
         
         // ⭐ DEFINUJ programField PRED použitím!
         const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
@@ -472,7 +478,7 @@
         // ⭐ OZNAČ, že listenery sú pripojené
         listenersAttached = true;
         console.log('[SPA Infobox] Event listeners attached');
-    }    
+    }  
 
     /**
      * Načítanie obsahu infoboxu cez AJAX
@@ -1303,55 +1309,4 @@ function renderInfobox(data, icons, capacityFree, price) {
         console.log('[SPA Clear] Cleared', participantInputs.length, 'fields');
     }
 
-    /**
-     * Filtrovanie programových options podľa mesta
-     * @param {HTMLSelectElement} programField Program select element
-     * @param {string} cityName Názov vybraného mesta
-     */
-    function spa_filter_program_options(programField, cityName) {
-        if (!spaConfig.programCities) {
-            console.warn('[SPA] programCities map not available');
-            return;
-        }
-        
-        const options = programField.querySelectorAll('option');
-        let visibleCount = 0;
-        
-        options.forEach(option => {
-            const programSlug = option.value;
-            
-            // Prázdna option - vždy zobraz
-            if (!programSlug) {
-                option.style.display = '';
-                return;
-            }
-            
-            // Získaj mesto pre tento program
-            const programCity = spaConfig.programCities[programSlug];
-            
-            if (!programCity) {
-                console.warn('[SPA] No city found for program:', programSlug);
-                option.style.display = 'none';
-                return;
-            }
-            
-            // Porovnaj mesto
-            if (programCity === cityName) {
-                option.style.display = '';
-                visibleCount++;
-            } else {
-                option.style.display = 'none';
-            }
-        });
-        
-        console.log('[SPA] Filtered programs for city:', cityName, '- visible:', visibleCount);
-        
-        // Ak žiadne programy, disable select
-        if (visibleCount === 0) {
-            programField.disabled = true;
-            console.warn('[SPA] No programs available for city:', cityName);
-        } else {
-            programField.disabled = false;
-        }
-    }
 })();
