@@ -54,17 +54,16 @@
         let visibleCount = 0;
         
         options.forEach(option => {
-            const programSlug = option.value;
+            const programID = option.value;
             
-            // Prázdna option - vždy zobraz
-            if (!programSlug) {
+            if (!programID) {
                 option.style.display = '';
                 return;
             }
             
             // Získaj mesto pre tento program
-            const programCity = window.spaConfig.programCities[programSlug];
-            console.log('[SPA DEBUG] Program:', programSlug, '→ City:', programCity, '| Match:', programCity === cityName);
+            const programCity = window.spaConfig.programCities[programID];
+            console.log('[SPA DEBUG] Program ID:', programID, '→ City:', programCity, '| Comparing to:', cityName);
             
             if (!programCity) {
                 console.warn('[SPA Filter] No city found for program:', programSlug);
@@ -366,7 +365,7 @@
                 console.log('[SPA DEBUG] City field detected!');
                 const cityField = e.target;
                 const selectedOption = cityField.options[cityField.selectedIndex];
-                const selectedCityName = selectedOption ? selectedOption.text : '';
+                const selectedCityName = selectedOption ? selectedOption.text.trim() : '';
                 
                 console.log('[SPA City Change] Selected:', selectedCityName);
                 

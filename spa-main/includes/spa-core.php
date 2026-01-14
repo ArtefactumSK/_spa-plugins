@@ -558,33 +558,41 @@ function spa_add_city_to_program_choices($form) {
  * 
  * @return array Asociatívne pole ['program-slug' => 'Mesto']
  */
+/**
+ * Generovanie mapy program ID → mesto (text)
+ * Používa sa pre JS filtering programov podľa mesta
+ */
 function spa_generate_program_cities_map() {
-    $map = [];
-    
-    // Získaj všetky publikované programy
-    $programs = get_posts([
-        'post_type' => 'spa_group',
-        'post_status' => 'publish',
+    $programs = get_posts(array(
+        'post_type'      => 'spa_group',
         'posts_per_page' => -1,
-    ]);
+        'post_status'    => 'publish'
+    ));
+    
+    $map = array();
     
     foreach ($programs as $program) {
-        // Získaj place_id
-        $place_id = get_post_meta($program->ID, 'spa_place_id', true);
+        // Získaj VŠETKY taxonomy terms pre program
+        $places = get_the_terms($program->ID, 'spa_place');
         
-        if (!$place_id) {
-            continue;
+        if ($places && !is_wp_error($places)) {
+            // Zoraď podľa názvu (konzistentné s city selectom)
+            usort($places, function($a, $b) {
+                return strcmp($a->name, $b->name);
+            });
+            
+            // Vytvor kombinovaný text: "Košice, september-jún, ZŠ Drábova 3"
+            $place_names = array_map(function($term) {
+                return $term->name;
+            }, $places);
+            
+            $combined_name = implode(', ', $place_names);
+            
+            // ⭐ KĽÚČ = program ID (nie slug!)
+            $map[$program->ID] = $combined_name;
+            
+            error_log('[SPA Map] Program ID ' . $program->ID . ' → ' . $combined_name);
         }
-        
-        // Získaj mesto
-        $city_name = get_post_meta($place_id, 'spa_place_city', true);
-        
-        if (empty($city_name)) {
-            continue;
-        }
-        
-        // Pridaj do mapy
-        $map[$program->post_name] = $city_name;
     }
     
     return $map;
