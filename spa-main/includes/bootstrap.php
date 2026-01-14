@@ -111,7 +111,7 @@ function spa_enqueue_frontend_scripts() {
         'spa-infobox',
         SPA_PLUGIN_URL . 'assets/js/spa-infobox.js',
         ['spa-registration'],
-        '1.0.4',
+        '1.0.5',
         true
     );
     
@@ -120,57 +120,63 @@ function spa_enqueue_frontend_scripts() {
     
     error_log('[SPA Enqueue] Program cities count: ' . count($program_cities));
     
-    // 3. Localize HNEĎ po enqueue
+    // 3. Localize
     wp_localize_script('spa-registration', 'spaConfig', [
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'fields' => [
-            'spa_city' => $field_config['spa_city'] ?? '',
-            'spa_program' => $field_config['spa_program'] ?? '',
-            'spa_registration_type' => $field_config['spa_registration_type'] ?? '',
-            'spa_resolved_type' => $field_config['spa_resolved_type'] ?? '',
-            'spa_client_email' => $field_config['spa_client_email'] ?? '',
+            'spa_city' => $field_config['spa_city'] ?? 'input_1',
+            'spa_program' => $field_config['spa_program'] ?? 'input_2',
+            'spa_registration_type' => $field_config['spa_registration_type'] ?? 'input_4',
+            'spa_resolved_type' => $field_config['spa_resolved_type'] ?? 'input_34',
+            'spa_client_email' => $field_config['spa_client_email'] ?? 'input_15',
         ],
         'programCities' => $program_cities,
         'nonce' => wp_create_nonce('spa_ajax_nonce'),
-    ]);   
-    
-    // ⭐ FORCE spaConfig PRIAMO DO OUTPUT
-    add_action('wp_footer', function() use ($program_cities, $field_config) {
-        $program_cities_json = json_encode($program_cities, JSON_UNESCAPED_UNICODE);
-        $ajax_url = admin_url('admin-ajax.php');
-        $nonce = wp_create_nonce('spa_ajax_nonce');
-        
-        $spa_city = $field_config['spa_city'] ?? 'input_1';
-        $spa_program = $field_config['spa_program'] ?? 'input_2';
-        $spa_registration_type = $field_config['spa_registration_type'] ?? 'input_4';
-        $spa_resolved_type = $field_config['spa_resolved_type'] ?? 'input_34';
-        $spa_client_email = $field_config['spa_client_email'] ?? 'input_15';
-        
-        echo "\n<script id='spa-config-inline'>\n";
-        echo "console.log('[SPA INLINE] Forcing spaConfig...');\n";
-        echo "if (typeof spaConfig === 'undefined') {\n";
-        echo "    window.spaConfig = {\n";
-        echo "        ajaxUrl: '" . esc_js($ajax_url) . "',\n";
-        echo "        fields: {\n";
-        echo "            spa_city: '" . esc_js($spa_city) . "',\n";
-        echo "            spa_program: '" . esc_js($spa_program) . "',\n";
-        echo "            spa_registration_type: '" . esc_js($spa_registration_type) . "',\n";
-        echo "            spa_resolved_type: '" . esc_js($spa_resolved_type) . "',\n";
-        echo "            spa_client_email: '" . esc_js($spa_client_email) . "'\n";
-        echo "        },\n";
-        echo "        programCities: " . $program_cities_json . ",\n";
-        echo "        nonce: '" . esc_js($nonce) . "'\n";
-        echo "    };\n";
-        echo "} else {\n";
-        echo "    spaConfig.programCities = " . $program_cities_json . ";\n";
-        echo "}\n";
-        echo "console.log('[SPA INLINE] spaConfig:', spaConfig);\n";
-        echo "console.log('[SPA INLINE] programCities:', spaConfig.programCities);\n";
-        echo "</script>\n";
-    }, 999);
+    ]);
     
     error_log('[SPA Enqueue] === SCRIPTS DONE ===');
+}
 
+/**
+ * FORCE programCities do footer - GARANTOVANE
+ */
+add_action('wp_print_footer_scripts', 'spa_force_program_cities', 1);
+
+function spa_force_program_cities() {
+    if (is_admin()) {
+        return;
+    }
+    
+    $program_cities = spa_generate_program_cities_map();
+    $program_cities_json = json_encode($program_cities, JSON_UNESCAPED_UNICODE);
+    
+    ?>
+    <script id="spa-force-config">
+    (function() {
+        console.log('[SPA FORCE] Fixing programCities...');
+        if (typeof spaConfig === 'undefined') {
+            console.warn('[SPA FORCE] spaConfig does not exist! Creating...');
+            window.spaConfig = {
+                ajaxUrl: '<?php echo esc_js(admin_url('admin-ajax.php')); ?>',
+                fields: {
+                    spa_city: 'input_1',
+                    spa_program: 'input_2',
+                    spa_registration_type: 'input_4',
+                    spa_resolved_type: 'input_34',
+                    spa_client_email: 'input_15'
+                },
+                programCities: <?php echo $program_cities_json; ?>,
+                nonce: '<?php echo esc_js(wp_create_nonce('spa_ajax_nonce')); ?>'
+            };
+        } else if (!spaConfig.programCities || Object.keys(spaConfig.programCities).length === 0) {
+            console.warn('[SPA FORCE] spaConfig exists but programCities is empty! Fixing...');
+            spaConfig.programCities = <?php echo $program_cities_json; ?>;
+        }
+        console.log('[SPA FORCE] Final spaConfig:', spaConfig);
+        console.log('[SPA FORCE] programCities count:', Object.keys(spaConfig.programCities || {}).length);
+    })();
+    </script>
+    <?php
 }
 
 /**
