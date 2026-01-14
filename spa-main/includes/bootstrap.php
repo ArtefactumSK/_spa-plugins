@@ -139,11 +139,23 @@ function spa_enqueue_frontend_scripts() {
     wp_add_inline_script('spa-registration', "
         console.log('[SPA Inline] Forcing programCities...');
         if (typeof spaConfig === 'undefined') {
-            window.spaConfig = {};
+            window.spaConfig = {
+                ajaxUrl: '" . admin_url('admin-ajax.php') . "',
+                fields: {
+                    spa_city: '" . ($field_config['spa_city'] ?? 'input_1') . "',
+                    spa_program: '" . ($field_config['spa_program'] ?? 'input_2') . "',
+                    spa_registration_type: '" . ($field_config['spa_registration_type'] ?? 'input_4') . "',
+                    spa_resolved_type: '" . ($field_config['spa_resolved_type'] ?? 'input_34') . "',
+                    spa_client_email: '" . ($field_config['spa_client_email'] ?? 'input_15') . "'
+                },
+                programCities: {$program_cities_json},
+                nonce: '" . wp_create_nonce('spa_ajax_nonce') . "'
+            };
+        } else {
+            spaConfig.programCities = {$program_cities_json};
         }
-        spaConfig.programCities = {$program_cities_json};
-        console.log('[SPA Inline] programCities set:', spaConfig.programCities);
-    ", 'after');
+        console.log('[SPA Inline] spaConfig created:', spaConfig);
+    ", 'before');
     
     error_log('[SPA Enqueue] === SCRIPTS DONE ===');
 }
