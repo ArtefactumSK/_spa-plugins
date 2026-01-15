@@ -86,17 +86,28 @@ function spa_enqueue_scripts() {
         true
     );
     
-    // ⭐ VYTVOR spaConfig objekt
-    $field_config = spa_load_field_config();
+// ⭐ VYTVOR spaConfig objekt
+$field_config = spa_load_field_config();
     
-    wp_localize_script('spa-infobox', 'spaConfig', [
-        'ajaxUrl' => admin_url('admin-ajax.php'),
-        'fields' => [
-            'spa_city' => $field_config['spa_city'] ?? 'input_1',
-            'spa_program' => $field_config['spa_program'] ?? 'input_2',
-        ],
-        'programCities' => spa_generate_program_cities_map(),
-    ]);
+// DEBUG: Skontroluj či funkcia existuje
+if (!function_exists('spa_generate_program_cities_map')) {
+    error_log('[SPA Bootstrap] CHYBA: spa_generate_program_cities_map() neexistuje!');
+    $program_cities = [];
+} else {
+    $program_cities = spa_generate_program_cities_map();
+    error_log('[SPA Bootstrap] programCities count: ' . count($program_cities));
+}
+
+wp_localize_script('spa-infobox', 'spaConfig', [
+    'ajaxUrl' => admin_url('admin-ajax.php'),
+    'fields' => [
+        'spa_city' => $field_config['spa_city'] ?? 'input_1',
+        'spa_program' => $field_config['spa_program'] ?? 'input_2',
+    ],
+    'programCities' => $program_cities,
+]);
+
+error_log('[SPA Bootstrap] spaConfig created with fields: ' . print_r($field_config, true));
 }
 
 /**
