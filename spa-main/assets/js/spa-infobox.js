@@ -426,6 +426,13 @@
                 console.log('[SPA Infobox] Program changed - value:', this.value);
                 console.log('[SPA Infobox] Program changed - text:', selectedOption.text);
                 
+                // ⭐ VYČISTI PREHĽAD pri zmene programu
+                const summaryContainer = document.querySelector('.spa-price-summary');
+                if (summaryContainer) {
+                    summaryContainer.innerHTML = '';
+                    console.log('[SPA] Cleared price summary on program change');
+                }
+                
                 if (this.value) {
                     wizardData.program_name = selectedOption.text;
                     wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
@@ -1512,13 +1519,11 @@ function renderInfobox(data, icons, capacityFree, price) {
             html += `<p><strong>Meno a adresa účastníka:</strong> ${participantName}, ${address}</p>`;
         }
 
-        // 2. Vek účastníka (len pre CHILD alebo ak má program age_min)
-        const hasAgeMin = window.infoboxData?.program?.age_min;
-
-        if (age && (isChild || hasAgeMin)) {
+        // 2. Vek účastníka (LEN pre CHILD)
+        if (age && isChild) {
             // Validácia veku vs veková kategória
             let ageWarning = '';
-            if (ageCategory && hasAgeMin) {
+            if (ageCategory && window.infoboxData?.program) {
                 const ageYears = parseInt(age);
                 const ageMin = parseFloat(window.infoboxData.program.age_min);
                 const ageMax = parseFloat(window.infoboxData.program.age_max);
@@ -1533,14 +1538,31 @@ function renderInfobox(data, icons, capacityFree, price) {
             html += `<p><strong>Vek účastníka:</strong> ${age}${ageWarning}</p>`;
         }
 
-        // 3. Zákonný zástupca (len child, len ak sú všetky 3 hodnoty)
+        // 3. Zákonný zástupca (LEN child, len ak sú všetky 3 hodnoty)
         if (isChild && guardianName && guardianEmail && guardianPhone) {
             html += `<p><strong>Zákonný zástupca:</strong> ${guardianName}, ${guardianEmail}, ${guardianPhone}</p>`;
         }
 
-        // 4. Telefón účastníka (voliteľné pre child, povinné pre adult)
-        if (phone) {
-            html += `<p><strong>Telefónne číslo účastníka:</strong> ${phone}</p>`;
+        // 4. Kontakt na účastníka
+        if (isChild) {
+            // CHILD: Telefón účastníka (voliteľné)
+            if (phone) {
+                html += `<p><strong>Telefónne číslo účastníka:</strong> ${phone}</p>`;
+            }
+        } else {
+            // ADULT: Email + telefón (povinné)
+            const adultEmailInput = document.querySelector('input[name="input_16"]');
+            const adultEmail = adultEmailInput?.value.trim();
+            
+            if (adultEmail && phone) {
+                html += `<p><strong>Kontakt na účastníka:</strong> ${adultEmail}, ${phone}</p>`;
+            } else if (adultEmail || phone) {
+                // Zobraz čo máme (ak je vyplnené aspoň jedno)
+                const parts = [];
+                if (adultEmail) parts.push(adultEmail);
+                if (phone) parts.push(phone);
+                html += `<p><strong>Kontakt na účastníka:</strong> ${parts.join(', ')}</p>`;
+            }
         }
 
         // 5. Vybraný program
@@ -1553,8 +1575,8 @@ function renderInfobox(data, icons, capacityFree, price) {
             html += `<p><strong>Miesto tréningov:</strong> ${placeDisplay}</p>`;
         }
 
-        // 7. Veková kategória
-        if (ageCategory) {
+        // 7. Veková kategória (LEN pre CHILD)
+        if (ageCategory && isChild) {
             html += `<p><strong>Veková kategória:</strong> ${ageCategory}</p>`;
         }
 
@@ -1634,6 +1656,7 @@ function renderInfobox(data, icons, capacityFree, price) {
             'input_18.3', 'input_18.6', // Meno zástupcu
             'input_12',                 // Email zástupcu
             'input_13',                 // Telefón zástupcu
+            'input_16',                 // Email dospelého účastníka
             'spa_frequency'             // Frekvencia
         ];
         
