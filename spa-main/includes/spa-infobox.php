@@ -327,20 +327,6 @@ function spa_ajax_get_infobox_content() {
             error_log('[SPA Infobox] Primary color: ' . $primary_color);
             error_log('[SPA Infobox] Secondary color: ' . $secondary_color);
             
-           /*  $program_data = [
-                'title' => $program_post->post_title,
-                'content' => apply_filters('the_content', $program_post->post_content),
-                'icon' => $icon_svg,
-                'primary_color' => !empty($primary_color) ? $primary_color : '#6d71b2',
-                'secondary_color' => !empty($secondary_color) ? $secondary_color : '#000000',
-                'age_min' => get_post_meta($program_id, 'spa_age_from', true),
-                'age_max' => get_post_meta($program_id, 'spa_age_to', true),
-                'spa_price_1x_weekly' => get_post_meta($program_id, 'spa_price_1x_weekly', true),
-                'spa_price_2x_weekly' => get_post_meta($program_id, 'spa_price_2x_weekly', true),
-                'spa_price_monthly' => get_post_meta($program_id, 'spa_price_monthly', true),
-                'spa_price_semester' => get_post_meta($program_id, 'spa_price_semester', true),
-                'spa_external_surcharge' => get_post_meta($program_id, 'spa_external_surcharge', true),
-            ]; */
             $program_data = [
                 'title' => $program_post->post_title,
                 'content' => apply_filters('the_content', $program_post->post_content),

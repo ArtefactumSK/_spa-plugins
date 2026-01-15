@@ -533,6 +533,13 @@ function renderInfobox(data, icons, capacityFree, price) {
     
     const content = data.content;
     const programData = data.program;
+
+    // ⭐ Ulož do window pre prístup z updatePriceSummary
+    if (!window.infoboxData) {
+        window.infoboxData = {};
+    }
+    window.infoboxData.program = programData;
+    window.infoboxData.place = data.place;
     
     const container = document.getElementById('spa-infobox-container');
     if (!container) {
@@ -1343,66 +1350,173 @@ function renderInfobox(data, icons, capacityFree, price) {
         const summaryContainer = document.querySelector('.spa-price-summary');
         
         if (!summaryContainer) {
-            return; // Blok neexistuje vo formulári
+            return;
         }
-
-        // Načítaj meno účastníka z inputov
+    
+        // Načítaj typ účastníka (child/adult)
+        const resolvedTypeField = document.querySelector('input[name="input_34"]');
+        const isChild = resolvedTypeField?.value === 'child';
+    
+        // === MENO A ADRESA ===
         const firstNameInput = document.querySelector('input[name="input_6.3"]');
         const lastNameInput = document.querySelector('input[name="input_6.6"]');
         const participantName = [
             firstNameInput?.value.trim(),
             lastNameInput?.value.trim()
-        ].filter(Boolean).join(' ') || '—';
-
-        // Načítaj typ účastníka
-        const resolvedTypeField = document.querySelector('input[name="input_34"]');
-        const participantType = resolvedTypeField?.value === 'child' ? 'Dieťa (mladší ako 18 rokov)' : 'Dospelá osoba (18+ rokov)';
-
-        // Načítaj vybranú frekvenciu
+        ].filter(Boolean).join(' ') || '';
+    
+        const addressInput = document.querySelector('input[name="input_17"]');
+        const address = addressInput?.value.trim() || '';
+    
+        // === VEK ===
+        const birthdateInput = document.querySelector('input[name="input_7"]');
+        const birthdate = birthdateInput?.value.trim() || '';
+        let age = '';
+        
+        if (birthdate) {
+            const parts = birthdate.split('.');
+            if (parts.length === 3) {
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1;
+                const year = parseInt(parts[2], 10);
+                const birth = new Date(year, month, day);
+                const today = new Date();
+                let ageYears = today.getFullYear() - birth.getFullYear();
+                const monthDiff = today.getMonth() - birth.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                    ageYears--;
+                }
+                age = ageYears + 'r.';
+            }
+        }
+    
+        // === TELEFÓN ÚČASTNÍKA ===
+        const phoneInput = document.querySelector('input[name="input_19"]');
+        const phone = phoneInput?.value.trim() || '';
+    
+        // === EMAIL ÚČASTNÍKA ===
+        const emailInput = isChild 
+            ? document.querySelector('input[name="input_15"]')
+            : document.querySelector('input[name="input_16"]');
+        const email = emailInput?.value.trim() || '';
+    
+        // === ZÁKONNÝ ZÁSTUPCA (len pre child) ===
+        let guardianInfo = '';
+        if (isChild) {
+            const guardianFirstInput = document.querySelector('input[name="input_18.3"]');
+            const guardianLastInput = document.querySelector('input[name="input_18.6"]');
+            const guardianName = [
+                guardianFirstInput?.value.trim(),
+                guardianLastInput?.value.trim()
+            ].filter(Boolean).join(' ') || '';
+            
+            const guardianEmailInput = document.querySelector('input[name="input_12"]');
+            const guardianEmail = guardianEmailInput?.value.trim() || '';
+            
+            const guardianPhoneInput = document.querySelector('input[name="input_13"]');
+            const guardianPhone = guardianPhoneInput?.value.trim() || '';
+            
+            guardianInfo = [guardianName, guardianEmail, guardianPhone]
+                .filter(Boolean)
+                .join(', ');
+        }
+    
+        // === PROGRAM + ÚROVEŇ ===
+        let programDisplay = wizardData.program_name || '';
+        
+        // Získaj spa_level z window.infoboxData
+        if (window.infoboxData?.program?.spa_level) {
+            programDisplay += ' / ' + window.infoboxData.program.spa_level;
+        }
+    
+        // === MIESTO TRÉNINGOV ===
+        let placeDisplay = '';
+        if (window.infoboxData?.place?.name) {
+            placeDisplay = window.infoboxData.place.name;
+            if (window.infoboxData.place.address) {
+                placeDisplay += ', ' + window.infoboxData.place.address;
+            }
+            if (window.infoboxData.place.city) {
+                placeDisplay += ', ' + window.infoboxData.place.city;
+            }
+        } else if (wizardData.city_name) {
+            placeDisplay = wizardData.city_name;
+        }
+    
+        // === FREKVENCIA / CENA ===
         const selectedFrequency = document.querySelector('input[name="spa_frequency"]:checked');
-        let frequencyLabel = '—';
-        let frequencyPrice = '';
+        let frequencyLabel = '';
         
         if (selectedFrequency) {
             const parentLabel = selectedFrequency.parentElement;
-            const fullText = parentLabel?.textContent.trim() || '';
-            // Očakávaný formát: "1× týždenne – 50,00 €"
-            frequencyLabel = fullText;
+            frequencyLabel = parentLabel?.textContent.trim() || '';
         }
-
-        // Zostavenie HTML
+    
+        // === ZOSTAVENIE HTML ===
         let html = '<h3>Prehľad registrácie</h3>';
         html += '<dl class="spa-summary-list">';
         
-        if (participantName !== '—') {
+        // Meno a adresa (zlúčené)
+        if (participantName && address) {
+            html += `<dt>Meno a adresa účastníka:</dt><dd><strong>${participantName}</strong>, ${address}</dd>`;
+        } else if (participantName) {
             html += `<dt>Meno účastníka:</dt><dd><strong>${participantName}</strong></dd>`;
         }
         
-        if (wizardData.program_name) {
-            html += `<dt>Vybraný program:</dt><dd>${wizardData.program_name}</dd>`;
+        // Vek
+        if (age) {
+            html += `<dt>Vek účastníka:</dt><dd>${age}</dd>`;
         }
         
-        if (wizardData.city_name) {
-            html += `<dt>Miesto:</dt><dd>${wizardData.city_name}</dd>`;
+        // Zákonný zástupca (len child)
+        if (isChild && guardianInfo) {
+            html += `<dt>Zákonný zástupca:</dt><dd>${guardianInfo}</dd>`;
         }
         
-        if (participantType) {
-            html += `<dt>Veková kategória:</dt><dd>${participantType}</dd>`;
+        // Telefón účastníka
+        if (phone) {
+            html += `<dt>Telefónne číslo účastníka:</dt><dd>${phone}</dd>`;
         }
         
-        if (frequencyLabel !== '—') {
-            html += `<dt>Frekvencia / Cena:</dt><dd><strong>${frequencyLabel}</strong></dd>`;
+        // Email (len pre adult, child má nepovinný)
+        if (!isChild && email) {
+            html += `<dt>E-mail účastníka:</dt><dd>${email}</dd>`;
         }
         
+        // Program + úroveň
+        if (programDisplay) {
+            html += `<dt>Vybraný program:</dt><dd>${programDisplay}</dd>`;
+        }
+        
+        // Miesto tréningov
+        if (placeDisplay) {
+            html += `<dt>Miesto tréningov:</dt><dd>${placeDisplay}</dd>`;
+        }
+        
+        // Veková kategória
+        const participantType = isChild ? 'Dieťa (mladší ako 18 rokov)' : 'Dospelá osoba (18+ rokov)';
+        html += `<dt>Veková kategória:</dt><dd>${participantType}</dd>`;
+        
+        // Frekvencia / Cena
+        if (frequencyLabel) {
+            html += `<dt>Cena/Frekvencia:</dt><dd><strong>${frequencyLabel}</strong></dd>`;
+        }
+        
+        // Platba
         html += `<dt>Platba:</dt><dd>Platba po schválení registrácie</dd>`;
         html += '</dl>';
-
+    
         summaryContainer.innerHTML = html;
         
         console.log('[SPA Price Summary] Updated:', {
             participantName,
-            program: wizardData.program_name,
-            city: wizardData.city_name,
+            address,
+            age,
+            phone,
+            email,
+            guardianInfo,
+            program: programDisplay,
+            place: placeDisplay,
             type: participantType,
             frequency: frequencyLabel
         });
