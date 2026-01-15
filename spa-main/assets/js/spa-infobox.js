@@ -476,6 +476,18 @@
         }
         
         
+        // ⭐ LISTENER na Gravity Forms page change (Next/Back buttony)
+        if (typeof jQuery !== 'undefined') {
+            jQuery(document).on('gform_page_loaded', function(event, form_id, current_page) {
+                console.log('[SPA] GF Page loaded:', current_page, 'form:', form_id);
+                
+                // Počkaj kým sa stránka renderuje
+                setTimeout(() => {
+                    updatePriceSummary();
+                }, 200);
+            });
+        }
+
         // ⭐ OZNAČ, že listenery sú pripojené
         listenersAttached = true;
         console.log('[SPA Infobox] Event listeners attached');
@@ -1568,6 +1580,24 @@ function renderInfobox(data, icons, capacityFree, price) {
             schedule,
             frequency: frequencyText
         });
+
+        console.log('[SPA Price Summary] Updated:', {
+            participantName,
+            address,
+            age,
+            guardianName,
+            guardianEmail,
+            guardianPhone,
+            phone,
+            program: programDisplay,
+            place: placeDisplay,
+            ageCategory,
+            schedule,
+            frequency: frequencyText
+        });
+        
+        // ⭐ Ulož timestamp poslednej aktualizácie
+        window.spaLastSummaryUpdate = Date.now();
     }
 
     // ⭐ SPUSTI updatePriceSummary pri zmenách VŠETKÝCH relevantných polí
