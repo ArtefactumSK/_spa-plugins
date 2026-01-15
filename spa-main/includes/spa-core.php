@@ -499,6 +499,13 @@ add_filter('gform_admin_pre_render', 'spa_add_city_to_program_choices', 20);
 function spa_add_city_to_program_choices($form) {
     error_log('[SPA DEBUG] spa_add_city_to_program_choices RUNNING for form ID: ' . $form['id']);
 
+    // Načítaj vybrané mesto z GET → POST → fallback
+    $selected_city = '';
+    if (isset($_GET['spa_city']) && !empty($_GET['spa_city'])) {
+        $selected_city = sanitize_text_field($_GET['spa_city']);
+    } elseif (isset($_POST['spa_city']) && !empty($_POST['spa_city'])) {
+        $selected_city = sanitize_text_field($_POST['spa_city']);
+    }
 
     foreach ($form['fields'] as &$field) {
 
@@ -511,12 +518,15 @@ function spa_add_city_to_program_choices($form) {
             continue;
         }
 
-        foreach ($field->choices as &$choice) {
+        $filtered_choices = [];
+
+        foreach ($field->choices as $choice) {
 
             $program_slug = $choice['value'] ?? '';
 
-            // Preskočiť prázdnu option
+            // Prázdna option – vždy zachovať
             if ($program_slug === '') {
+                $filtered_choices[] = $choice;
                 continue;
             }
 
@@ -541,13 +551,22 @@ function spa_add_city_to_program_choices($form) {
                 continue;
             }
 
-            // 🔑 JEDINÝ SPRÁVNY SPÔSOB
+            // Filtrácia podľa mesta
+            if (!empty($selected_city) && $city_name !== $selected_city) {
+                continue; // Preskočiť programy z iných miest
+            }
+
+            // Pridať data-city atribút
             if (!isset($choice['attributes']) || !is_array($choice['attributes'])) {
                 $choice['attributes'] = [];
             }
-
             $choice['attributes']['data-city'] = esc_attr($city_name);
+
+            $filtered_choices[] = $choice;
         }
+
+        // Prepísať choices filtrovaným zoznamom
+        $field->choices = $filtered_choices;
     }
 
     return $form;

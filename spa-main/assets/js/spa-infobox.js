@@ -408,8 +408,10 @@
                     currentState = 0;
                 }
                 
-                loadInfoboxContent(currentState);
-                updateSectionVisibility();
+                // Set spa_city in URL and reload
+                const url = new URL(window.location.href);
+                url.searchParams.set('spa_city', selectedCityName);
+                window.location.href = url.toString();
             }
         });
         
