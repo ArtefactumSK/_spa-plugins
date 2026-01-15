@@ -85,6 +85,18 @@ function spa_enqueue_scripts() {
         '1.1.0',
         true
     );
+    
+    // ⭐ VYTVOR spaConfig objekt
+    $field_config = spa_load_field_config();
+    
+    wp_localize_script('spa-infobox', 'spaConfig', [
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'fields' => [
+            'spa_city' => $field_config['spa_city'] ?? 'input_1',
+            'spa_program' => $field_config['spa_program'] ?? 'input_2',
+        ],
+        'programCities' => spa_generate_program_cities_map(),
+    ]);
 }
 
 /**

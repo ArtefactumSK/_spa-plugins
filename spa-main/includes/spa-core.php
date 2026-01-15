@@ -568,7 +568,8 @@ function spa_add_city_to_program_choices($form) {
         // Prepísať choices filtrovaným zoznamom
         $field->choices = $filtered_choices;
     }
-
+    error_log('[SPA Filter] Filtered choices count: ' . count($filtered_choices));
+    error_log('[SPA Filter] ========== END ==========');
     return $form;
 }
 

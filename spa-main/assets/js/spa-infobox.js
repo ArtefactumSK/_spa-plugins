@@ -50,6 +50,9 @@
         console.log('[SPA DEBUG] === FILTERING START ===');
         console.log('[SPA DEBUG] Selected city:', cityName);
         console.log('[SPA DEBUG] Program cities map:', window.spaConfig.programCities);
+        console.log('[SPA City] URL params BEFORE:', window.location.search);
+        console.log('[SPA City] Selected:', selectedCityName);
+        console.log('[SPA City] wizardData:', wizardData);
         const options = programField.querySelectorAll('option');
         let visibleCount = 0;
         
@@ -174,6 +177,30 @@
         console.log('[SPA Infobox] Inicializovaný.');
     }
 
+    // ⭐ SYNCHRONIZUJ GET parameter s city selectom
+    function syncCityFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const spaCity = urlParams.get('spa_city');
+        
+        if (spaCity) {
+            const cityField = document.querySelector('[name="input_1"]');
+            if (cityField) {
+                // Nájdi option s textom = spaCity
+                for (let option of cityField.options) {
+                    if (option.text.trim() === spaCity) {
+                        cityField.value = option.value;
+                        cityField.dispatchEvent(new Event('change', { bubbles: true }));
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Spusti po DOM ready
+    document.addEventListener('DOMContentLoaded', function() {
+        syncCityFromURL();
+    });
     
     /**
      * Obnovenie wizardData z hidden backup polí
@@ -408,10 +435,10 @@
                     currentState = 0;
                 }
                 
-                // Set spa_city in URL and reload
-                const url = new URL(window.location.href);
-                url.searchParams.set('spa_city', selectedCityName);
-                window.location.href = url.toString();
+                // ⭐ ŽIADNY RELOAD - GF AJAX to vyriešil server-side filter
+                // spa_add_city_to_program_choices() už prefiltroval choices
+                loadInfoboxContent(currentState);
+                updateSectionVisibility();
             }
         });
         

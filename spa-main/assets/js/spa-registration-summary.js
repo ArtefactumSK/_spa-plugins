@@ -1,5 +1,5 @@
 /**
- * SPA Registration – Dynamické selecty (City → Program)
+ * SPA Registration – Auto-fill email pre CHILD
  */
 
 (function() {
@@ -54,19 +54,25 @@
             return;
         }
 
-        // Načítaj mestá pri inicializácii
-        loadCities(cityField);
-
         // Event listener na zmenu mesta
         cityField.addEventListener('change', function() {
             const cityId = this.value;
             
             if (!cityId) {
-                resetProgramField(programField);
+                // Reset program field ak nie je mesto vybrané
+                if (programField) {
+                    programField.value = '';
+                }
                 return;
             }
 
-            loadPrograms(cityId, programField);
+            // ⭐ PROGRAMY SA PREFILTRUJÚ SERVER-SIDE cez gform_pre_render
+            // Žiadny AJAX load nie je potrebný
+            
+            // Len vyprázdni program select (užívateľ musí vybrať znovu)
+            if (programField) {
+                programField.value = '';
+            }
         });
 
         // Event listener na zmenu programu
@@ -81,101 +87,7 @@
             setupNameFieldListeners();
         });
 
-        console.log('[SPA] Dynamické selecty inicializované.');
-    }
-
-    /**
-     * Načítanie miest cez AJAX
-     */
-    function loadCities(cityField) {
-        setLoadingState(cityField, true, 'Načítavam mestá...');
-
-        const formData = new FormData();
-        formData.append('action', 'spa_get_cities');
-
-        fetch(spaConfig.ajaxUrl, {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.data) {
-                populateCityField(cityField, data.data);
-            } else {
-                showError(cityField, 'Chyba pri načítaní miest.');
-            }
-        })
-        .catch(error => {
-            console.error('[SPA] Cities AJAX error:', error);
-            showError(cityField, 'Nastala technická chyba.');
-        });
-    }
-
-    /**
-     * Načítanie programov cez AJAX
-     */
-    function loadPrograms(cityId, programField) {
-        setLoadingState(programField, true, 'Načítavam programy...');
-
-        const formData = new FormData();
-        formData.append('action', 'spa_get_programs');
-        formData.append('city_id', cityId);
-
-        fetch(spaConfig.ajaxUrl, {
-            method: 'POST',
-            body: formData,
-            credentials: 'same-origin'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.data) {
-                populateProgramField(programField, data.data);
-            } else {
-                showError(programField, data.data?.message || 'Chyba pri načítaní programov.');
-            }
-        })
-        .catch(error => {
-            console.error('[SPA] Programs AJAX error:', error);
-            showError(programField, 'Nastala technická chyba.');
-        });
-    }
-
-    /**
-     * Naplnenie city fieldu
-     */
-    function populateCityField(selectElement, cities) {
-        selectElement.innerHTML = '<option value="">Vyberte mesto</option>';
-        cities.forEach(city => {
-            const option = document.createElement('option');
-            option.value = city.id;
-            option.textContent = city.name;
-            selectElement.appendChild(option);
-        });
-        selectElement.disabled = false;
-    }
-
-    /**
-     * Naplnenie program fieldu
-     */
-    function populateProgramField(selectElement, programs) {
-        selectElement.innerHTML = '<option value="">Vyberte program</option>';
-        programs.forEach(program => {
-            const option = document.createElement('option');
-            option.value = program.id;
-            option.textContent = program.label;
-            
-            // Pridaj data atribúty pre JS logiku
-            option.setAttribute('data-target', program.target);
-            if (program.age_min) option.setAttribute('data-age-min', program.age_min);
-            if (program.age_max) option.setAttribute('data-age-max', program.age_max);
-            
-            selectElement.appendChild(option);
-        });
-        selectElement.disabled = false;
-        
-        // Nastav listenery pre meno/priezvisko (blur)
-        setupNameFieldListeners();
+        console.log('[SPA] Auto-fill email inicializovaný.');
     }
 
     /**
@@ -213,33 +125,6 @@
         if (ageMin && ageMin < 18) {
             autoFillChildEmail();
         }
-    }
-
-    /**
-     * Reset program fieldu
-     */
-    function resetProgramField(selectElement) {
-        selectElement.innerHTML = '<option value="">Najprv vyberte mesto</option>';
-        selectElement.disabled = true;
-    }
-
-    /**
-     * Zobrazenie loading stavu
-     */
-    function setLoadingState(selectElement, isLoading, message = 'Načítavam...') {
-        if (isLoading) {
-            selectElement.innerHTML = `<option value="">${message}</option>`;
-            selectElement.disabled = true;
-        }
-    }
-
-    /**
-     * Zobrazenie chybovej správy
-     */
-    function showError(selectElement, message) {
-        selectElement.innerHTML = `<option value="">${message}</option>`;
-        selectElement.disabled = true;
-        console.error('[SPA]', message);
     }
 
     /**
