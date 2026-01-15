@@ -1150,74 +1150,7 @@ function renderInfobox(data, icons, capacityFree, price) {
                 console.log('[SPA Section Control] Registration type field: HIDDEN (no program)');
             }
         }
-    
-        // ⭐ EMAIL POLIA - zobrazujú sa až po výbere FREKVENCIE
-        const childEmailInput = document.querySelector('input[name="input_15"]');
-        const adultEmailInput = document.querySelector('input[name="input_16"]');
-
-        const childEmailField = childEmailInput?.closest('.gfield');
-        const adultEmailField = adultEmailInput?.closest('.gfield');
-
-        console.log('[SPA Email Control] Fields found:', {
-            childEmailInput: !!childEmailInput,
-            adultEmailInput: !!adultEmailInput,
-            childEmailField: !!childEmailField,
-            adultEmailField: !!adultEmailField,
-            isChildProgram: isChildProgram,
-            allSelected: allSelected
-        });
-
-        if (allSelected) {
-            if (isChildProgram) {
-                // CHILD program: zobraz LEN input_15
-                if (childEmailField && childEmailInput) {
-                    childEmailField.style.display = '';
-                    childEmailField.style.visibility = 'visible';
-                    childEmailField.style.opacity = '1';
-                    childEmailInput.disabled = false;
-                    childEmailInput.style.display = '';
-                    console.log('[SPA Section Control] ✅ Email CHILD (input_15) VISIBLE');
-                }
-                if (adultEmailField && adultEmailInput) {
-                    adultEmailField.style.display = 'none';
-                    adultEmailField.style.visibility = 'hidden';
-                    adultEmailField.style.opacity = '0';
-                    adultEmailInput.disabled = true;
-                    adultEmailInput.value = ''; // Vyčisti hodnotu
-                    console.log('[SPA Section Control] ❌ Email ADULT (input_16) HIDDEN');
-                }
-            } else {
-                // ADULT program: zobraz LEN input_16
-                if (adultEmailField && adultEmailInput) {
-                    adultEmailField.style.display = '';
-                    adultEmailField.style.visibility = 'visible';
-                    adultEmailField.style.opacity = '1';
-                    adultEmailInput.disabled = false;
-                    adultEmailInput.style.display = '';
-                    console.log('[SPA Section Control] ✅ Email ADULT (input_16) VISIBLE');
-                }
-                if (childEmailField && childEmailInput) {
-                    childEmailField.style.display = 'none';
-                    childEmailField.style.visibility = 'hidden';
-                    childEmailField.style.opacity = '0';
-                    childEmailInput.disabled = true;
-                    childEmailInput.value = ''; // Vyčisti hodnotu
-                    console.log('[SPA Section Control] ❌ Email CHILD (input_15) HIDDEN');
-                }
-            }
-        } else {
-            // Skry obidve ak nie je všetko vybrané
-            if (childEmailField && childEmailInput) {
-                childEmailField.style.display = 'none';
-                childEmailInput.disabled = true;
-            }
-            if (adultEmailField && adultEmailInput) {
-                adultEmailField.style.display = 'none';
-                adultEmailInput.disabled = true;
-            }
-            console.log('[SPA Section Control] Emails: HIDDEN (frequency not selected)');
-        }
-    
+        
         
         // ⭐ Použijeme querySelectorAll aby sme našli VŠETKY sekcie
         const commonSections = document.querySelectorAll('.spa-section-common');
@@ -1304,6 +1237,56 @@ function renderInfobox(data, icons, capacityFree, price) {
                         phoneWrapper.style.display = 'none';
                         phoneField.disabled = true;
                         console.log('[SPA toggleSection] Phone field: HIDDEN (no program)');
+                    }
+                }
+                nextElement = nextElement.nextElementSibling;
+                continue;
+            }
+            
+            // ⭐ ŠPECIÁLNE: Email CHILD (input_15) - zobraz LEN ak show=true A je CHILD program
+            const childEmailField = nextElement.querySelector('input[name="input_15"]');
+            if (childEmailField) {
+                const childEmailWrapper = childEmailField.closest('.gfield');
+                const birthNumberField = document.querySelector('input[name="input_8"]');
+                const isChildProgram = birthNumberField?.getAttribute('data-is-child') === 'true';
+                
+                if (childEmailWrapper) {
+                    if (show && isChildProgram) {
+                        childEmailWrapper.style.display = '';
+                        childEmailWrapper.style.visibility = 'visible';
+                        childEmailWrapper.style.opacity = '1';
+                        childEmailField.disabled = false;
+                        console.log('[SPA toggleSection] Email CHILD: VISIBLE');
+                    } else {
+                        childEmailWrapper.style.display = 'none';
+                        childEmailField.disabled = true;
+                        childEmailField.value = '';
+                        console.log('[SPA toggleSection] Email CHILD: HIDDEN');
+                    }
+                }
+                nextElement = nextElement.nextElementSibling;
+                continue;
+            }
+            
+            // ⭐ ŠPECIÁLNE: Email ADULT (input_16) - zobraz LEN ak show=true A je ADULT program
+            const adultEmailField = nextElement.querySelector('input[name="input_16"]');
+            if (adultEmailField) {
+                const adultEmailWrapper = adultEmailField.closest('.gfield');
+                const birthNumberField = document.querySelector('input[name="input_8"]');
+                const isChildProgram = birthNumberField?.getAttribute('data-is-child') === 'true';
+                
+                if (adultEmailWrapper) {
+                    if (show && !isChildProgram) {
+                        adultEmailWrapper.style.display = '';
+                        adultEmailWrapper.style.visibility = 'visible';
+                        adultEmailWrapper.style.opacity = '1';
+                        adultEmailField.disabled = false;
+                        console.log('[SPA toggleSection] Email ADULT: VISIBLE');
+                    } else {
+                        adultEmailWrapper.style.display = 'none';
+                        adultEmailField.disabled = true;
+                        adultEmailField.value = '';
+                        console.log('[SPA toggleSection] Email ADULT: HIDDEN');
                     }
                 }
                 nextElement = nextElement.nextElementSibling;
