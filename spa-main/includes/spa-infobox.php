@@ -327,9 +327,25 @@ function spa_ajax_get_infobox_content() {
             error_log('[SPA Infobox] Primary color: ' . $primary_color);
             error_log('[SPA Infobox] Secondary color: ' . $secondary_color);
             
+            // Získaj mapping úrovne s emoji
+            $level_raw = get_post_meta($program_id, 'spa_level', true);
+            $level_labels = [
+                'beginner' => '🟢 Začiatočník',
+                'intermediate' => '🟡 Mierne pokročilý',
+                'advanced' => '🟠 Pokročilý',
+                'professional' => '🔴 Profesionál'
+            ];
+            $level_display = isset($level_labels[$level_raw]) ? $level_labels[$level_raw] : $level_raw;
+            
+            // Pridaj úroveň do contentu
+            $program_content = apply_filters('the_content', $program_post->post_content);
+            if (!empty($level_display)) {
+                $program_content .= '<p style="margin-bottom: 0px;"><strong>Úroveň:</strong> ' . esc_html($level_display) . '</p>';
+            }
+            
             $program_data = [
                 'title' => $program_post->post_title,
-                'content' => apply_filters('the_content', $program_post->post_content),
+                'content' => $program_content,
                 'icon' => $icon_svg,
                 'primary_color' => !empty($primary_color) ? $primary_color : '#6d71b2',
                 'secondary_color' => !empty($secondary_color) ? $secondary_color : '#000000',
