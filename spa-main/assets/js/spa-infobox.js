@@ -1454,7 +1454,16 @@ function renderInfobox(data, icons, capacityFree, price) {
         // Program + úroveň
         let programDisplay = wizardData.program_name || '';
         if (window.infoboxData?.program?.spa_level && programDisplay) {
-            programDisplay += ' / ' + window.infoboxData.program.spa_level;
+            // Mapping úrovní s emoji (podľa CPT UI)
+            const levelLabels = {
+                'beginner': '🟢 Začiatočník',
+                'intermediate': '🟡 Mierne pokročilý',
+                'advanced': '🟠 Pokročilý',
+                'professional': '🔴 Profesionál'
+            };
+            const levelValue = window.infoboxData.program.spa_level;
+            const levelDisplay = levelLabels[levelValue] || levelValue;
+            programDisplay += ' ' + levelDisplay;
         }
     
         // Miesto tréningov
@@ -1556,7 +1565,17 @@ function renderInfobox(data, icons, capacityFree, price) {
 
         // 9. Cena/Frekvencia
         if (frequencyText) {
-            html += `<p><strong>Cena/Frekvencia:</strong> ${frequencyText}</p>`;
+            // Preformátuj z "1× týždenne – 50,00 €" → "50,00 € / 1× týždenne"
+            const match = frequencyText.match(/^(.+?)\s*[–-]\s*(.+)$/);
+            let displayText = frequencyText;
+            
+            if (match) {
+                const frequency = match[1].trim();
+                const price = match[2].trim();
+                displayText = `${price} / ${frequency}`;
+            }
+            
+            html += `<p><strong>Cena / Frekvencia:</strong> ${displayText}</p>`;
         }
 
         // 10. Platba (vždy zobrazená)
