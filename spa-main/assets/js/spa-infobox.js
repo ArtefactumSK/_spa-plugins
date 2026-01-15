@@ -1460,58 +1460,58 @@ function renderInfobox(data, icons, capacityFree, price) {
     
         // === RENDER HTML (len vyplnené hodnoty) ===
         
-        let html = '<h3>Prehľad registrácie</h3>';
-        html += '<dl class="spa-summary-list">';
-        
+        let html = '<h6>Prehľad registrácie</h6>';
+        html += '<div class="spa-summary-list">';
+
         // 1. Meno a adresa účastníka
         if (participantName && address) {
-            html += `<dt>Meno a adresa účastníka:</dt><dd>${participantName}, ${address}</dd>`;
+            html += `<p><strong>Meno a adresa účastníka:</strong> ${participantName}, ${address}</p>`;
         }
-        
+
         // 2. Vek účastníka
         if (age) {
-            html += `<dt>Vek účastníka:</dt><dd>${age}</dd>`;
+            html += `<p><strong>Vek účastníka:</strong> ${age}</p>`;
         }
-        
+
         // 3. Zákonný zástupca (len child, len ak sú všetky 3 hodnoty)
         if (isChild && guardianName && guardianEmail && guardianPhone) {
-            html += `<dt>Zákonný zástupca:</dt><dd>${guardianName}, ${guardianEmail}, ${guardianPhone}</dd>`;
+            html += `<p><strong>Zákonný zástupca:</strong> ${guardianName}, ${guardianEmail}, ${guardianPhone}</p>`;
         }
-        
+
         // 4. Telefón účastníka (voliteľné pre child, povinné pre adult)
         if (phone) {
-            html += `<dt>Telefónne číslo účastníka:</dt><dd>${phone}</dd>`;
+            html += `<p><strong>Telefónne číslo účastníka:</strong> ${phone}</p>`;
         }
-        
+
         // 5. Vybraný program
         if (programDisplay) {
-            html += `<dt>Vybraný program:</dt><dd>${programDisplay}</dd>`;
+            html += `<p><strong>Vybraný program:</strong> ${programDisplay}</p>`;
         }
-        
+
         // 6. Miesto tréningov
         if (placeDisplay) {
-            html += `<dt>Miesto tréningov:</dt><dd>${placeDisplay}</dd>`;
+            html += `<p><strong>Miesto tréningov:</strong> ${placeDisplay}</p>`;
         }
-        
+
         // 7. Veková kategória
         if (ageCategory) {
-            html += `<dt>Veková kategória:</dt><dd>${ageCategory}</dd>`;
+            html += `<p><strong>Veková kategória:</strong> ${ageCategory}</p>`;
         }
-        
+
         // 8. Rozvrh
         if (schedule) {
-            html += `<dt>Rozvrh:</dt><dd>${schedule}</dd>`;
+            html += `<p><strong>Rozvrh:</strong> ${schedule}</p>`;
         }
-        
+
         // 9. Cena/Frekvencia
         if (frequencyText) {
-            html += `<dt>Cena/Frekvencia:</dt><dd>${frequencyText}</dd>`;
+            html += `<p><strong>Cena/Frekvencia:</strong> ${frequencyText}</p>`;
         }
-        
+
         // 10. Platba (vždy zobrazená)
-        html += `<dt>Platba:</dt><dd>Platba po schválení registrácie</dd>`;
-        
-        html += '</dl>';
+        html += `<p><strong>Platba:</strong> Platba po schválení registrácie</p>`;
+
+        html += '</div>';
     
         summaryContainer.innerHTML = html;
         
@@ -1555,9 +1555,13 @@ function renderInfobox(data, icons, capacityFree, price) {
         }
     });
 
-    // Trigger pri blur na meno (pre istotu)
+    // Trigger pri blur (pre meno a adresu)
     document.addEventListener('blur', function(e) {
-        if (e.target.matches('input[name="input_6.3"], input[name="input_6.6"]')) {
+        if (!e.target || !e.target.name) return;
+        
+        const blurFields = ['input_6.3', 'input_6.6', 'input_17'];
+        
+        if (blurFields.includes(e.target.name)) {
             setTimeout(updatePriceSummary, 100);
         }
     }, true);
