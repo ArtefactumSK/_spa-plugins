@@ -491,7 +491,7 @@ window.wizardData = {
                 // Skús nájsť option (case-insensitive porovnanie)
                 const options = Array.from(citySelect.options);
                 const matchedOption = options.find(opt => 
-                    opt.value.toLowerCase() === cityParam.toLowerCase()
+                    opt.value == cityParam  // ⭐ ID matching (loose equality)
                 );
                 
                 if (matchedOption) {

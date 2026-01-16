@@ -150,15 +150,16 @@ function spa_process_registration($registration) {
 function spa_ajax_get_cities() {
     global $wpdb;
     
-    // SQL: Unikátne mestá z publikovaných spa_place
+    // SQL: Unikátne mestá s ich place_id
     $sql = "
-        SELECT DISTINCT pm.meta_value as city_name
+        SELECT p.ID as place_id, pm.meta_value as city_name
         FROM {$wpdb->postmeta} pm
         INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
         WHERE p.post_type = 'spa_place'
         AND p.post_status = 'publish'
         AND pm.meta_key = 'spa_place_city'
         AND pm.meta_value != ''
+        GROUP BY pm.meta_value
         ORDER BY pm.meta_value ASC
     ";
     
@@ -169,11 +170,11 @@ function spa_ajax_get_cities() {
         return;
     }
     
-    // Formátovanie pre JS
+    /// Formátovanie pre JS
     $cities = [];
     foreach ($results as $row) {
         $cities[] = [
-            'id' => sanitize_title($row->city_name),
+            'id' => $row->place_id,  // ⭐ ID namiesto slugu
             'name' => $row->city_name,
         ];
     }
@@ -188,32 +189,22 @@ add_action('wp_ajax_nopriv_spa_get_cities', 'spa_ajax_get_cities');
  * Načítava z CPT spa_group (publikované)
  */
 function spa_ajax_get_programs() {
-    $city_slug = isset($_POST['city_id']) ? sanitize_text_field($_POST['city_id']) : '';
+    $place_id = isset($_POST['city_id']) ? intval($_POST['city_id']) : 0;
     
-    if (empty($city_slug)) {
+    if (empty($place_id)) {
         wp_send_json_error(['message' => 'Neplatné ID mesta.']);
         return;
     }
     
-    // ⭐ NÁJDI MESTO V DB PODĽA SLUG (s diakritikou)
-    global $wpdb;
-    $city_name = $wpdb->get_var($wpdb->prepare("
-        SELECT DISTINCT pm.meta_value
-        FROM {$wpdb->postmeta} pm
-        INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID
-        WHERE p.post_type = 'spa_place'
-        AND p.post_status = 'publish'
-        AND pm.meta_key = 'spa_place_city'
-        AND LOWER(REPLACE(pm.meta_value, 'č', 'c')) = LOWER(REPLACE(%s, 'č', 'c'))
-        LIMIT 1
-    ", $city_slug));
+    // ⭐ ZÍSKAJ MESTO PRIAMO Z place_id
+    $city_name = get_post_meta($place_id, 'spa_place_city', true);
     
     if (!$city_name) {
         wp_send_json_error(['message' => 'Mesto nenájdené.']);
         return;
     }
     
-    error_log('[SPA Programs] City slug: ' . $city_slug . ' → City name: ' . $city_name);
+    error_log('[SPA Programs] Place ID: ' . $place_id . ' → City name: ' . $city_name);
     
     // Načítanie programov pre dané mesto
     $programs = spa_get_programs_for_city_dynamic($city_name);
