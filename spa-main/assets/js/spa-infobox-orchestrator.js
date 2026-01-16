@@ -2,10 +2,12 @@
  * SPA Infobox Wizard – sekcie
  */
 
+// ⭐ GLOBÁLNA PREMENNÁ PRE TYP PROGRAMU (child/adult)
+window.spaCurrentProgramType = null;
 
 /**
-     * Skrytie všetkých sekcií pri inicializácii
-     */
+ * Skrytie všetkých sekcií pri inicializácii
+ */
 window.hideAllSectionsOnInit = function() {
     console.log('[SPA Init] ========== HIDING ALL SECTIONS ==========');
     
@@ -117,6 +119,8 @@ window.updateSectionVisibility = function() {
         isChildProgram,
         source: programField?.value ? 'age_min' : 'data-is-child'
     });
+    // ⭐ ULOŽ DO GLOBÁLNEJ PREMENNEJ
+    window.spaCurrentProgramType = isChildProgram ? 'child' : 'adult';
 
     // ⭐ ZAPÍŠ RESOLVED TYPE DO HIDDEN FIELD (input_34)
     const resolvedTypeField = document.querySelector('input[name="input_34"]');
@@ -297,8 +301,7 @@ window.toggleSection = function(sectionElement, show) {
         const childEmailField = nextElement.querySelector('input[name="input_15"]');
         if (childEmailField) {
             const childEmailWrapper = childEmailField.closest('.gfield');
-            const birthNumberField = document.querySelector('input[name="input_8"]');
-            const isChildProgram = birthNumberField?.getAttribute('data-is-child') === 'true';
+            const isChildProgram = window.spaCurrentProgramType === 'child';
             
             if (childEmailWrapper) {
                 if (show && isChildProgram) {
@@ -322,8 +325,7 @@ window.toggleSection = function(sectionElement, show) {
         const adultEmailField = nextElement.querySelector('input[name="input_16"]');
         if (adultEmailField) {
             const adultEmailWrapper = adultEmailField.closest('.gfield');
-            const birthNumberField = document.querySelector('input[name="input_8"]');
-            const isChildProgram = birthNumberField?.getAttribute('data-is-child') === 'true';
+            const isChildProgram = window.spaCurrentProgramType === 'child';
             
             if (adultEmailWrapper) {
                 if (show && !isChildProgram) {
