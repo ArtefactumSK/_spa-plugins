@@ -390,9 +390,13 @@ window.applyGetParams = function() {
     
     console.log('[SPA GET] Found params:', { cityParam, programParam, frequencyParam });
     
-    // Počkaj na GF render selectov
-    setTimeout(() => {
-        console.log('[SPA GET DEBUG] ========== START DIAGNOSTICS ==========');
+    // ⭐ POLLING - čakaj na GF AJAX options
+    let attempts = 0;
+    const maxAttempts = 20;
+    
+    const checkOptions = setInterval(() => {
+        attempts++;
+        console.log('[SPA GET DEBUG] ========== START DIAGNOSTICS (attempt ' + attempts + '/' + maxAttempts + ') ==========');
         console.log('[SPA GET DEBUG] URL params:', { cityParam, programParam, frequencyParam });
         console.log('[SPA GET DEBUG] spaConfig.fields:', spaConfig.fields);
 
@@ -438,6 +442,24 @@ window.applyGetParams = function() {
         }
 
         console.log('[SPA GET DEBUG] ========== END DIAGNOSTICS ==========');
+        
+        // ⭐ KONTROLA: Ak options neexistujú a ešte je čas, skús znova
+        const citySelect2 = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
+        if (!citySelect || citySelect.options.length <= 1) {
+            if (attempts < maxAttempts) {
+                console.log('[SPA GET] Waiting for options... (' + attempts + '/' + maxAttempts + ')');
+                return; // Pokračuj v pollingu
+            } else {
+                console.error('[SPA GET] TIMEOUT - options not ready after ' + attempts + ' attempts');
+                clearInterval(checkOptions);
+                return;
+            }
+        }
+        
+        // ⭐ Options sú ready, zastav polling
+        clearInterval(checkOptions);
+        console.log('[SPA GET] ✅ Options ready, applying params');
+        
         let stateChanged = false;
         
         // MESTO
@@ -468,6 +490,9 @@ window.applyGetParams = function() {
                     window.currentState = 1;
                     stateChanged = true;
                     console.log('[SPA GET] Applied city:', matchedOption.text);
+                    
+                    // ⭐ TRIGGER CHANGE EVENT
+                    citySelect.dispatchEvent(new Event('change', { bubbles: true }));
                 } else {
                     console.warn('[SPA GET] City option not found:', cityParam);
                 }
@@ -502,6 +527,9 @@ window.applyGetParams = function() {
                     window.currentState = 2;
                     stateChanged = true;
                     console.log('[SPA GET] Applied program:', matchedOption.text);
+                    
+                    // ⭐ TRIGGER CHANGE EVENT
+                    programSelect.dispatchEvent(new Event('change', { bubbles: true }));
                 } else {
                     console.warn('[SPA GET] Program option not found:', programParam);
                 }
@@ -527,5 +555,5 @@ window.applyGetParams = function() {
                 }
             }, 500);  // Počkaj na renderFrequencySelector
         }
-    }, 200);  // Počkaj na GF AJAX
+    }, 200);  // ⭐ Prvý pokus o 200ms, potom každých 200ms
 };
