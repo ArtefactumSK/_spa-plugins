@@ -5,7 +5,8 @@
 /**
      * Filtrovanie programových options podľa mesta
      */
-function filterProgramsByCity(cityName) {
+window.filterProgramsByCity = function(cityName) {
+    function filterProgramsByCity(cityName) {
     const programField = document.querySelector('[name="input_2"]');
     
     if (!programField) {
@@ -59,23 +60,24 @@ function filterProgramsByCity(cityName) {
         console.warn('[SPA Filter] No programs available for:', cityName);
     }
 }
+};
 
 document.addEventListener('DOMContentLoaded', function() {    
-    if (initialized) return; // ⭐ Už inicializované
-    initInfobox();
-    watchFormChanges();
-    initialized = true; // ⭐ Označ ako hotové
+    if (window.initialized) return;
+    window.initInfobox();
+    window.watchFormChanges();
+    window.initialized = true;
 });
 
 // Gravity Forms AJAX callback
 if (typeof jQuery !== 'undefined') {
-jQuery(document).on('gform_post_render', function() {
-    initInfobox();
-    watchFormChanges();
-    // ⭐ KRITICKÉ: Skry sekcie AŽ PO GF renderi
-    hideAllSectionsOnInit();
-});
-}
+    jQuery(document).on('gform_post_render', function() {
+        window.initInfobox();
+        window.watchFormChanges();
+        window.hideAllSectionsOnInit();
+    });
+ }
+
 
 /**
      * Renderovanie frekvenčného selektora
@@ -159,7 +161,7 @@ function renderFrequencySelector(programData) {
             
             // ⭐ OKAMŽITE AKTUALIZUJ VIDITEĽNOSŤ SEKCIÍ + PAGE BREAK
             setTimeout(() => {
-                updateSectionVisibility();
+                window.updateSectionVisibility();
                 
             }, 150);
         }
@@ -169,8 +171,8 @@ function renderFrequencySelector(programData) {
             if (this.checked) {
                 window.spaFormState.frequency = true;
                 
-                updateSectionVisibility();
-                updatePriceSummary(); // ⭐ AKTUALIZUJ PREHĽAD
+                window.updateSectionVisibility();
+                window.updatePriceSummary(); // ⭐ AKTUALIZUJ PREHĽAD
                 console.log('[SPA Frequency] Selected:', this.value);
             }
         });

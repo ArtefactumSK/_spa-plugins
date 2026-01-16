@@ -78,10 +78,43 @@ function spa_enqueue_scripts() {
         true
     );
     
+    // ⭐ ROZDELENÉ JS SÚBORY - SPRÁVNE PORADIE
+    wp_enqueue_script(
+        'spa-infobox-state',
+        SPA_PLUGIN_URL . 'assets/js/spa-infobox-state.js',
+        ['spa-registration'],
+        '1.1.0',
+        true
+    );
+    
+    wp_enqueue_script(
+        'spa-infobox-orchestrator',
+        SPA_PLUGIN_URL . 'assets/js/spa-infobox-orchestrator.js',
+        ['spa-infobox-state'],
+        '1.1.0',
+        true
+    );
+    
+    wp_enqueue_script(
+        'spa-infobox-ui',
+        SPA_PLUGIN_URL . 'assets/js/spa-infobox-ui.js',
+        ['spa-infobox-state'],
+        '1.1.0',
+        true
+    );
+    
     wp_enqueue_script(
         'spa-infobox',
         SPA_PLUGIN_URL . 'assets/js/spa-infobox.js',
-        ['spa-registration'],
+        ['spa-infobox-state'],
+        '1.1.0',
+        true
+    );
+    
+    wp_enqueue_script(
+        'spa-infobox-events',
+        SPA_PLUGIN_URL . 'assets/js/spa-infobox-events.js',
+        ['spa-infobox-state', 'spa-infobox-orchestrator', 'spa-infobox-ui', 'spa-infobox'],
         '1.1.0',
         true
     );

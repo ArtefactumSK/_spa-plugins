@@ -3,8 +3,6 @@
  * CENTRALIZOVANÝ STATE MANAGEMENT
  */
 
-(function() {
-    'use strict';
 
     if (typeof spaConfig === 'undefined') {
         console.error('[SPA Infobox] spaConfig nie je definovaný.');
@@ -14,6 +12,7 @@
     /**
      * Inicializácia infoboxu
      */
+    window.initInfobox = function() {
     function initInfobox() {
         const infoboxContainer = document.getElementById('spa-infobox-container');
         
@@ -43,7 +42,7 @@
         console.log('[SPA Infobox] Inicializovaný.');
     }
 
-    
+};
    
     
 
@@ -239,9 +238,9 @@ function renderInfobox(data, icons, capacityFree, price) {
         }
 
         if (currentState === 2 && programData) {
-            renderFrequencySelector(programData);
+            window.renderFrequencySelector(programData);
         } else {
-            renderFrequencySelector(null);
+            window.renderFrequencySelector(null);
         }
 
         // KAPACITA (len v stave 2)
@@ -413,4 +412,3 @@ function renderInfobox(data, icons, capacityFree, price) {
     function findSectionByClass(cssClass) {
         return document.querySelector(`.${cssClass}`);
     }
-})();

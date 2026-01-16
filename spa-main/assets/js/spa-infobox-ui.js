@@ -4,6 +4,7 @@
 /**
  * Vyčistenie všetkých polí v sekciách
  */
+window.clearAllSectionFields = function() {
     function clearAllSectionFields() {
         console.log('[SPA Clear] Clearing all section fields');
         
@@ -24,7 +25,7 @@
         
         console.log('[SPA Clear] Cleared', participantInputs.length, 'fields');
     }
-
+};
 /**
  * Aktualizácia PREHĽADU REGISTRÁCIE (.spa-price-summary)
  */

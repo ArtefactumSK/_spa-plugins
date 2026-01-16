@@ -3,7 +3,7 @@
  * CENTRALIZOVANÝ STATE MANAGEMENT
  */
 
-// GLOBÁLNY STAV FORMULÁRA
+// ⭐ GLOBÁLNE PREMENNÉ (prístupné všetkým súborom)
 window.spaFormState = {
     city: false,
     program: false,
@@ -14,11 +14,11 @@ window.spaFormState = {
 if (!document.getElementById('spa-infobox-container')) {
     return; // Ticho skonči, žiadne logy, žiadne listenery
 }
-let initialized = false; // ⭐ Flag proti duplicitným inicializáciám
-let listenersAttached = false; // ⭐ Flag proti duplicitným listenerom
-let lastCapacityFree = null;
-let currentState = 0;
-let wizardData = {
+window.initialized = false;
+window.listenersAttached = false;
+window.lastCapacityFree = null;
+window.currentState = 0;
+window.wizardData = {
     program_id: null,
     city_name: '',
     program_name: '',
@@ -55,7 +55,7 @@ let wizardData = {
         });
         
         currentState = newState;
-        loadInfoboxContent(currentState);
+        window.loadInfoboxContent(window.currentState);
     }
 
     
@@ -156,7 +156,7 @@ let wizardData = {
                 // Načítaj infobox ak máme dáta
                 if (currentState > 0) {
                     console.log('[SPA Restore] Loading infobox for state:', currentState);
-                    loadInfoboxContent(currentState);
+                    window.loadInfoboxContent(window.currentState);
                     
                 } else {
                     console.warn('[SPA Restore] ⚠️ currentState is 0, NOT loading infobox');
@@ -175,8 +175,13 @@ let wizardData = {
      * Sledovanie zmien vo formulári
      */
     function watchFormChanges() {
+        // ⭐ GUARD: Container musí existovať
+        if (!document.getElementById('spa-infobox-container')) {
+            return;
+        }
+        
         // ⭐ GUARD: Zabraň duplicitným event listenerom
-        if (listenersAttached) {
+        if (window.listenersAttached) {
             console.log('[SPA Infobox] Listeners already attached, skipping');
             return;
         }
@@ -208,7 +213,7 @@ let wizardData = {
                     
                     // ⭐ FILTRUJ options podľa mesta
                     if (selectedCityName && selectedCityName.trim() !== '') {
-                        filterProgramsByCity(selectedCityName);
+                        window.filterProgramsByCity(selectedCityName);
                     }
                 }
                 
@@ -219,7 +224,7 @@ let wizardData = {
                 }
                 
                 // ⭐ VYČISTI VŠETKY POLIA V SEKCIÁCH
-                clearAllSectionFields();
+                window.filterProgramsByCity(selectedCityName);
                 
                 if (cityField.value && cityField.value !== '0' && cityField.value !== '') {
                     wizardData.city_name = selectedCityName;
@@ -232,10 +237,10 @@ let wizardData = {
                     currentState = 0;
                 }
                 
-                loadInfoboxContent(currentState);
+                window.loadInfoboxContent(window.currentState);
                 
-                updateSectionVisibility();
-                updatePriceSummary(); // ⭐ AKTUALIZUJ PREHĽAD
+                window.updateSectionVisibility();
+                window.updatePriceSummary(); // ⭐ AKTUALIZUJ PREHĽAD
             }
         });
         
@@ -295,12 +300,12 @@ let wizardData = {
                     }
                     
                     // ⭐ VYČISTI POLIA
-                    clearAllSectionFields();
+                    window.filterProgramsByCity(selectedCityName);
                 }
                 
-                loadInfoboxContent(currentState);
+                window.loadInfoboxContent(window.currentState);
                 
-                updateSectionVisibility();
+                window.updateSectionVisibility();
             });
         } else {
             console.error('[SPA Infobox] Program field NOT FOUND!');
@@ -314,7 +319,7 @@ let wizardData = {
                 
                 // Počkaj kým sa stránka renderuje
                 setTimeout(() => {
-                    updatePriceSummary();
+                    window.updatePriceSummary();
                 }, 200);
             });
         }
@@ -330,8 +335,13 @@ let wizardData = {
      * Načítanie obsahu infoboxu cez AJAX
      */
     function loadInfoboxContent(state) {
-        console.log('[SPA Infobox] Loading state:', state, wizardData);
-        showLoader();
+        // ⭐ GUARD: Container musí existovať
+        if (!document.getElementById('spa-infobox-container')) {
+            return;
+        }
+        
+        console.log('[SPA Infobox] Loading state:', state, window.wizardData);
+        window.showLoader();
 
         const formData = new FormData();
         formData.append('action', 'spa_get_infobox_content');
@@ -351,14 +361,14 @@ let wizardData = {
             console.log('[SPA Infobox] AJAX Response:', data);
             
             if (data.success) {
-                renderInfobox(data.data, data.data.icons, data.data.capacity_free, data.data.price);
+                window.renderInfobox(data.data, data.data.icons, data.data.capacity_free, data.data.price);
             } else {
                 console.error('[SPA Infobox] Chyba:', data.data?.message);
-                hideLoader();
+                window.hideLoader();
             }
         })
         .catch(error => {
             console.error('[SPA Infobox] AJAX error:', error);
-            hideLoader();
+            window.hideLoader();
         });
     }

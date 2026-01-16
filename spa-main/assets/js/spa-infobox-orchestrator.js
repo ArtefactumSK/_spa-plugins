@@ -6,6 +6,7 @@
 /**
      * Skrytie všetkých sekcií pri inicializácii
      */
+window.hideAllSectionsOnInit = function() {    
 function hideAllSectionsOnInit() {
     console.log('[SPA Init] ========== HIDING ALL SECTIONS ==========');
     
@@ -49,7 +50,7 @@ function hideAllSectionsOnInit() {
         console.log(`[SPA Init] Found ${allSections.length} sections with class: ${cssClass}`);
         
         allSections.forEach(section => {
-            toggleSection(section, false);
+            window.toggleSection(section, false);
             console.log(`[SPA Init] ❌ Hidden: ${cssClass} (ID: ${section.id || 'no-id'})`);
         });
     });
@@ -58,6 +59,7 @@ function hideAllSectionsOnInit() {
     window.spa_sections_hidden = true;
     console.log('[SPA Init] ========== SECTIONS HIDDEN COMPLETE ==========');
 }
+};
 
 /**
  * RIADENIE VIDITEĽNOSTI SEKCIÍ
@@ -223,7 +225,7 @@ function updateSectionVisibility() {
     if (programSelected) {
         // 1. SPOLOČNÁ SEKCIA: vždy zobrazená (VŠETKY commonSections)
         commonSections.forEach(section => {
-            toggleSection(section, true);
+            window.toggleSection(section, true);
         });
         console.log('[SPA Section Control] ✅ Common sections: VISIBLE');
         
