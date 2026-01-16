@@ -184,6 +184,11 @@ window.wizardData = {
         
         // ⭐ DELEGOVANÝ listener pre mesto (funguje aj po GF rerenderi)
         document.addEventListener('change', function(e) {
+            if (e.target.name === 'input_1') {
+                console.log('[SPA GET DEBUG] Change event triggered on input_1');
+                console.log('[SPA GET DEBUG] Change event value:', e.target.value);
+                console.log('[SPA GET DEBUG] Change event triggered by:', e.isTrusted ? 'USER' : 'SCRIPT');
+            }
             console.log('[SPA DEBUG] Change event:', e.target.name, e.target.value);
             // Skontroluj či ide o city field
             if (e.target.name === 'input_1') {
@@ -387,6 +392,52 @@ window.applyGetParams = function() {
     
     // Počkaj na GF render selectov
     setTimeout(() => {
+        console.log('[SPA GET DEBUG] ========== START DIAGNOSTICS ==========');
+        console.log('[SPA GET DEBUG] URL params:', { cityParam, programParam, frequencyParam });
+        console.log('[SPA GET DEBUG] spaConfig.fields:', spaConfig.fields);
+
+        // 1. Skontroluj či existuje select pre mesto
+        const citySelect = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
+        console.log('[SPA GET DEBUG] City select element:', citySelect);
+        console.log('[SPA GET DEBUG] City select exists:', !!citySelect);
+
+        if (citySelect) {
+            // 2. Jeho name + id + počet option
+            console.log('[SPA GET DEBUG] City select name:', citySelect.name);
+            console.log('[SPA GET DEBUG] City select id:', citySelect.id);
+            console.log('[SPA GET DEBUG] City select options.length:', citySelect.options.length);
+            
+            // 3. Zoznam prvých 10 option.value (alebo všetkých)
+            const optionsList = Array.from(citySelect.options).slice(0, 10).map(opt => ({
+                value: opt.value,
+                text: opt.text,
+                selected: opt.selected
+            }));
+            console.log('[SPA GET DEBUG] City select options (first 10):', optionsList);
+            
+            // 4. Aktuálna hodnota selectu PRED nastavením
+            console.log('[SPA GET DEBUG] City select value BEFORE:', citySelect.value);
+            
+            // ⭐ EXISTUJÚCI KÓD NA NASTAVENIE (ponechaj ho tu)
+            // const options = Array.from(citySelect.options);
+            // const matchedOption = options.find(opt => ...);
+            // if (matchedOption) { citySelect.value = matchedOption.value; ... }
+            
+        } else {
+            console.error('[SPA GET DEBUG] ❌ City select NOT FOUND with selector:', `[name="${spaConfig.fields.spa_city}"]`);
+            
+            // Skús alternatívne selektory
+            const altSelect1 = document.querySelector('[name="input_1"]');
+            const altSelect2 = document.querySelector('#input_1_1');
+            const altSelect3 = document.querySelector('select[id^="input_1"]');
+            
+            console.log('[SPA GET DEBUG] Alternative selectors:');
+            console.log('  [name="input_1"]:', !!altSelect1);
+            console.log('  #input_1_1:', !!altSelect2);
+            console.log('  select[id^="input_1"]:', !!altSelect3);
+        }
+
+        console.log('[SPA GET DEBUG] ========== END DIAGNOSTICS ==========');
         let stateChanged = false;
         
         // MESTO
@@ -401,6 +452,17 @@ window.applyGetParams = function() {
                 
                 if (matchedOption) {
                     citySelect.value = matchedOption.value;
+                    // 4. Aktuálna hodnota selectu PO nastavení
+                    console.log('[SPA GET DEBUG] City select value AFTER:', citySelect.value);
+                    console.log('[SPA GET DEBUG] Matched option value:', matchedOption.value);
+                    console.log('[SPA GET DEBUG] Matched option text:', matchedOption.text);
+
+                    // 5. Overiť či hodnota zostala aj po 500ms
+                    setTimeout(() => {
+                        const finalValue = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
+                        console.log('[SPA GET DEBUG] City select value AFTER 500ms:', finalValue?.value);
+                        console.log('[SPA GET DEBUG] City select still exists:', !!finalValue);
+                    }, 500);
                     window.wizardData.city_name = matchedOption.text;
                     window.spaFormState.city = true;
                     window.currentState = 1;
