@@ -67,7 +67,7 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
     
     const container = document.getElementById('spa-infobox-container');
     if (!container) {
-        hideLoader();
+        window.hideLoader();
         return;
     }
 
@@ -108,7 +108,7 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
             container.appendChild(summaryDiv);
         }
         
-        hideLoader();
+        window.hideLoader();
         return; // Skončiť render pre state 0/1
     }
     
