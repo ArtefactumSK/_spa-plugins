@@ -3,17 +3,14 @@
  * CENTRALIZOVANÝ STATE MANAGEMENT
  */
 
-
-    if (typeof spaConfig === 'undefined') {
-        console.error('[SPA Infobox] spaConfig nie je definovaný.');
-        return;
-    }
+if (typeof spaConfig === 'undefined') {
+    console.error('[SPA Infobox] spaConfig nie je definovaný.');
+}
     
     /**
      * Inicializácia infoboxu
      */
     window.initInfobox = function() {
-    function initInfobox() {
         const infoboxContainer = document.getElementById('spa-infobox-container');
         
         if (!infoboxContainer) {
@@ -37,22 +34,20 @@
         }
     
         // Načítaj úvodný stav
-        loadInfoboxContent(0);
+        window.loadInfoboxContent(0);
 
         console.log('[SPA Infobox] Inicializovaný.');
-    }
-
 };
-   
+  
     
 
 
-    /**
+ /**
  * Vykreslenie infoboxu
  */
-function renderInfobox(data, icons, capacityFree, price) {
+window.renderInfobox = function(data, icons, capacityFree, price) {
     console.log('[renderInfobox] ========== START ==========');
-    console.log('[renderInfobox] State:', currentState);
+    console.log('[renderInfobox] State:', window.currentState);
     console.log('[renderInfobox] wizardData:', JSON.stringify(wizardData));
     console.log('[renderInfobox] programData:', data.program);
     console.log('[renderInfobox] programData.title:', data.program?.title);
@@ -87,14 +82,14 @@ function renderInfobox(data, icons, capacityFree, price) {
    /* ==================================================
     1. OBSAH – WP stránka (SPA Infobox Wizard)
     ================================================== */
-    if (!wizardData.program_name) {
+    if (!window.wizardData.program_name) {
         const contentDiv = document.createElement('div');
         contentDiv.className = 'spa-infobox-content';
         contentDiv.innerHTML = content;
         container.appendChild(contentDiv);
         
         // STATE 1: Zobraz mesto v SUMMARY
-        if (currentState === 1 && wizardData.city_name) {
+        if (window.currentState === 1 && window.wizardData.city_name) {
             const summaryDiv = document.createElement('div');
             summaryDiv.className = 'spa-infobox-summary';
             
@@ -105,7 +100,7 @@ function renderInfobox(data, icons, capacityFree, price) {
                 <ul class="spa-summary-list">
                     <li class="spa-summary-item spa-summary-city">
                         <span class="spa-summary-icon">${locationIcon}</span>
-                        ${wizardData.city_name}
+                        ${window.wizardData.city_name}
                     </li>
                 </ul>
             `;
@@ -120,7 +115,7 @@ function renderInfobox(data, icons, capacityFree, price) {
     /* ==================================================
     1.3 ÚDAJE PROGRAMU (ikona, názov, obsah)
     ================================================== */
-    if (currentState === 2 && wizardData.program_name && programData) {
+    if (window.currentState === 2 && window.wizardData.program_name && programData) {
         console.log('[renderInfobox] Rendering program data:', programData);
         
         const programDiv = document.createElement('div');
@@ -143,14 +138,14 @@ function renderInfobox(data, icons, capacityFree, price) {
         }
         else {
             // Pre program bez veku použij &nbsp;, inak zobraz vek
-            const ageText = wizardData.program_age ? wizardData.program_age : '&nbsp;';
+            const ageText = window.wizardData.program_age ? window.wizardData.program_age : '&nbsp;';
             programHtml += `<div class="spa-age-range-text no-svg-icon">${ageText}</div>`;
         }
         
         // VEĽKÝ TEXT VEKU POD SVG
-        if (wizardData.program_age) {
+        if (window.wizardData.program_age) {
             const primaryColor = programData.primary_color || '#6d71b2';
-            programHtml += `<div class="spa-age-range-text" style="color: ${primaryColor};">${wizardData.program_age} r.</div>`;
+            programHtml += `<div class="spa-age-range-text" style="color: ${primaryColor};">${window.wizardData.program_age} r.</div>`;
         }
         programHtml += '</div>'; // .spa-program-icon
         // Názov programu s SPA logom
@@ -194,7 +189,7 @@ function renderInfobox(data, icons, capacityFree, price) {
     /* ==================================================
     1.5 DYNAMICKÝ SUMMARY (mesto, vek, kapacita)
     ================================================== */
-    if (wizardData.city_name || wizardData.program_age) {
+    if (window.wizardData.city_name || window.wizardData.program_age) {
 
         const summaryDiv = document.createElement('div');
         summaryDiv.className = 'spa-infobox-summary';
@@ -202,17 +197,17 @@ function renderInfobox(data, icons, capacityFree, price) {
         let summaryHtml = '<hr><ul class="spa-summary-list">';
 
         // MESTO s inline ikonou
-        if (wizardData.city_name) {
+        if (window.wizardData.city_name) {
             const locationIcon = icons && icons.location ? icons.location : '';
             
-            let locationText = wizardData.city_name;
+            let locationText = window.wizardData.city_name;
             
-            if (data.place && currentState === 2) {
+            if (data.place && window.currentState === 2) {
                 const addressParts = [];
                 if (data.place.name) addressParts.push(data.place.name);
                 if (data.place.address) addressParts.push(data.place.address);
                 
-                const cityPart = data.place.city ? `<strong>${data.place.city}</strong>` : wizardData.city_name;
+                const cityPart = data.place.city ? `<strong>${data.place.city}</strong>` : window.wizardData.city_name;
                 const addressText = addressParts.filter(Boolean).join(', ');
                 
                 locationText = addressText ? `${cityPart} • ${addressText}` : cityPart;
@@ -226,25 +221,25 @@ function renderInfobox(data, icons, capacityFree, price) {
         }
 
         // VEK s ikonou
-        if (wizardData.program_age) {
-            const ageLabel = wizardData.program_age.includes('+') ? 'rokov' : 'roky';
+        if (window.wizardData.program_age) {
+            const ageLabel = window.wizardData.program_age.includes('+') ? 'rokov' : 'roky';
             const ageIconSvg = icons && icons.age ? icons.age : '<span class="spa-icon-placeholder">👶</span>';
             
             summaryHtml += `
             <li class="spa-summary-item spa-summary-age">
                 <span class="spa-summary-icon">${ageIconSvg}</span>
-                <strong>${wizardData.program_age}</strong> ${ageLabel}
+                <strong>${window.wizardData.program_age}</strong> ${ageLabel}
             </li>`;
         }
 
-        if (currentState === 2 && programData) {
+        if (window.currentState === 2 && programData) {
             window.renderFrequencySelector(programData);
         } else {
             window.renderFrequencySelector(null);
         }
 
         // KAPACITA (len v stave 2)
-        if (currentState === 2 && wizardData.program_name && capacityFree !== null && capacityFree !== undefined) {                
+        if (window.currentState === 2 && window.wizardData.program_name && capacityFree !== null && capacityFree !== undefined) {                
             const capacityIconSvg = icons && icons.capacity ? icons.capacity : '';
             const capacityLabel = getCapacityLabel(capacityFree);
         
@@ -256,7 +251,7 @@ function renderInfobox(data, icons, capacityFree, price) {
         }            
        
         // CENA (len ak je vybraný program)
-        if (price && wizardData.program_name) {
+        if (price && window.wizardData.program_name) {
             const priceIconSvg = icons && icons.price ? icons.price : '<span class="spa-icon-placeholder">€</span>';
             const priceFormatted = price.replace(/(\d+\s*€)/g, '<strong>$1</strong>');
 
@@ -268,7 +263,7 @@ function renderInfobox(data, icons, capacityFree, price) {
         }
 
         // VEKOVÝ ROZSAH (len v stave 2)
-        if (currentState === 2 && wizardData.program_name && data.program) {
+        if (window.currentState === 2 && window.wizardData.program_name && data.program) {
             const ageFrom = data.program.age_min;
             const ageTo = data.program.age_max;
             
@@ -377,38 +372,38 @@ function renderInfobox(data, icons, capacityFree, price) {
         // Ak nie sú farby, vypni loader hneď
         hideLoader();
     }
-}
+};
 
     
 
-   /**
-     * Zobraz loader
-     */
-   function showLoader() {
+ /**
+ * Zobraz loader
+ */
+window.showLoader = function() {
         console.log('[SPA LOADER] start');
         const loader = document.getElementById('spa-infobox-loader');
         if (loader) {
             loader.classList.add('active');
         }
-    }
+    };   
 
-    /**
-     * Skry loader
-     */
-    function hideLoader() {
+/**
+ * Skry loader
+ */
+window.hideLoader = function() {
         console.log('[SPA LOADER] end');
         const loader = document.getElementById('spa-infobox-loader');
         if (loader) {
             loader.classList.remove('active');
         }
-    }    
+    };    
 
 
-    /**
-     * Nájdi sekciu podľa CSS triedy
-     * @param {string} cssClass - CSS trieda (napr. 'spa-section-common')
-     * @returns {HTMLElement|null}
-     */
-    function findSectionByClass(cssClass) {
-        return document.querySelector(`.${cssClass}`);
-    }
+/**
+ * Nájdi sekciu podľa CSS triedy
+ * @param {string} cssClass - CSS triedy (napr. 'spa-section-common')
+ * @returns {HTMLElement|null}
+ */
+window.findSectionByClass = function(cssClass) {
+    return document.querySelector(`.${cssClass}`);
+};

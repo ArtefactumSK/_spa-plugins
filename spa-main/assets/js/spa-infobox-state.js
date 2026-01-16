@@ -10,10 +10,6 @@ window.spaFormState = {
     frequency: false
 };
 
-// ⭐ TOP-LEVEL GUARD: Koniec ak nie je infobox container
-if (!document.getElementById('spa-infobox-container')) {
-    return; // Ticho skonči, žiadne logy, žiadne listenery
-}
 window.initialized = false;
 window.listenersAttached = false;
 window.lastCapacityFree = null;
@@ -29,40 +25,40 @@ window.wizardData = {
     /**
      * CENTRÁLNE URČENIE CASE
      */
-    function determineCaseState() {
-        if (!wizardData.city_name) {
+    window.determineCaseState = function() {
+        if (!window.wizardData.city_name) {
             return 0;
         }
-        if (wizardData.city_name && !wizardData.program_name) {
+        if (window.wizardData.city_name && !window.wizardData.program_name) {
             return 1;
         }
-        if (wizardData.city_name && wizardData.program_name) {
+        if (window.wizardData.city_name && window.wizardData.program_name) {
             return 2;
         }
         return 0;
-    }
+    };
 
     /**
      * CENTRÁLNY UPDATE STAVU
      */
-    function updateInfoboxState() {
+    window.updateInfoboxState = function() {
         const newState = determineCaseState();
         
         console.log('[SPA Infobox] State transition:', {
-            from: currentState,
+            from: window.currentState,
             to: newState,
-            wizardData: wizardData
+            wizardData: window.wizardData
         });
         
-        currentState = newState;
+        window.currentState = newState;
         window.loadInfoboxContent(window.currentState);
-    }
+    };
 
     
     /**
      * Obnovenie wizardData z hidden backup polí
      */
-    function restoreWizardData() {
+    window.restoreWizardData = function() {
         console.log('[SPA Restore] ========== START ==========');
         
         
@@ -114,11 +110,11 @@ window.wizardData = {
                     
                     const selectedOption = citySelect.options[citySelect.selectedIndex];
                     if (selectedOption && selectedOption.value) {
-                        wizardData.city_name = selectedOption.text;
+                        window.wizardData.city_name = selectedOption.text;
                         window.spaFormState.city = true;
-                        currentState = 1;
+                        window.currentState = 1;
                         
-                        console.log('[SPA Restore] ✅ City RESTORED:', wizardData.city_name);
+                        console.log('[SPA Restore] ✅ City RESTORED:', window.wizardData.city_name);
                     } else {
                         console.error('[SPA Restore] ❌ City restore FAILED - no option found for value:', cityBackup.value);
                     }
@@ -130,31 +126,31 @@ window.wizardData = {
                     
                     const selectedOption = programSelect.options[programSelect.selectedIndex];
                     if (selectedOption && selectedOption.value) {
-                        wizardData.program_name = selectedOption.text;
-                        wizardData.program_id = selectedOption.getAttribute('data-program-id') || selectedOption.value;
+                        window.wizardData.program_name = selectedOption.text;
+                        window.wizardData.program_id = selectedOption.getAttribute('data-program-id') || selectedOption.value;
                         window.spaFormState.program = true;
                         
                         // Parsuj vek
                         const ageMatch = selectedOption.text.match(/(\d+)[–-](\d+)/);
                         if (ageMatch) {
-                            wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
+                            window.wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
                         } else {
                             const agePlusMatch = selectedOption.text.match(/(\d+)\+/);
                             if (agePlusMatch) {
-                                wizardData.program_age = agePlusMatch[1] + '+';
+                                window.wizardData.program_age = agePlusMatch[1] + '+';
                             }
                         }
                         
-                        currentState = 2;
+                        window.currentState = 2;
                         
-                        console.log('[SPA Restore] ✅ Program RESTORED:', wizardData.program_name);
+                        console.log('[SPA Restore] ✅ Program RESTORED:', window.wizardData.program_name);
                     } else {
                         console.error('[SPA Restore] ❌ Program restore FAILED - no option found for value:', programBackup.value);
                     }
                 }
                 
                 // Načítaj infobox ak máme dáta
-                if (currentState > 0) {
+                if (window.currentState > 0) {
                     console.log('[SPA Restore] Loading infobox for state:', currentState);
                     window.loadInfoboxContent(window.currentState);
                     
@@ -169,12 +165,12 @@ window.wizardData = {
                 });
             }
         }, 100); // Skúšaj každých 100ms
-    }
+    };
 
     /**
      * Sledovanie zmien vo formulári
      */
-    function watchFormChanges() {
+    window.watchFormChanges = function() {
         // ⭐ GUARD: Container musí existovať
         if (!document.getElementById('spa-infobox-container')) {
             return;
@@ -199,10 +195,10 @@ window.wizardData = {
                 console.log('[SPA City Change] Selected:', selectedCityName);
                 
                 // ⭐ VŽDY RESETUJ PROGRAM pri zmene mesta
-                wizardData.program_name = '';
-                wizardData.program_id = null;
-                wizardData.program_age = '';
-                wizardData.frequency = '';
+                window.wizardData.program_name = '';
+                window.wizardData.program_id = null;
+                window.wizardData.program_age = '';
+                window.wizardData.frequency = '';
                 window.spaFormState.program = false;
                 window.spaFormState.frequency = false;
                 
@@ -227,14 +223,14 @@ window.wizardData = {
                 window.filterProgramsByCity(selectedCityName);
                 
                 if (cityField.value && cityField.value !== '0' && cityField.value !== '') {
-                    wizardData.city_name = selectedCityName;
+                    window.wizardData.city_name = selectedCityName;
                     window.spaFormState.city = true;
-                    currentState = 1;
+                    window.currentState = 1;
                 } else {
                     // Úplné vymazanie mesta
-                    wizardData.city_name = '';
+                    window.wizardData.city_name = '';
                     window.spaFormState.city = false;
-                    currentState = 0;
+                    window.currentState = 0;
                 }
                 
                 window.loadInfoboxContent(window.currentState);
@@ -263,35 +259,35 @@ window.wizardData = {
                 }
                 
                 if (this.value) {
-                    wizardData.program_name = selectedOption.text;
-                    wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
+                    window.wizardData.program_name = selectedOption.text;
+                    window.wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
                     
-                    console.log('[SPA Infobox] Program ID:', wizardData.program_id);
+                    console.log('[SPA Infobox] Program ID:', window.wizardData.program_id);
                     
                     // RESET veku pred novým parsovaním
-                    wizardData.program_age = '';
+                    window.wizardData.program_age = '';
                     
                     // Parsuj vek z názvu programu
                     const ageMatch = selectedOption.text.match(/(\d+)[–-](\d+)/);
                     if (ageMatch) {
-                        wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
+                        window.wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
                     } else {
                         const agePlusMatch = selectedOption.text.match(/(\d+)\+/);
                         if (agePlusMatch) {
-                            wizardData.program_age = agePlusMatch[1] + '+';
+                            window.wizardData.program_age = agePlusMatch[1] + '+';
                         }
                     }
                     
                     window.spaFormState.program = true;
-                    currentState = 2;
+                    window.currentState = 2;   
                 } else {
                     // ⭐ RESET PROGRAMU
-                    wizardData.program_name = '';
-                    wizardData.program_id = null;
-                    wizardData.program_age = '';
+                    window.wizardData.program_name = '';
+                    window.wizardData.program_id = null;
+                    window.wizardData.program_age = '';
                     window.spaFormState.program = false;
                     window.spaFormState.frequency = false;
-                    currentState = wizardData.city_name ? 1 : 0;
+                    window.currentState = window.wizardData.city_name ? 1 : 0;
                     
                     // VYČISTI frekvenčný selector
                     const frequencySelector = document.querySelector('.spa-frequency-selector');
@@ -325,16 +321,16 @@ window.wizardData = {
         }
 
         // ⭐ OZNAČ, že listenery sú pripojené
-        listenersAttached = true;
+        window.listenersAttached = true;
         console.log('[SPA Infobox] Event listeners attached');
-    }  
+    };  
 
     
     
     /**
      * Načítanie obsahu infoboxu cez AJAX
      */
-    function loadInfoboxContent(state) {
+    window.loadInfoboxContent = function(state) {
         // ⭐ GUARD: Container musí existovať
         if (!document.getElementById('spa-infobox-container')) {
             return;
@@ -345,11 +341,11 @@ window.wizardData = {
 
         const formData = new FormData();
         formData.append('action', 'spa_get_infobox_content');
-        formData.append('program_id', wizardData.program_id);
+        formData.append('program_id', window.wizardData.program_id);
         formData.append('state', state);
-        formData.append('city_name', wizardData.city_name);
-        formData.append('program_name', wizardData.program_name);
-        formData.append('program_age', wizardData.program_age);
+        formData.append('city_name', window.wizardData.city_name);
+        formData.append('program_name', window.wizardData.program_name);
+        formData.append('program_age', window.wizardData.program_age);
 
         fetch(spaConfig.ajaxUrl, {
             method: 'POST',
@@ -371,4 +367,4 @@ window.wizardData = {
             console.error('[SPA Infobox] AJAX error:', error);
             window.hideLoader();
         });
-    }
+    };

@@ -6,7 +6,6 @@
      * Filtrovanie programových options podľa mesta
      */
 window.filterProgramsByCity = function(cityName) {
-    function filterProgramsByCity(cityName) {
     const programField = document.querySelector('[name="input_2"]');
     
     if (!programField) {
@@ -59,7 +58,6 @@ window.filterProgramsByCity = function(cityName) {
     if (visibleCount === 0) {
         console.warn('[SPA Filter] No programs available for:', cityName);
     }
-}
 };
 
 document.addEventListener('DOMContentLoaded', function() {    
@@ -80,9 +78,9 @@ if (typeof jQuery !== 'undefined') {
 
 
 /**
-     * Renderovanie frekvenčného selektora
-     */
-function renderFrequencySelector(programData) {
+ * Renderovanie frekvenčného selektora
+ */
+window.renderFrequencySelector = function(programData) {
     const selector = document.querySelector('.spa-frequency-selector');
     
     if (!selector) {
@@ -189,7 +187,7 @@ function renderFrequencySelector(programData) {
         // Ak je len 1 frekvencia, je automaticky vybraná
         
     }
-}
+};
 
  // Trigger pri blur (pre meno a adresu)
  document.addEventListener('blur', function(e) {
@@ -198,6 +196,6 @@ function renderFrequencySelector(programData) {
     const blurFields = ['input_6.3', 'input_6.6', 'input_17'];
     
     if (blurFields.includes(e.target.name)) {
-        setTimeout(updatePriceSummary, 100);
+        setTimeout(window.updatePriceSummary, 100);
     }
 }, true);

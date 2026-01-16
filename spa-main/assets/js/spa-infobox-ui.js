@@ -5,7 +5,6 @@
  * Vyčistenie všetkých polí v sekciách
  */
 window.clearAllSectionFields = function() {
-    function clearAllSectionFields() {
         console.log('[SPA Clear] Clearing all section fields');
         
         // Vyčisti všetky inputy OKREM mesta, programu a frekvencie
@@ -24,12 +23,12 @@ window.clearAllSectionFields = function() {
         });
         
         console.log('[SPA Clear] Cleared', participantInputs.length, 'fields');
-    }
 };
+
 /**
  * Aktualizácia PREHĽADU REGISTRÁCIE (.spa-price-summary)
  */
-    function updatePriceSummary() {
+window.updatePriceSummary = function() {
         const summaryContainer = document.querySelector('.spa-price-summary');
         
         if (!summaryContainer) {
@@ -123,7 +122,7 @@ window.clearAllSectionFields = function() {
         const phone = phoneInput?.value.trim();
     
         // Program + úroveň
-        let programDisplay = wizardData.program_name || '';
+        let programDisplay = window.wizardData.program_name || '';
         if (window.infoboxData?.program?.spa_level && programDisplay) {
             // Mapping úrovní s emoji (podľa CPT UI)
             const levelLabels = {
@@ -303,7 +302,7 @@ window.clearAllSectionFields = function() {
         
         // ⭐ Ulož timestamp poslednej aktualizácie
         window.spaLastSummaryUpdate = Date.now();
-    }
+    };
 
     // ⭐ SPUSTI updatePriceSummary pri zmenách VŠETKÝCH relevantných polí
     document.addEventListener('change', function(e) {
@@ -327,6 +326,6 @@ window.clearAllSectionFields = function() {
         
         if (relevantFields.includes(fieldName)) {
             console.log('[SPA] Field changed:', fieldName, '→ updating summary');
-            setTimeout(updatePriceSummary, 100);
+            setTimeout(window.updatePriceSummary, 100);
         }
     });

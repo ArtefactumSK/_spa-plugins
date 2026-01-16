@@ -6,8 +6,7 @@
 /**
      * Skrytie všetkých sekcií pri inicializácii
      */
-window.hideAllSectionsOnInit = function() {    
-function hideAllSectionsOnInit() {
+window.hideAllSectionsOnInit = function() {
     console.log('[SPA Init] ========== HIDING ALL SECTIONS ==========');
     
     // ⭐ GUARD: Neexecutuj ak už boli sekcie skryté
@@ -58,33 +57,32 @@ function hideAllSectionsOnInit() {
     // ⭐ Označ že sekcie boli skryté
     window.spa_sections_hidden = true;
     console.log('[SPA Init] ========== SECTIONS HIDDEN COMPLETE ==========');
-}
 };
 
 /**
  * RIADENIE VIDITEĽNOSTI SEKCIÍ
  */
-function updateSectionVisibility() {
+window.updateSectionVisibility = function() {
     console.log('[SPA Section Control] ========== UPDATE START ==========');
     console.log('[SPA Section Control] State:', {
-        city: wizardData.city_name,
-        program: wizardData.program_name,
+        city: window.wizardData.city_name,
+        program: window.wizardData.program_name,
         frequency: window.spaFormState.frequency
     });
 
     // ⭐ DVE RÔZNE PODMIENKY:
     // 1. Pre zobrazenie poľa input_4: mesto + program (neprázdne hodnoty!)
     const programSelected = !!(
-        wizardData.city_name && 
-        wizardData.city_name.trim() !== '' &&
-        wizardData.program_name && 
-        wizardData.program_name.trim() !== ''
+        window.wizardData.city_name && 
+        window.wizardData.city_name.trim() !== '' &&
+        window.wizardData.program_name && 
+        window.wizardData.program_name.trim() !== ''
     );
     
     // 2. Pre zobrazenie sekcií: mesto + program + frekvencia
     const allSelected = !!(
-        wizardData.city_name && 
-        wizardData.program_name && 
+        window.wizardData.city_name && 
+        window.wizardData.program_name && 
         window.spaFormState.frequency
     );
 
@@ -231,33 +229,33 @@ function updateSectionVisibility() {
         
         // 2. CHILD alebo ADULT sekcie podľa age_from
         if (isChildProgram) {
-            childSections.forEach(section => toggleSection(section, true));
-            adultSections.forEach(section => toggleSection(section, false));
+            childSections.forEach(section => window.toggleSection(section, true));
+            adultSections.forEach(section => window.toggleSection(section, false));
             console.log('[SPA Section Control] ✅ Child sections: VISIBLE');
             console.log('[SPA Section Control] ❌ Adult sections: HIDDEN');
         } else {
-            adultSections.forEach(section => toggleSection(section, true));
-            childSections.forEach(section => toggleSection(section, false));
+            adultSections.forEach(section => window.toggleSection(section, true));
+            childSections.forEach(section => window.toggleSection(section, false));
             console.log('[SPA Section Control] ✅ Adult sections: VISIBLE');
             console.log('[SPA Section Control] ❌ Child sections: HIDDEN');
         }
     } else {
         // Skry VŠETKY sekcie
-        commonSections.forEach(section => toggleSection(section, false));
-        adultSections.forEach(section => toggleSection(section, false));
-        childSections.forEach(section => toggleSection(section, false));
+        commonSections.forEach(section => window.toggleSection(section, false));
+        adultSections.forEach(section => window.toggleSection(section, false));
+        childSections.forEach(section => window.toggleSection(section, false));
         console.log('[SPA Section Control] ❌ All sections: HIDDEN (no program selected)');
     }
     
 
     console.log('[SPA Section Control] ========== UPDATE END ==========');
-}
+};
 
  
 /**
      * Zobraz/skry sekciu + všetky nasledujúce polia až po ďalšiu sekciu
      */
-function toggleSection(sectionElement, show) {
+window.toggleSection = function(sectionElement, show) {
     if (!sectionElement) return;
 
     sectionElement.style.display = show ? 'block' : 'none';
@@ -275,7 +273,7 @@ function toggleSection(sectionElement, show) {
             const phoneWrapper = phoneField.closest('.gfield');
             if (phoneWrapper) {
                 // Skontroluj GLOBÁLNY stav programu (nie len lokálny show parameter)
-                const isProgramSelected = !!(wizardData.program_name && wizardData.program_name.trim() !== '');
+                const isProgramSelected = !!(window.wizardData.program_name && window.wizardData.program_name.trim() !== '');
                 
                 if (isProgramSelected) {
                     // Program vybraný - VŽDY ZOBRAZ
@@ -394,4 +392,4 @@ function toggleSection(sectionElement, show) {
     }
     
     console.log('[SPA toggleSection]', show ? 'ENABLED' : 'DISABLED', 'fields in section');
-}
+};
