@@ -199,7 +199,26 @@ window.wizardData = {
                 
                 console.log('[SPA City Change] Selected:', selectedCityName);
                 
-                // ⭐ VŽDY RESETUJ PROGRAM pri zmene mesta
+                // ⭐ AK ide o GET load, NERESETUJ program (aplikuje sa neskôr)
+                if (window.isApplyingGetParams) {
+                    console.log('[SPA City Change] GET loading - skipping program reset');
+                    
+                    // Nastavíme city_name ale NERESETNEME program
+                    if (cityField.value && cityField.value !== '0' && cityField.value !== '') {
+                        window.wizardData.city_name = selectedCityName;
+                        window.spaFormState.city = true;
+                        window.currentState = 1;
+                    }
+                    
+                    // ⭐ FILTRUJ options (potrebné pre program load)
+                    if (selectedCityName && selectedCityName.trim() !== '') {
+                        window.filterProgramsByCity(selectedCityName);
+                    }
+                    
+                    return; // ⭐ ZASTAV, nepokračuj v reset logike
+                }
+                
+                // ⭐ NORMÁLNY USER CHANGE: RESETUJ PROGRAM
                 window.wizardData.program_name = '';
                 window.wizardData.program_id = null;
                 window.wizardData.program_age = '';
@@ -377,18 +396,21 @@ window.wizardData = {
     /**
  * Aplikuj GET parametre do formulára
  */
-window.applyGetParams = function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const cityParam = urlParams.get('spa_city');
-    const programParam = urlParams.get('spa_program');
-    const frequencyParam = urlParams.get('spa_frequency');
-    
-    if (!cityParam && !programParam && !frequencyParam) {
-        console.log('[SPA GET] No GET params found');
-        return;
-    }
-    
-    console.log('[SPA GET] Found params:', { cityParam, programParam, frequencyParam });
+    window.applyGetParams = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const cityParam = urlParams.get('spa_city');
+        const programParam = urlParams.get('spa_program');
+        const frequencyParam = urlParams.get('spa_frequency');
+        
+        if (!cityParam && !programParam && !frequencyParam) {
+            console.log('[SPA GET] No GET params found');
+            return;
+        }
+        
+        console.log('[SPA GET] Found params:', { cityParam, programParam, frequencyParam });
+        
+        // ⭐ FLAG: Zabraň resetu programu pri city change z GET
+        window.isApplyingGetParams = true;
     
     // ⭐ POLLING - čakaj na GF AJAX options
     let attempts = 0;
@@ -613,5 +635,12 @@ window.applyGetParams = function() {
                 }
             }, 500);  // Počkaj na renderFrequencySelector
         }
+        
+        // ⭐ ZRUŠ FLAG po dokončení všetkých GET operácií
+        setTimeout(() => {
+            window.isApplyingGetParams = false;
+            console.log('[SPA GET] Flag cleared - normal change handling restored');
+        }, 1500); // Po všetkých setTimeout-och v GET flow
+        
     }, 200);  // ⭐ Prvý pokus o 200ms, potom každých 200ms
 };
