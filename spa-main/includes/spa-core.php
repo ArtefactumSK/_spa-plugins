@@ -292,7 +292,7 @@ function spa_get_programs_for_city_dynamic($city_name) {
             $label = spa_format_program_label(get_the_title(), $age_from, $age_to, $target);
             
             $programs[] = [
-                'id' => get_post_field('post_name'),
+                'id' => $post_id,
                 'label' => $label,
                 'target' => $target,
                 'age_min' => $age_from ? intval($age_from) : null,
