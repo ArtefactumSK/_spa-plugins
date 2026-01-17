@@ -181,8 +181,9 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
         
         programIconHtml += '</div>'; // .spa-program-icon
         
-        // ZLOŽENIE V SPRÁVNOM PORADÍ: main → icon
-        let programHtml = programMainHtml + programIconHtml;
+        // ZLOŽENIE: left wrapper (main) + icon
+        let programHtml = '<div class="spa-program-left">' + programMainHtml;
+        // summary sa pridá neskôr do spa-program-left
         // ⭐ Len pre-označenie radio buttonu podľa veku (BEZ zobrazenia sekcií!)
         setTimeout(() => {
             const isChild = programData.age_min && programData.age_min < 18;
@@ -215,9 +216,6 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
     1.5 DYNAMICKÝ SUMMARY (mesto, vek, kapacita)
     ================================================== */
     if (window.wizardData.city_name || window.wizardData.program_age) {
-
-        const summaryDiv = document.createElement('div');
-        summaryDiv.className = 'spa-infobox-summary';
 
         let summaryHtml = '<hr><ul class="spa-summary-list">';
 
@@ -333,10 +331,18 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
             }
         }
 
-        summaryHtml += '</ul>';
-
-        summaryDiv.innerHTML = summaryHtml;
-        container.appendChild(summaryDiv);
+        summaryHtml += '</ul></div>'; // koniec spa-infobox-summary
+        
+        // Vlož summary do spa-program-left a uzavri wrapper, potom pridaj icon
+        const programDiv = container.querySelector('.spa-infobox-program');
+        if (programDiv) {
+            const leftWrapper = programDiv.querySelector('.spa-program-left');
+            if (leftWrapper) {
+                leftWrapper.innerHTML += '<div class="spa-infobox-summary">' + summaryHtml + '</div>';
+                leftWrapper.innerHTML += '</div>'; // koniec spa-program-left
+                programDiv.innerHTML = leftWrapper.outerHTML + programIconHtml;
+            }
+        }
     }
 
     function getCapacityLabel(count) {
