@@ -148,23 +148,25 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
             programHtml += `<div class="spa-age-range-text" style="color: ${primaryColor};">${window.wizardData.program_age} r.</div>`;
         }
         programHtml += '</div>'; // .spa-program-icon
+        // Obsah CPT (čistý WordPress content)
+        programHtml += '<div class="spa-program-content">';
+        
         // Názov programu s SPA logom
         if (programData.title) {
             const spaLogoSvg = icons && icons.spa_logo ? icons.spa_logo : '';
             programHtml += `<h4 class="spa-program-title">${spaLogoSvg}${programData.title}</h4>`;
         }
         
-        // Obsah CPT (čistý WordPress content)
         if (programData.content) {
-            programHtml += `<div class="spa-program-content">${programData.content}</div>`;
+            programHtml += programData.content;
         }
         
-        // TRÉNINGOVÉ TERMÍNY
+        // TRÉNINGOVÉ TERMÍNY (vnútri .spa-program-content)
         if (programData.schedule) {
             programHtml += `
                 <div class="spa-training-schedule">
                     <h4 style="font-size: 16px; font-weight: 600; margin: 20px 0 12px 0; color: var(--theme-palette-color-1);">
-                        🕘 Možné tréningové termíny programu
+                        🕘 Rozvrh tréningového programu
                     </h4>
                     <div class="spa-program-schedule-grid">
                         ${programData.schedule}
@@ -172,6 +174,8 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
                 </div>
             `;
         }
+        
+        programHtml += '</div>'; // .spa-program-content
         // ⭐ Len pre-označenie radio buttonu podľa veku (BEZ zobrazenia sekcií!)
         setTimeout(() => {
             const isChild = programData.age_min && programData.age_min < 18;
