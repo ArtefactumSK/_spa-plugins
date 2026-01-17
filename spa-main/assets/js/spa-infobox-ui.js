@@ -258,9 +258,10 @@ window.updatePriceSummary = function() {
         }
 
         // 8. Rozvrh
-        if (schedule) {
+        /* if (schedule) {
             html += `<br>🕘 <strong>Rozvrh:</strong> ${schedule}</p>`;
-        }
+        } */
+         html += `<br>ℹ️ <span class="spa-form-warning">Na základe tejto registrácie vás tréner po jej schválení zaradí do vybraného tréningového dňa z dostupných termínov uvedených vyššie.</span>`;
 
         // 9. Cena/Frekvencia
         if (frequencyText) {

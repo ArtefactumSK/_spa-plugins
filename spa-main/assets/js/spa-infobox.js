@@ -158,6 +158,20 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
         if (programData.content) {
             programHtml += `<div class="spa-program-content">${programData.content}</div>`;
         }
+        
+        // TRÉNINGOVÉ TERMÍNY
+        if (programData.schedule) {
+            programHtml += `
+                <div class="spa-training-schedule">
+                    <h4 style="font-size: 16px; font-weight: 600; margin: 20px 0 12px 0; color: var(--theme-palette-color-1);">
+                        🕘 Možné tréningové termíny programu
+                    </h4>
+                    <div class="spa-program-schedule-grid">
+                        ${programData.schedule}
+                    </div>
+                </div>
+            `;
+        }
         // ⭐ Len pre-označenie radio buttonu podľa veku (BEZ zobrazenia sekcií!)
         setTimeout(() => {
             const isChild = programData.age_min && programData.age_min < 18;

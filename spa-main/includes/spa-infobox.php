@@ -343,6 +343,58 @@ function spa_ajax_get_infobox_content() {
                 $program_content .= '<p style="margin-bottom: 0px;"><strong>Úroveň:</strong> ' . esc_html($level_display) . '</p>';
             }
             
+            // Načítaj a naformátuj rozvrh (HTML kalendár)
+            $schedule_json = get_post_meta($program_id, 'spa_schedule', true);
+            $schedule_html = '';
+            
+            if ($schedule_json) {
+                $schedule_data = json_decode($schedule_json, true);
+                
+                if (is_array($schedule_data) && !empty($schedule_data)) {
+                    $days_short = [
+                        'monday' => 'Po',
+                        'tuesday' => 'Ut',
+                        'wednesday' => 'St',
+                        'thursday' => 'Št',
+                        'friday' => 'Pi',
+                        'saturday' => 'So',
+                        'sunday' => 'Ne'
+                    ];
+                    
+                    // Mapovanie dní na časy
+                    $schedule_map = [];
+                    foreach ($schedule_data as $item) {
+                        $day = $item['day'];
+                        if (!isset($schedule_map[$day])) {
+                            $schedule_map[$day] = [];
+                        }
+                        $time_from = substr($item['from'], 0, 5);
+                        $time_to = !empty($item['to']) ? ' – ' . substr($item['to'], 0, 5) : '';
+                        $schedule_map[$day][] = $time_from . $time_to;
+                    }
+                    
+                    // Generovanie HTML
+                    $schedule_html .= '<div class="schedule-header">';
+                    foreach ($days_short as $day_key => $day_label) {
+                        $active_class = isset($schedule_map[$day_key]) ? 'active' : '';
+                        $schedule_html .= '<div class="schedule-day ' . $active_class . '">' . $day_label . '</div>';
+                    }
+                    $schedule_html .= '</div>';
+                    
+                    $schedule_html .= '<div class="schedule-times">';
+                    foreach ($days_short as $day_key => $day_label) {
+                        $schedule_html .= '<div class="schedule-time">';
+                        if (isset($schedule_map[$day_key])) {
+                            $schedule_html .= esc_html(implode(', ', $schedule_map[$day_key]));
+                        } else {
+                            $schedule_html .= '—';
+                        }
+                        $schedule_html .= '</div>';
+                    }
+                    $schedule_html .= '</div>';
+                }
+            }
+            
             $program_data = [
                 'title' => $program_post->post_title,
                 'content' => $program_content,
@@ -357,6 +409,7 @@ function spa_ajax_get_infobox_content() {
                 'spa_price_monthly' => get_post_meta($program_id, 'spa_price_monthly', true),
                 'spa_price_semester' => get_post_meta($program_id, 'spa_price_semester', true),
                 'spa_external_surcharge' => get_post_meta($program_id, 'spa_external_surcharge', true),
+                'schedule' => $schedule_html,
             ];
 
             // Získaj údaje miesta
