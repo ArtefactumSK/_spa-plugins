@@ -93,7 +93,7 @@ window.updatePriceSummary = function() {
                 if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
                     ageYears--;
                 }
-                age = ageYears + 'r.';
+                age = ageYears + ' r.';
             }
         }
     
@@ -179,7 +179,7 @@ window.updatePriceSummary = function() {
 
         // 1. Meno a adresa účastníka
         if (participantName && address) {
-            html += `<p><strong>Meno a adresa účastníka:</strong> ${participantName}, ${address}</p>`;
+            html += `<p><strong>Meno a adresa účastníka:</strong> ${participantName}, ${address}`;
         }
 
         // 2. Vek účastníka (LEN pre CHILD)
@@ -192,18 +192,20 @@ window.updatePriceSummary = function() {
                 const ageMax = parseFloat(window.infoboxData.program.age_max);
                 
                 if (ageMax && (ageYears < ageMin || ageYears > ageMax)) {
-                    ageWarning = ' ⚠️ Pozor: Vek nezodpovedá vekovej kategórii programu!';
+                    ageWarning = ' ⚠️ <span class="spa-form-warning">Pozor: Vek nezodpovedá vekovej kategórii programu!</span>';
                 } else if (!ageMax && ageYears < ageMin) {
-                    ageWarning = ' ⚠️ Pozor: Vek nezodpovedá vekovej kategórii programu!';
+                    ageWarning = ' ⚠️ <span class="spa-form-warning">Pozor: Vek nezodpovedá vekovej kategórii programu!</span>';
                 }
             }
             
-            html += `<p><strong>Vek účastníka:</strong> ${age}${ageWarning}</p>`;
+            html += `<br><strong>Vek účastníka:</strong> ${age}${ageWarning}`;
         }
 
         // 3. Zákonný zástupca (LEN child, len ak sú všetky 3 hodnoty)
         if (isChild && guardianName && guardianEmail && guardianPhone) {
-            html += `<p><strong>Zákonný zástupca:</strong> ${guardianName}, ${guardianEmail}, ${guardianPhone}</p>`;
+            html += `<br><strong>Zákonný zástupca:</strong> 👩‍👧 ${guardianName}, 
+                <span class="spa-form-contact spa-form-contact-email">✉️ ${guardianEmail}</span>, 
+                <span class="spa-form-contact spa-form-contact-phone">📱 ${guardianPhone}</span>`;
         }
 
         // 4. Kontakt na účastníka (email a/alebo telefón - nepovinné pre CHILD aj ADULT)
@@ -222,30 +224,40 @@ window.updatePriceSummary = function() {
         // Zobraz len ak je ASPOŇ JEDNO pole vyplnené
         if (participantEmail || phone) {
             const contactParts = [];
-            if (participantEmail) contactParts.push(participantEmail);
-            if (phone) contactParts.push(phone);
-            
-            html += `<p><strong>Kontakt na účastníka:</strong> ${contactParts.join(', ')}</p>`;
+
+            if (participantEmail) {
+                contactParts.push(
+                    `<span class="spa-form-contact spa-form-contact-email">✉️ ${participantEmail}</span>`
+                );
+            }
+
+            if (phone) {
+                contactParts.push(
+                    `<span class="spa-form-contact spa-form-contact-phone">📱 ${phone}</span>`
+                );
+            }
+
+            html += `<br><strong>Kontakt na účastníka:</strong> ${contactParts.join(', ')}</p>`;
         }
 
         // 5. Vybraný program
         if (programDisplay) {
-            html += `<p><strong>Vybraný program:</strong> ${programDisplay}</p>`;
+            html += `<p>🤸 <strong>Vybraný program:</strong> ${programDisplay}`;
         }
 
         // 6. Miesto tréningov
         if (placeDisplay) {
-            html += `<p><strong>Miesto tréningov:</strong> ${placeDisplay}</p>`;
+            html += `<br>📍 <strong>Miesto tréningov:</strong> ${placeDisplay}`;
         }
 
         // 7. Veková kategória (LEN pre CHILD)
         if (ageCategory && isChild) {
-            html += `<p><strong>Veková kategória:</strong> ${ageCategory}</p>`;
+            html += `<br>👶 <strong>Veková kategória:</strong> ${ageCategory}`;
         }
 
         // 8. Rozvrh
         if (schedule) {
-            html += `<p><strong>Rozvrh:</strong> ${schedule}</p>`;
+            html += `<br>🕘 <strong>Rozvrh:</strong> ${schedule}</p>`;
         }
 
         // 9. Cena/Frekvencia
