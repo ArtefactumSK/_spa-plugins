@@ -181,9 +181,8 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
         
         programIconHtml += '</div>'; // .spa-program-icon
         
-        // ZLOŽENIE: left wrapper (main) + icon
-        let programHtml = '<div class="spa-program-left">' + programMainHtml;
-        // summary sa pridá neskôr do spa-program-left
+        // Zatiaľ len main, summary a icon sa pridajú neskôr
+        let programHtml = programMainHtml;
         // ⭐ Len pre-označenie radio buttonu podľa veku (BEZ zobrazenia sekcií!)
         setTimeout(() => {
             const isChild = programData.age_min && programData.age_min < 18;
@@ -331,16 +330,21 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
             }
         }
 
-        summaryHtml += '</ul></div>'; // koniec spa-infobox-summary
+        summaryHtml += '</ul>';
         
-        // Vlož summary do spa-program-left a uzavri wrapper, potom pridaj icon
+        // Vlož summary do programDiv a obal všetko správne
         const programDiv = container.querySelector('.spa-infobox-program');
-        if (programDiv) {
-            const leftWrapper = programDiv.querySelector('.spa-program-left');
-            if (leftWrapper) {
-                leftWrapper.innerHTML += '<div class="spa-infobox-summary">' + summaryHtml + '</div>';
-                leftWrapper.innerHTML += '</div>'; // koniec spa-program-left
-                programDiv.innerHTML = leftWrapper.outerHTML + programIconHtml;
+        if (programDiv && window.currentState === 2) {
+            const mainDiv = programDiv.querySelector('.spa-program-main');
+            if (mainDiv) {
+                // Vytvor left wrapper s main + summary
+                const leftHtml = '<div class="spa-program-left">' + 
+                                mainDiv.outerHTML + 
+                                '<div class="spa-infobox-summary">' + summaryHtml + '</div>' +
+                                '</div>';
+                
+                // Nastav finálnu štruktúru: left + icon
+                programDiv.innerHTML = leftHtml + programIconHtml;
             }
         }
     }
