@@ -121,49 +121,28 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
         const programDiv = document.createElement('div');
         programDiv.className = 'spa-infobox-program';
         
-        let programHtml = '';
-          
-        // Wrapper pre ikonu/vek
-        programHtml += '<div class="spa-program-icon">';
+        let programMainHtml = '';
+        let programIconHtml = '';
         
-        
-        // Ikona programu (zväčšená) + aplikácia CSS premenných
-        if (programData.icon) {
-            const colorStyle = [
-                programData.primary_color ? `--program-primary-color: ${programData.primary_color};` : '',
-                programData.secondary_color ? `--program-secondary-color: ${programData.secondary_color};` : ''
-            ].filter(Boolean).join(' ');
-            
-            programHtml += `<div class="spa-program-icon-large" style="${colorStyle}">${programData.icon}</div>`;
-        }
-        else {
-            // Pre program bez veku použij &nbsp;, inak zobraz vek
-            const ageText = window.wizardData.program_age ? window.wizardData.program_age : '&nbsp;';
-            programHtml += `<div class="spa-age-range-text no-svg-icon">${ageText}</div>`;
-        }
-        
-        // VEĽKÝ TEXT VEKU POD SVG
-        if (window.wizardData.program_age) {
-            const primaryColor = programData.primary_color || '#6d71b2';
-            programHtml += `<div class="spa-age-range-text" style="color: ${primaryColor};">${window.wizardData.program_age} r.</div>`;
-        }
-        programHtml += '</div>'; // .spa-program-icon
-        // Obsah CPT (čistý WordPress content)
-        programHtml += '<div class="spa-program-content">';
+        // MAIN CONTENT
+        programMainHtml += '<div class="spa-program-main">';
         
         // Názov programu s SPA logom
         if (programData.title) {
             const spaLogoSvg = icons && icons.spa_logo ? icons.spa_logo : '';
-            programHtml += `<h4 class="spa-program-title">${spaLogoSvg}${programData.title}</h4>`;
+            programMainHtml += `<h4 class="spa-program-title">${spaLogoSvg}${programData.title}</h4>`;
         }
+        
+        // Obsah CPT
+        programMainHtml += '<div class="spa-program-content">';
         
         if (programData.content) {
-            programHtml += programData.content;
+            programMainHtml += programData.content;
         }
         
-        // TRÉNINGOVÉ TERMÍNY (vnútri .spa-program-content)
+        // TRÉNINGOVÉ TERMÍNY
         if (programData.schedule) {
-            programHtml += `
+            programMainHtml += `
                 <div class="spa-training-schedule">
                     <h4 style="font-size: 16px; font-weight: 600; margin: 20px 0 12px 0; color: var(--theme-palette-color-1);">
                         🕘 Rozvrh tréningového programu
@@ -175,7 +154,35 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
             `;
         }
         
-        programHtml += '</div>'; // .spa-program-content
+        programMainHtml += '</div>'; // .spa-program-content
+        programMainHtml += '</div>'; // .spa-program-main
+        
+        // ICON PANEL
+        programIconHtml += '<div class="spa-program-icon">';
+        
+        // Ikona programu + aplikácia CSS premenných
+        if (programData.icon) {
+            const colorStyle = [
+                programData.primary_color ? `--program-primary-color: ${programData.primary_color};` : '',
+                programData.secondary_color ? `--program-secondary-color: ${programData.secondary_color};` : ''
+            ].filter(Boolean).join(' ');
+            
+            programIconHtml += `<div class="spa-program-icon-large" style="${colorStyle}">${programData.icon}</div>`;
+        } else {
+            const ageText = window.wizardData.program_age ? window.wizardData.program_age : '&nbsp;';
+            programIconHtml += `<div class="spa-age-range-text no-svg-icon">${ageText}</div>`;
+        }
+        
+        // VEĽKÝ TEXT VEKU POD SVG
+        if (window.wizardData.program_age) {
+            const primaryColor = programData.primary_color || '#6d71b2';
+            programIconHtml += `<div class="spa-age-range-text" style="color: ${primaryColor};">${window.wizardData.program_age} r.</div>`;
+        }
+        
+        programIconHtml += '</div>'; // .spa-program-icon
+        
+        // ZLOŽENIE V SPRÁVNOM PORADÍ: main → icon
+        let programHtml = programMainHtml + programIconHtml;
         // ⭐ Len pre-označenie radio buttonu podľa veku (BEZ zobrazenia sekcií!)
         setTimeout(() => {
             const isChild = programData.age_min && programData.age_min < 18;
