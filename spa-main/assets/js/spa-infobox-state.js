@@ -205,7 +205,10 @@ window.wizardData = {
                     
                     // Nastavíme city_name ale NERESETNEME program
                     if (cityField.value && cityField.value !== '0' && cityField.value !== '') {
-                        window.wizardData.city_name = spa_remove_diacritics(selectedCityName);
+                        // ⭐ NEPREPIS city_name ak už je nastavené z GET
+                        if (!window.wizardData.city_name) {
+                            window.wizardData.city_name = spa_remove_diacritics(selectedCityName);
+                        }
                         window.spaFormState.city = true;
                         window.currentState = 1;
                     }
@@ -247,6 +250,7 @@ window.wizardData = {
                 window.filterProgramsByCity(selectedCityName);
                 
                 if (cityField.value && cityField.value !== '0' && cityField.value !== '') {
+                    // ⭐ V normálnom flow (nie GET) vždy prepíš
                     window.wizardData.city_name = spa_remove_diacritics(selectedCityName);
                     window.spaFormState.city = true;
                     window.currentState = 1;
