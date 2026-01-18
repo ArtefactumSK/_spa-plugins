@@ -534,10 +534,12 @@ window.wizardData = {
                         const availableOptions = Array.from(programSelect.options).slice(0, 20).map(opt => ({
                             value: opt.value,
                             text: opt.text.substring(0, 50),
-                            dataId: opt.getAttribute('data-program-id')
+                            dataId: opt.getAttribute('data-program-id'),
+                            matches: (opt.value == programId || opt.getAttribute('data-program-id') == programId)
                         }));
-                        console.error('[SPA GET] ❌ Program option not found. Available options (first 20):', availableOptions);
-                        console.error('[SPA GET] ❌ Looking for programId:', programId);
+                        console.error('[SPA GET] ❌ Program option not found. Available options (first 20):');
+                        console.table(availableOptions);
+                        console.error('[SPA GET] ❌ Looking for programId:', programId, 'type:', typeof programId);
                         resolve(false);
                         return;
                     }
