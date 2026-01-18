@@ -594,19 +594,52 @@ window.wizardData = {
                     );
                     
                     if (matchedOption) {
-                        programSelect.value = matchedOption.value;
+                        // ⭐ OBSERVER: Sleduj GF rerender a aplikuj hodnotu AŽ POTOM
+                        const observer = new MutationObserver((mutations) => {
+                            for (const mutation of mutations) {
+                                if (mutation.type === 'childList' && mutation.target === programSelect) {
+                                    console.log('[SPA GET] Program <select> re-rendered, applying value');
+                                    
+                                    const freshOption = Array.from(programSelect.options).find(opt => opt.value == programParam);
+                                    if (freshOption) {
+                                        programSelect.value = freshOption.value;
+                                        
+                                        if (typeof jQuery !== 'undefined' && jQuery(programSelect).data('chosen')) {
+                                            jQuery(programSelect).trigger('chosen:updated');
+                                        }
+                                        
+                                        programSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                                        console.log('[SPA GET] ✅ Program value set AFTER rerender:', freshOption.value);
+                                        
+                                        observer.disconnect();
+                                    }
+                                }
+                            }
+                        });
                         
-                        // ⭐ REFRESH Chosen UI (GF uses jQuery Chosen)
-                        if (typeof jQuery !== 'undefined' && jQuery(programSelect).data('chosen')) {
-                            jQuery(programSelect).trigger('chosen:updated');
-                            console.log('[SPA GET] Chosen updated for program select');
-                        }
+                        observer.observe(programSelect, {
+                            childList: true,
+                            subtree: false
+                        });
+                        
+                        // Fallback ak sa observer nespustí do 3s
+                        setTimeout(() => {
+                            observer.disconnect();
+                            if (!programSelect.value || programSelect.value === '') {
+                                const freshOption = Array.from(programSelect.options).find(opt => opt.value == programParam);
+                                if (freshOption) {
+                                    programSelect.value = freshOption.value;
+                                    programSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                                    console.log('[SPA GET] ✅ Program value set via FALLBACK');
+                                }
+                            }
+                        }, 3000);
                         
                         // ⭐ BACKUP do hidden fieldu (ochrana pred GF refresh)
                         const programBackup = document.getElementById('spa_program_backup');
                         if (programBackup) {
-                            programBackup.value = matchedOption.value;
-                            console.log('[SPA GET] Backed up program value:', matchedOption.value);
+                            programBackup.value = programParam;
+                            console.log('[SPA GET] Backed up program value:', programParam);
                         }
                         
                         window.wizardData.program_name = matchedOption.text;
@@ -632,14 +665,31 @@ window.wizardData = {
 
                         console.log('[SPA GET] ✅ Program applied:', matchedOption.text);
                         
-                        // ⭐ OVER či hodnota zostala po 300ms (po možnom GF refresh)
-                        setTimeout(() => {
-                            const currentValue = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`)?.value;
-                            if (!currentValue || currentValue === '') {
-                                console.warn('[SPA GET] Program value lost, restoring from backup');
-                                window.restoreWizardData();
+                        // ⭐ AGGRESSIVE POLLING: Sleduj či GF zresetoval select a opakuj nastavenie
+                        let verifyAttempts = 0;
+                        const maxVerifyAttempts = 20;
+                        
+                        const verifyProgramValue = setInterval(() => {
+                            verifyAttempts++;
+                            const currentSelect = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+                            const currentValue = currentSelect?.value;
+                            
+                            if (currentValue && currentValue == programParam) {
+                                console.log('[SPA GET] ✅ Program value stable:', currentValue);
+                                clearInterval(verifyProgramValue);
+                            } else if (verifyAttempts >= maxVerifyAttempts) {
+                                console.error('[SPA GET] ❌ Program value never stabilized');
+                                clearInterval(verifyProgramValue);
+                            } else if (currentSelect && currentSelect.options.length > 1) {
+                                // Options sú ready, ale hodnota chýba - aplikuj znova
+                                const freshOption = Array.from(currentSelect.options).find(opt => opt.value == programParam);
+                                if (freshOption) {
+                                    currentSelect.value = freshOption.value;
+                                    currentSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                                    console.log('[SPA GET] Re-applied program value (attempt ' + verifyAttempts + ')');
+                                }
                             }
-                        }, 300);
+                        }, 100);
                         
                         // Načítaj infobox pre state 2
                         window.loadInfoboxContent(window.currentState);
