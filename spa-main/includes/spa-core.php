@@ -189,22 +189,31 @@ add_action('wp_ajax_nopriv_spa_get_cities', 'spa_ajax_get_cities');
  * Načítava z CPT spa_group (publikované)
  */
 function spa_ajax_get_programs() {
+    // ⭐ Podporuj OBE varianty: city_id (starý) aj city_name (nový)
     $place_id = isset($_POST['city_id']) ? intval($_POST['city_id']) : 0;
+    $city_name_param = isset($_POST['city_name']) ? sanitize_text_field($_POST['city_name']) : '';
     
-    if (empty($place_id)) {
-        wp_send_json_error(['message' => 'Neplatné ID mesta.']);
+    // Ak je zadaný city_name, použi ho priamo
+    if (!empty($city_name_param)) {
+        error_log('[SPA Programs] Using city_name directly: ' . $city_name_param);
+        $city_name = $city_name_param;
+    }
+    // Inak skús place_id (backward compatibility)
+    elseif (!empty($place_id)) {
+        $city_name = get_post_meta($place_id, 'spa_place_city', true);
+        
+        if (!$city_name) {
+            wp_send_json_error(['message' => 'Mesto nenájdené pre place_id.']);
+            return;
+        }
+        
+        error_log('[SPA Programs] Place ID: ' . $place_id . ' → City name: ' . $city_name);
+    }
+    // Ani jedno nie je zadané
+    else {
+        wp_send_json_error(['message' => 'city_id ani city_name nie sú zadané.']);
         return;
     }
-    
-    // ⭐ ZÍSKAJ MESTO PRIAMO Z place_id
-    $city_name = get_post_meta($place_id, 'spa_place_city', true);
-    
-    if (!$city_name) {
-        wp_send_json_error(['message' => 'Mesto nenájdené.']);
-        return;
-    }
-    
-    error_log('[SPA Programs] Place ID: ' . $place_id . ' → City name: ' . $city_name);
     
     // Načítanie programov pre dané mesto
     $programs = spa_get_programs_for_city_dynamic($city_name);
