@@ -417,9 +417,15 @@ window.wizardData = {
             };
         }
 
+        // Ak už bola aplikovaná city FÁZA a v URL nie je program, zastav
+        if (window.spaGFGetState.cityApplied && !programParam) {
+            console.log('[SPA GET] City already applied, no program in URL - skipping');
+            return;
+        }
+
         // Ak už boli obe fázy aplikované, zastav
         if (window.spaGFGetState.cityApplied && window.spaGFGetState.programApplied) {
-            console.log('[SPA GET] Already applied, skipping');
+            console.log('[SPA GET] Both city and program already applied - skipping');
             return;
         }
 
