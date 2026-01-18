@@ -409,14 +409,28 @@ window.wizardData = {
         
         console.log('[SPA GET] Found params:', { cityParam, programParam, frequencyParam });
         
+        // ⭐ STAVOVÝ GUARD: Sleduje fázy GET aplikácie
+        if (!window.spaGFGetState) {
+            window.spaGFGetState = {
+                cityApplied: false,
+                programApplied: false
+            };
+        }
+
+        // Ak už boli obe fázy aplikované, zastav
+        if (window.spaGFGetState.cityApplied && window.spaGFGetState.programApplied) {
+            console.log('[SPA GET] Already applied, skipping');
+            return;
+        }
+
         // ⭐ FLAG: Zabraň resetu programu pri city change z GET
         window.isApplyingGetParams = true;
     
-    // ⭐ POLLING - čakaj na GF AJAX options
-    let attempts = 0;
-    const maxAttempts = 20;
-    
-    const checkOptions = setInterval(() => {
+        // ⭐ POLLING - čakaj na GF AJAX options
+        let attempts = 0;
+        const maxAttempts = 20;
+        
+        const checkOptions = setInterval(() => {
         attempts++;
         console.log('[SPA GET DEBUG] ========== START DIAGNOSTICS (attempt ' + attempts + '/' + maxAttempts + ') ==========');
         console.log('[SPA GET DEBUG] URL params:', { cityParam, programParam, frequencyParam });
@@ -526,8 +540,9 @@ window.wizardData = {
                     window.spaFormState.city = true;
                     window.currentState = 1;
                     stateChanged = true;
-                    console.log('[SPA GET] Applied city:', matchedOption.text);
-                    
+                    window.spaGFGetState.cityApplied = true;
+                    console.log('[SPA GET] ✅ City applied:', matchedOption.text);
+
                     // ⭐ TRIGGER CHANGE EVENT
                     citySelect.dispatchEvent(new Event('change', { bubbles: true }));
                 } else {
@@ -537,8 +552,10 @@ window.wizardData = {
         }
         
 
-        // ⭐ PROGRAM - aplikuj LEN AK bolo mesto úspešne nastavené
-        if (programParam && stateChanged) {
+        // ⭐ PROGRAM - aplikuj LEN AK:
+        // 1. bolo mesto úspešne nastavené
+        // 2. program ešte nebol aplikovaný
+        if (programParam && stateChanged && !window.spaGFGetState.programApplied) {
             // Počkaj na filtrovanie program options po city change
             setTimeout(() => {
                 let programAttempts = 0;
@@ -564,9 +581,9 @@ window.wizardData = {
                     
                     console.log('[SPA GET] Program options ready');
                     
-                    // ⭐ NÁJDI OPTION PODĽA value (už je ID po GF úprave)
+                    // ⭐ NÁJDI OPTION PODĽA value (program=889 je ID)
                     const matchedOption = Array.from(programSelect.options).find(opt => 
-                        opt.text.trim().toLowerCase().includes(programParam.toLowerCase())
+                        opt.value == programParam
                     );
                     
                     if (matchedOption) {
@@ -601,11 +618,12 @@ window.wizardData = {
                         
                         window.spaFormState.program = true;
                         window.currentState = 2;
-                        
+                        window.spaGFGetState.programApplied = true;
+
                         // ⭐ TRIGGER CHANGE EVENT
                         programSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                        
-                        console.log('[SPA GET] Applied program:', matchedOption.text);
+
+                        console.log('[SPA GET] ✅ Program applied:', matchedOption.text);
                         
                         // ⭐ OVER či hodnota zostala po 300ms (po možnom GF refresh)
                         setTimeout(() => {
