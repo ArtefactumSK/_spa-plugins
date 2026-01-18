@@ -193,10 +193,11 @@ function spa_ajax_get_programs() {
     $place_id = isset($_POST['city_id']) ? intval($_POST['city_id']) : 0;
     $city_name_param = isset($_POST['city_name']) ? sanitize_text_field($_POST['city_name']) : '';
     
-    // Ak je zadaný city_name, použi ho priamo
+    // Ak je zadaný city_name, normalizuj ho
     if (!empty($city_name_param)) {
-        error_log('[SPA Programs] Using city_name directly: ' . $city_name_param);
-        $city_name = $city_name_param;
+        // WordPress native: odstránenie diakritiky + lowercase
+        $city_name = sanitize_title($city_name_param);
+        error_log('[SPA Programs] Normalized city_name: "' . $city_name_param . '" → "' . $city_name . '"');
     }
     // Inak skús place_id (backward compatibility)
     elseif (!empty($place_id)) {
@@ -234,18 +235,21 @@ add_action('wp_ajax_nopriv_spa_get_programs', 'spa_ajax_get_programs');
  */
 function spa_get_programs_for_city_dynamic($city_name) {
     global $wpdb;
-    error_log('[SPA Programs Dynamic] Looking for city: ' . $city_name);
-    // KROK 1: Nájdi spa_place pre dané mesto
+    
+    // ⭐ Normalizuj vstupné mesto (pre istotu, ak by bolo volaná priamo)
+    $city_name_normalized = sanitize_title($city_name);
+    
+    error_log('[SPA Programs Dynamic] Looking for city (normalized): ' . $city_name_normalized);
+    
+    // KROK 1: Nájdi spa_place kde post_name (slug) = normalized city
     $place_sql = $wpdb->prepare("
         SELECT p.ID
         FROM {$wpdb->posts} p
-        INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
         WHERE p.post_type = 'spa_place'
         AND p.post_status = 'publish'
-        AND pm.meta_key = 'spa_place_city'
-        AND pm.meta_value = %s
+        AND p.post_name = %s
         LIMIT 1
-    ", $city_name);
+    ", $city_name_normalized);
     
     $place_id = $wpdb->get_var($place_sql);
     
