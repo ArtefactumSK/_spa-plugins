@@ -205,7 +205,7 @@ window.wizardData = {
                     
                     // Nastavíme city_name ale NERESETNEME program
                     if (cityField.value && cityField.value !== '0' && cityField.value !== '') {
-                        window.wizardData.city_name = selectedCityName;
+                        window.wizardData.city_name = spa_remove_diacritics(selectedCityName);
                         window.spaFormState.city = true;
                         window.currentState = 1;
                     }
@@ -247,7 +247,7 @@ window.wizardData = {
                 window.filterProgramsByCity(selectedCityName);
                 
                 if (cityField.value && cityField.value !== '0' && cityField.value !== '') {
-                    window.wizardData.city_name = selectedCityName;
+                    window.wizardData.city_name = spa_remove_diacritics(selectedCityName);
                     window.spaFormState.city = true;
                     window.currentState = 1;
                 } else {
@@ -485,10 +485,6 @@ window.spa_remove_diacritics = function(str) {
             // 4. Aktuálna hodnota selectu PRED nastavením
             console.log('[SPA GET DEBUG] City select value BEFORE:', citySelect.value);
             
-            // ⭐ EXISTUJÚCI KÓD NA NASTAVENIE (ponechaj ho tu)
-            // const options = Array.from(citySelect.options);
-            // const matchedOption = options.find(opt => ...);
-            // if (matchedOption) { citySelect.value = matchedOption.value; ... }
             
         } else {
             console.error('[SPA GET DEBUG] ❌ City select NOT FOUND with selector:', `[name="${spaConfig.fields.spa_city}"]`);
@@ -531,9 +527,11 @@ window.spa_remove_diacritics = function(str) {
             if (citySelect) {
                 // Skús nájsť option (case-insensitive porovnanie)
                 const options = Array.from(citySelect.options);
-                const matchedOption = options.find(opt => 
-                    opt.text.trim().toLowerCase().includes(cityParam.toLowerCase())
-                );
+                const matchedOption = options.find(opt => {
+                    const normalizedOptionText = spa_remove_diacritics(opt.text.trim());
+                    const normalizedSearchText = cityParam; // už je normalized
+                    return normalizedOptionText === normalizedSearchText;
+                });
                 
                 if (matchedOption) {
                     citySelect.value = matchedOption.value;
@@ -563,7 +561,7 @@ window.spa_remove_diacritics = function(str) {
                         console.log('[SPA GET DEBUG] City select value AFTER 500ms:', finalValue?.value);
                         console.log('[SPA GET DEBUG] City select still exists:', !!finalValue);
                     }, 500);
-                    window.wizardData.city_name = matchedOption.text;
+                    window.wizardData.city_name = spa_remove_diacritics(matchedOption.text);
                     window.spaFormState.city = true;
                     window.currentState = 1;
                     stateChanged = true;
