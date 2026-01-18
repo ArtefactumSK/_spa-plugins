@@ -516,53 +516,44 @@ window.wizardData = {
                 );
                 
                 if (matchedOption) {
-                    console.log('[SPA GET] City option found - value:', matchedOption.value, 'text:', matchedOption.text);
-                    console.log('[SPA GET] City select value BEFORE set:', citySelect.value);
-                    
-                    // 1. Nastav hodnotu
                     citySelect.value = matchedOption.value;
-                    console.log('[SPA GET] City select value AFTER set:', citySelect.value);
                     
-                    // 2. Ulož do wizardData (MUSÍ byť PRED triggermi)
+                    // ⭐ REFRESH Chosen UI (GF uses jQuery Chosen)
+                    if (typeof jQuery !== 'undefined') {
+                        setTimeout(() => {
+                            if (jQuery(citySelect).data('chosen')) {
+                                jQuery(citySelect).trigger('chosen:updated');
+                                console.log('[SPA GET] Chosen updated for city select');
+                            } else {
+                                // Fallback: Force native select UI update
+                                citySelect.selectedIndex = Array.from(citySelect.options).findIndex(opt => opt.text.trim().toLowerCase() === cityParam.toLowerCase());
+                                console.log('[SPA GET] Chosen not found, using selectedIndex fallback');
+                            }
+                        }, 50);
+                    }
+                    
+                    // 4. Aktuálna hodnota selectu PO nastavení
+                    console.log('[SPA GET DEBUG] City select value AFTER:', citySelect.value);
+                    console.log('[SPA GET DEBUG] Matched option value:', matchedOption.value);
+                    console.log('[SPA GET DEBUG] Matched option text:', matchedOption.text);
+
+                    // 5. Overiť či hodnota zostala aj po 500ms
+                    setTimeout(() => {
+                        const finalValue = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
+                        console.log('[SPA GET DEBUG] City select value AFTER 500ms:', finalValue?.value);
+                        console.log('[SPA GET DEBUG] City select still exists:', !!finalValue);
+                    }, 500);
                     window.wizardData.city_name = matchedOption.text;
                     window.spaFormState.city = true;
                     window.currentState = 1;
                     stateChanged = true;
                     window.spaGFGetState.cityApplied = true;
-                    
-                    // 3. Trigger cez jQuery + GF input change event
-                    if (typeof jQuery !== 'undefined') {
-                        // Štandardné jQuery eventy
-                        jQuery(citySelect).trigger('change').trigger('input');
-                        
-                        // GF input change event (spúšťa conditional logic)
-                        jQuery(document).trigger('gform_input_change', [citySelect]);
-                        
-                        if (jQuery(citySelect).data('chosen')) {
-                            jQuery(citySelect).trigger('chosen:updated');
-                        }
-                        
-                        console.log('[SPA GET] ✅ City applied with jQuery + GF triggers');
-                    } else {
-                        console.error('[SPA GET] ❌ jQuery not available');
-                    }
-                    
-                    // 4. Persist check - over či hodnota zostala
-                    setTimeout(() => {
-                        const currentValue = citySelect.value;
-                        console.log('[SPA GET] City persist check:', currentValue, '(expected:', matchedOption.value, ')');
-                        
-                        if (!currentValue || currentValue === '' || currentValue === '0') {
-                            console.warn('[SPA GET] ⚠️ City value lost, re-applying ONCE');
-                            citySelect.value = matchedOption.value;
-                            if (typeof jQuery !== 'undefined') {
-                                jQuery(citySelect).trigger('change');
-                            }
-                        }
-                    }, 300);
+                    console.log('[SPA GET] ✅ City applied:', matchedOption.text);
+
+                    // ⭐ TRIGGER CHANGE EVENT
+                    citySelect.dispatchEvent(new Event('change', { bubbles: true }));
                 } else {
-                    console.error('[SPA GET] ❌ City option NOT FOUND for param:', cityParam);
-                    console.log('[SPA GET] Available options:', Array.from(citySelect.options).map(opt => ({ value: opt.value, text: opt.text })));
+                    console.warn('[SPA GET] City option not found:', cityParam);
                 }
             }
         }
@@ -572,7 +563,7 @@ window.wizardData = {
         // 1. bolo mesto úspešne nastavené
         // 2. program ešte nebol aplikovaný
         if (programParam && stateChanged && !window.spaGFGetState.programApplied) {
-            // Počkaj na GF rerender (conditional logic trvá dlhšie)
+            // Počkaj na filtrovanie program options po city change
             setTimeout(() => {
                 let programAttempts = 0;
                 const maxProgramAttempts = 10;
@@ -604,17 +595,11 @@ window.wizardData = {
                     
                     if (matchedOption) {
                         programSelect.value = matchedOption.value;
-
-                        // ⭐ TRIGGER cez jQuery (GF používa jQuery Chosen)
-                        if (typeof jQuery !== 'undefined') {
-                            jQuery(programSelect).trigger('change').trigger('input');
-                            
-                            // Refresh Chosen UI
-                            if (jQuery(programSelect).data('chosen')) {
-                                jQuery(programSelect).trigger('chosen:updated');
-                            }
-                            
-                            console.log('[SPA GET] jQuery triggers fired for program select');
+                        
+                        // ⭐ REFRESH Chosen UI (GF uses jQuery Chosen)
+                        if (typeof jQuery !== 'undefined' && jQuery(programSelect).data('chosen')) {
+                            jQuery(programSelect).trigger('chosen:updated');
+                            console.log('[SPA GET] Chosen updated for program select');
                         }
                         
                         // ⭐ BACKUP do hidden fieldu (ochrana pred GF refresh)
@@ -643,6 +628,8 @@ window.wizardData = {
                         window.spaGFGetState.programApplied = true;
 
                         // ⭐ TRIGGER CHANGE EVENT
+                        programSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
                         console.log('[SPA GET] ✅ Program applied:', matchedOption.text);
                         
                         // ⭐ OVER či hodnota zostala po 300ms (po možnom GF refresh)
@@ -660,7 +647,7 @@ window.wizardData = {
                         console.warn('[SPA GET] ⚠️ Program option not found:', programParam);
                     }
                 }, 100); // Skúšaj každých 100ms
-            }, 300); // Počkaj na dokončenie filterProgramsByCity
+            }, 150); // Počkaj na dokončenie filterProgramsByCity
         }
 
         // Ak sa zmenil state, reload infobox
