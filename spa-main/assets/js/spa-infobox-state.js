@@ -201,23 +201,17 @@ window.wizardData = {
                 
                 console.log('[SPA City Change] Selected:', selectedCityName);
                 
-                // ⭐ AK ide o GET load, NERESETUJ program (aplikuje sa neskôr)
+                // ⭐ AK ide o GET load, LEN ulož city_name a ZASTAV
                 if (window.isApplyingGetParams) {
-                    console.log('[SPA City Change] GET loading - skipping program reset');
+                    console.log('[SPA City Change] GET mode - saving city_name only, NOT calling filterProgramsByCity');
                     
-                    // Nastavíme city_name ale NERESETNEME program
                     if (cityField.value && cityField.value !== '0' && cityField.value !== '') {
                         window.wizardData.city_name = selectedCityName;
                         window.spaFormState.city = true;
                         window.currentState = 1;
                     }
                     
-                    // ⭐ FILTRUJ options (potrebné pre program load)
-                    if (selectedCityName && selectedCityName.trim() !== '') {
-                        window.filterProgramsByCity(selectedCityName);
-                    }
-                    
-                    return; // ⭐ ZASTAV, nepokračuj v reset logike
+                    return; // ⭐ ZASTAV - filterProgramsByCity sa volá z applyGetParams
                 }
                 
                 // ⭐ NORMÁLNY USER CHANGE: RESETUJ PROGRAM
@@ -469,49 +463,32 @@ window.wizardData = {
                         return;
                     }
                     
-                    console.log('[SPA GET City DEBUG] Matched option:', matchedOption.text, 'value:', matchedOption.value);
+                    console.log('[SPA GET] City option found:', matchedOption.text);
                     
-                    // ⭐ NASTAV hodnotu PRIAMO
-                    citySelect.value = matchedOption.value;
-                    console.log('[SPA GET City DEBUG] citySelect.value set to:', citySelect.value);
-                    
-                    // ⭐ TRIGGER change cez jQuery
+                    // ⭐ NASTAV city hodnotu
                     if (typeof jQuery !== 'undefined') {
-                        console.log('[SPA GET City DEBUG] Triggering jQuery change');
                         jQuery(citySelect).val(matchedOption.value).trigger('change');
                         
                         if (jQuery(citySelect).data('chosen')) {
-                            setTimeout(() => {
-                                jQuery(citySelect).trigger('chosen:updated');
-                                console.log('[SPA GET City DEBUG] Chosen UI updated');
-                            }, 50);
+                            jQuery(citySelect).trigger('chosen:updated');
                         }
                     } else {
+                        citySelect.value = matchedOption.value;
                         citySelect.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                     
-                    // ⭐ OVER hodnotu viac krát (Chosen plugin potrebuje čas)
-                    let verifyAttempts = 0;
-                    const maxVerify = 10;
+                    // ⭐ EXPLICITNE zavolaj filterProgramsByCity (listener to už neurobí!)
+                    console.log('[SPA GET] Calling filterProgramsByCity explicitly');
+                    window.filterProgramsByCity(matchedOption.text);
                     
-                    const verifyCityValue = setInterval(() => {
-                        verifyAttempts++;
-                        console.log('[SPA GET City DEBUG] Verify attempt ' + verifyAttempts + ', value:', citySelect.value);
-                        
-                        if (citySelect.value === matchedOption.value) {
-                            clearInterval(verifyCityValue);
-                            window.wizardData.city_name = matchedOption.text;
-                            window.spaFormState.city = true;
-                            window.currentState = 1;
-                            window.spaGFGetState.cityApplied = true;
-                            console.log('[SPA GET] ✅ City applied OK:', matchedOption.text);
-                            resolve(true);
-                        } else if (verifyAttempts >= maxVerify) {
-                            clearInterval(verifyCityValue);
-                            console.error('[SPA GET] ❌ City value never stabilized. Current:', citySelect.value, 'Expected:', matchedOption.value);
-                            resolve(false);
-                        }
-                    }, 50);
+                    // ⭐ Ulož city_name ihneď
+                    window.wizardData.city_name = matchedOption.text;
+                    window.spaFormState.city = true;
+                    window.currentState = 1;
+                    window.spaGFGetState.cityApplied = true;
+                    
+                    console.log('[SPA GET] ✅ City applied OK:', matchedOption.text);
+                    resolve(true);
                 }, 200);
             });
         };
