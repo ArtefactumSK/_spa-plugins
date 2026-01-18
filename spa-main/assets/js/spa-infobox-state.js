@@ -432,11 +432,12 @@ window.wizardData = {
         // ⭐ FLAG: Zabraň resetu programu pri city change z GET
         window.isApplyingGetParams = true;
     
-        // ⭐ POLLING - čakaj na GF AJAX options
-        let attempts = 0;
-        const maxAttempts = 20;
-        
-        const checkOptions = setInterval(() => {
+        // ⭐ ODLOŽI POLLING o 500ms (počkaj na GF AJAX load)
+        setTimeout(() => {
+            let attempts = 0;
+            const maxAttempts = 30;
+
+            const checkOptions = setInterval(() => {
         attempts++;
         console.log('[SPA GET DEBUG] ========== START DIAGNOSTICS (attempt ' + attempts + '/' + maxAttempts + ') ==========');
         console.log('[SPA GET DEBUG] URL params:', { cityParam, programParam, frequencyParam });
@@ -675,5 +676,6 @@ window.wizardData = {
             console.log('[SPA GET] Flag cleared - normal change handling restored');
         }, 1500); // Po všetkých setTimeout-och v GET flow
         
-    }, 200);  // ⭐ Prvý pokus o 200ms, potom každých 200ms
+    }, 200);  // Polling každých 200ms
+}, 500);  // ⭐ ODLOŽENÝ ŠTART o 500ms
 };
