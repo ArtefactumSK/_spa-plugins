@@ -530,15 +530,19 @@ window.wizardData = {
                     stateChanged = true;
                     window.spaGFGetState.cityApplied = true;
                     
-                    // 3. Trigger cez jQuery
+                    // 3. Trigger cez jQuery + GF input change event
                     if (typeof jQuery !== 'undefined') {
+                        // Štandardné jQuery eventy
                         jQuery(citySelect).trigger('change').trigger('input');
+                        
+                        // GF input change event (spúšťa conditional logic)
+                        jQuery(document).trigger('gform_input_change', [citySelect]);
                         
                         if (jQuery(citySelect).data('chosen')) {
                             jQuery(citySelect).trigger('chosen:updated');
                         }
                         
-                        console.log('[SPA GET] ✅ City applied with jQuery triggers');
+                        console.log('[SPA GET] ✅ City applied with jQuery + GF triggers');
                     } else {
                         console.error('[SPA GET] ❌ jQuery not available');
                     }
@@ -568,7 +572,7 @@ window.wizardData = {
         // 1. bolo mesto úspešne nastavené
         // 2. program ešte nebol aplikovaný
         if (programParam && stateChanged && !window.spaGFGetState.programApplied) {
-            // Počkaj na filtrovanie program options po city change
+            // Počkaj na GF rerender (conditional logic trvá dlhšie)
             setTimeout(() => {
                 let programAttempts = 0;
                 const maxProgramAttempts = 10;
@@ -656,7 +660,7 @@ window.wizardData = {
                         console.warn('[SPA GET] ⚠️ Program option not found:', programParam);
                     }
                 }, 100); // Skúšaj každých 100ms
-            }, 150); // Počkaj na dokončenie filterProgramsByCity
+            }, 300); // Počkaj na dokončenie filterProgramsByCity
         }
 
         // Ak sa zmenil state, reload infobox
