@@ -189,32 +189,22 @@ add_action('wp_ajax_nopriv_spa_get_cities', 'spa_ajax_get_cities');
  * Načítava z CPT spa_group (publikované)
  */
 function spa_ajax_get_programs() {
-    // ⭐ Podporuj OBE varianty: city_id (starý) aj city_name (nový)
     $place_id = isset($_POST['city_id']) ? intval($_POST['city_id']) : 0;
-    $city_name_param = isset($_POST['city_name']) ? sanitize_text_field($_POST['city_name']) : '';
     
-    // Ak je zadaný city_name, normalizuj ho
-    if (!empty($city_name_param)) {
-        // WordPress native: odstránenie diakritiky + lowercase
-        $city_name = sanitize_title($city_name_param);
-        error_log('[SPA Programs] Normalized city_name: "' . $city_name_param . '" → "' . $city_name . '"');
-    }
-    // Inak skús place_id (backward compatibility)
-    elseif (!empty($place_id)) {
-        $city_name = get_post_meta($place_id, 'spa_place_city', true);
-        
-        if (!$city_name) {
-            wp_send_json_error(['message' => 'Mesto nenájdené pre place_id.']);
-            return;
-        }
-        
-        error_log('[SPA Programs] Place ID: ' . $place_id . ' → City name: ' . $city_name);
-    }
-    // Ani jedno nie je zadané
-    else {
-        wp_send_json_error(['message' => 'city_id ani city_name nie sú zadané.']);
+    if (empty($place_id)) {
+        wp_send_json_error(['message' => 'Neplatné ID mesta.']);
         return;
     }
+    
+    // ⭐ ZÍSKAJ MESTO PRIAMO Z place_id
+    $city_name = get_post_meta($place_id, 'spa_place_city', true);
+    
+    if (!$city_name) {
+        wp_send_json_error(['message' => 'Mesto nenájdené.']);
+        return;
+    }
+    
+    error_log('[SPA Programs] Place ID: ' . $place_id . ' → City name: ' . $city_name);
     
     // Načítanie programov pre dané mesto
     $programs = spa_get_programs_for_city_dynamic($city_name);
@@ -235,21 +225,18 @@ add_action('wp_ajax_nopriv_spa_get_programs', 'spa_ajax_get_programs');
  */
 function spa_get_programs_for_city_dynamic($city_name) {
     global $wpdb;
-    
-    // ⭐ Normalizuj vstupné mesto (pre istotu, ak by bolo volaná priamo)
-    $city_name_normalized = sanitize_title($city_name);
-    
-    error_log('[SPA Programs Dynamic] Looking for city (normalized): ' . $city_name_normalized);
-    
-    // KROK 1: Nájdi spa_place kde post_name (slug) = normalized city
+    error_log('[SPA Programs Dynamic] Looking for city: ' . $city_name);
+    // KROK 1: Nájdi spa_place pre dané mesto
     $place_sql = $wpdb->prepare("
         SELECT p.ID
         FROM {$wpdb->posts} p
+        INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
         WHERE p.post_type = 'spa_place'
         AND p.post_status = 'publish'
-        AND p.post_name = %s
+        AND pm.meta_key = 'spa_place_city'
+        AND pm.meta_value = %s
         LIMIT 1
-    ", $city_name_normalized);
+    ", $city_name);
     
     $place_id = $wpdb->get_var($place_sql);
     

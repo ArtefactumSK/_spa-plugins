@@ -528,9 +528,9 @@ window.spa_remove_diacritics = function(str) {
                 // Skús nájsť option (case-insensitive porovnanie)
                 const options = Array.from(citySelect.options);
                 const matchedOption = options.find(opt => {
-                    const optionText = spa_remove_diacritics(opt.text.trim().toLowerCase());
-                    const searchText = cityParam.toLowerCase(); // už je normalized
-                    return optionText === searchText || optionText.includes(searchText);
+                    const optionText = spa_remove_diacritics(opt.text.trim());
+                    const searchText = cityParam; // už je normalized
+                    return optionText.includes(searchText);
                 });
                 
                 if (matchedOption) {
