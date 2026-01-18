@@ -516,7 +516,24 @@ window.wizardData = {
                         return;
                     }
                     
-                    // ⭐ Nájdi konkrétnu option (podľa value ALEBO data-program-id)
+                    // ⭐ ČAKAJ kým GF načíta skutočné program options (nie len placeholder)
+                    const hasRealOptions = programSelect.options.length > 1 && 
+                                          programSelect.options[0].value !== '_wating_city';
+                    
+                    if (!hasRealOptions) {
+                        if (attempts < maxAttempts) {
+                            if (attempts % 10 === 0) {
+                                console.log('[SPA GET] Waiting for GF to load program options... (' + attempts + '/' + maxAttempts + ')');
+                            }
+                            return;
+                        }
+                        clearInterval(checkProgramOption);
+                        console.error('[SPA GET] ❌ GF never loaded program options');
+                        resolve(false);
+                        return;
+                    }
+                    
+                    // ⭐ Options sú ready, teraz nájdi konkrétnu option
                     const matchedOption = Array.from(programSelect.options).find(opt => 
                         opt.value == programId || opt.getAttribute('data-program-id') == programId
                     );
