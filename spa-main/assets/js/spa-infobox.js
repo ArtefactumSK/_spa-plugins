@@ -153,6 +153,10 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
                 </div>
             `;
         }
+        // ÚROVEŇ (za rozvrh)
+        if (programData.level_html) {
+            programMainHtml += programData.level_html;
+        }
         
         programMainHtml += '</div>'; // .spa-program-content
         programMainHtml += '</div>'; // .spa-program-main
