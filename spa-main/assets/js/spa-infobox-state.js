@@ -260,7 +260,6 @@ window.spaErrorState = {
                         // ⭐ NEPREPIS city_name ak už je nastavené z GET
                         if (!window.wizardData.city_name) {
                             window.wizardData.city_name = selectedCityName;
-                            window.wizardData.city_slug = spa_remove_diacritics(selectedCityName);
                         }
                         window.spaFormState.city = true;
                         window.currentState = 1;
@@ -305,7 +304,6 @@ window.spaErrorState = {
                 if (cityField.value && cityField.value !== '0' && cityField.value !== '') {
                     // ⭐ V normálnom flow (nie GET) vždy prepíš
                     window.wizardData.city_name = selectedCityName;
-                    window.wizardData.city_slug = spa_remove_diacritics(selectedCityName);
                     window.spaFormState.city = true;
                     window.currentState = 1;
                     window.spaErrorState.invalidCity = false;
@@ -428,7 +426,6 @@ window.spaErrorState = {
         formData.append('program_id', window.wizardData.program_id);
         formData.append('state', state);
         formData.append('city_name', window.wizardData.city_name);
-        formData.append('city_slug', window.wizardData.city_slug);
         formData.append('program_name', window.wizardData.program_name);
         formData.append('program_age', window.wizardData.program_age);
 
@@ -633,7 +630,6 @@ window.spa_remove_diacritics = function(str) {
                         console.log('[SPA GET DEBUG] City select still exists:', !!finalValue);
                     }, 500);
                     window.wizardData.city_name = matchedOption.text.trim();
-                    window.wizardData.city_slug = spa_remove_diacritics(matchedOption.text.trim());
                     window.spaFormState.city = true;
                     window.currentState = 1;
                     stateChanged = true;
