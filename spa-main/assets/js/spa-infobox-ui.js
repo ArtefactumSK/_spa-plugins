@@ -29,33 +29,12 @@ window.clearAllSectionFields = function() {
 * Aktualizácia PREHĽADU REGISTRÁCIE (.spa-price-summary)
 */
 window.updatePriceSummary = function() {
-    let summaryContainer = document.querySelector('.spa-price-summary');
-
-if (!summaryContainer) {
-    console.log('[SPA Summary] Container NOT FOUND - creating it');
+    const summaryContainer = document.querySelector('.spa-price-summary');
     
-    // Nájdi posledné pole vo formulári
-    const gformBody = document.querySelector('.gform_body');
-    
-    if (gformBody) {
-        summaryContainer = document.createElement('div');
-        summaryContainer.className = 'spa-price-summary';
-        summaryContainer.style.cssText = 'background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 20px; border: 2px solid var(--theme-palette-color-1);';
-        
-        // Vlož pred submit button
-        const submitButton = document.querySelector('.gform_footer');
-        if (submitButton) {
-            submitButton.parentNode.insertBefore(summaryContainer, submitButton);
-        } else {
-            gformBody.appendChild(summaryContainer);
-        }
-        
-        console.log('[SPA Summary] Container created');
-    } else {
-        console.error('[SPA Summary] gform_body not found!');
+    if (!summaryContainer) {
+        console.log('[SPA Summary] Container NOT FOUND');
         return;
     }
-}
     
     console.log('[SPA Summary] ========== START ==========');
 
