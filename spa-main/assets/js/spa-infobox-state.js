@@ -21,6 +21,43 @@ window.wizardData = {
     program_age: ''
 };
 
+    /**
+     * ERRORBOX: Centrálne zobrazenie stavu výberu
+     */
+    window.updateErrorBox = function() {
+        const state = window.currentState || 0;
+        
+        let errorBox = document.querySelector('.gform_validation_errors');
+        
+        if (state === 2) {
+            if (errorBox) {
+                errorBox.style.display = 'none';
+            }
+            return;
+        }
+        
+        let message = '';
+        if (state === 0) {
+            message = '<h2 class="gform_submission_error">Vyberte mesto</h2><p>Prosím, vyberte mesto zo zoznamu.</p>';
+        } else if (state === 1) {
+            message = '<h2 class="gform_submission_error">Vyberte tréningový program</h2><p>Prosím, vyberte tréningový program zo zoznamu.</p>';
+        }
+        
+        if (!errorBox) {
+            const gformBody = document.querySelector('.gform_body');
+            if (gformBody) {
+                errorBox = document.createElement('div');
+                errorBox.className = 'gform_validation_errors';
+                gformBody.insertBefore(errorBox, gformBody.firstChild);
+            } else {
+                return;
+            }
+        }
+        
+        errorBox.innerHTML = message;
+        errorBox.style.display = 'block';
+    };
+
 
     /**
      * CENTRÁLNE URČENIE CASE
@@ -51,6 +88,7 @@ window.wizardData = {
         });
         
         window.currentState = newState;
+        window.updateErrorBox();
         window.loadInfoboxContent(window.currentState);
     };
 
