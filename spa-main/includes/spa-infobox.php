@@ -151,6 +151,7 @@ HTML;
 function spa_ajax_get_infobox_content() {
     $state = isset($_POST['state']) ? intval($_POST['state']) : 0;
     $city_name = isset($_POST['city_name']) ? sanitize_text_field($_POST['city_name']) : '';
+    $city_name_normalized = sanitize_title($city_name); // ← PRIDANÉ: normalizácia pre DB lookup
     $program_name = isset($_POST['program_name']) ? sanitize_text_field($_POST['program_name']) : '';
     $program_age = isset($_POST['program_age']) ? sanitize_text_field($_POST['program_age']) : '';
 
@@ -220,7 +221,7 @@ function spa_ajax_get_infobox_content() {
 
     // Fallback: hľadaj podľa názvu + MESTO
     if (!$program_id && !empty($program_name)) {
-        // Ak máme mesto, filtruj podľa neho
+       // Ak máme mesto, filtruj podľa neho
         if (!empty($city_name)) {
             // Nájdi place_id pre dané mesto
             $place_ids = $wpdb->get_col(
@@ -232,7 +233,7 @@ function spa_ajax_get_infobox_content() {
                     AND p.post_status = 'publish'
                     AND pm.meta_key = 'spa_place_city'
                     AND pm.meta_value = %s",
-                    $city_name
+                    $city_name_normalized  // ← OPRAVENÉ: použije normalizovanú hodnotu
                 )
             );
             
