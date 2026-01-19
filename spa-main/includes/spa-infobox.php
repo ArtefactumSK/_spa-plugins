@@ -359,7 +359,7 @@ function spa_ajax_get_infobox_content() {
                     ];
                     
                     // Mapovanie dní na časy
-                    $schedule_map = [];
+                    /* $schedule_map = [];
                     foreach ($schedule_data as $item) {
                         $day = $item['day'];
                         if (!isset($schedule_map[$day])) {
@@ -368,8 +368,23 @@ function spa_ajax_get_infobox_content() {
                         $time_from = substr($item['from'], 0, 5);
                         $time_to = !empty($item['to']) ? '-' . substr($item['to'], 0, 5) : '';
                         $schedule_map[$day][] = $time_from . $time_to;
+                    } */
+                    // Mapovanie dní na časy
+                    $schedule_map = [];
+                    foreach ($schedule_data as $item) {
+                        $day = $item['day'];
+                        if (!isset($schedule_map[$day])) {
+                            $schedule_map[$day] = [];
+                        }
+                        $time_from = substr($item['from'], 0, 5);
+                        $time_to = !empty($item['to']) ? substr($item['to'], 0, 5) : '';
+                        
+                        // Ulož ako objekt s oddelenými časmi
+                        $schedule_map[$day][] = [
+                            'from' => $time_from,
+                            'to' => $time_to
+                        ];
                     }
-                    
                     // Generovanie HTML
                     $schedule_html .= '<div class="schedule-header">';
                     foreach ($days_short as $day_key => $day_label) {
@@ -380,11 +395,17 @@ function spa_ajax_get_infobox_content() {
                     
                     $schedule_html .= '<div class="schedule-times">';
                     foreach ($days_short as $day_key => $day_label) {
-                        $schedule_html .= '<div class="schedule-time">';
+                        $schedule_html .= '<div class="schedule-time" data-times="' . esc_attr(json_encode($schedule_map[$day_key] ?? [])) . '">';
                         if (isset($schedule_map[$day_key])) {
-                            // Každý čas na samostatnom riadku - esc_html až na jednotlivé hodnoty
-                            $escaped_times = array_map('esc_html', $schedule_map[$day_key]);
-                            $schedule_html .= implode('<br>', $escaped_times);
+                            $time_parts = [];
+                            foreach ($schedule_map[$day_key] as $time_obj) {
+                                $time_str = esc_html($time_obj['from']);
+                                if (!empty($time_obj['to'])) {
+                                    $time_str .= '<span class="schedule-time-delimiter">-</span>' . esc_html($time_obj['to']);
+                                }
+                                $time_parts[] = $time_str;
+                            }
+                            $schedule_html .= implode('<br>', $time_parts);
                         } else {
                             $schedule_html .= '—';
                         }
