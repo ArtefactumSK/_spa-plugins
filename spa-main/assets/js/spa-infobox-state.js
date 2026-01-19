@@ -21,6 +21,11 @@ window.wizardData = {
     program_age: ''
 };
 
+window.spaErrorState = {
+    invalidCity: false,
+    invalidProgram: false
+};
+
     /**
      * ERRORBOX: Centrálne zobrazenie stavu výberu
      */
@@ -29,7 +34,7 @@ window.wizardData = {
         
         let errorBox = document.querySelector('.gform_validation_errors');
         
-        if (state === 2) {
+        if (state === 2 && !window.spaErrorState.invalidCity && !window.spaErrorState.invalidProgram) {
             if (errorBox) {
                 errorBox.style.display = 'none';
             }
@@ -37,12 +42,20 @@ window.wizardData = {
         }
         
         let message = '';
-        if (state === 0) {
+        
+        if (window.spaErrorState.invalidCity) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const cityParam = urlParams.get('city');
+            message = '<h2 class="gform_submission_error">Neplatné mesto v odkaze</h2><p>Mesto "' + cityParam + '" nebolo nájdené. Prosím, vyberte mesto zo zoznamu.</p>';
+        } else if (window.spaErrorState.invalidProgram) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const programParam = urlParams.get('program');
+            message = '<h2 class="gform_submission_error">Neplatný program v odkaze</h2><p>Program s ID "' + programParam + '" nebol nájdený alebo nie je dostupný v zvolenom meste. Prosím, vyberte program zo zoznamu.</p>';
+        } else if (state === 0) {
             message = '<h2 class="gform_submission_error">Vyberte mesto</h2><p>Prosím, vyberte mesto zo zoznamu.</p>';
         } else if (state === 1) {
             message = '<h2 class="gform_submission_error">Vyberte tréningový program</h2><p>Prosím, vyberte tréningový program zo zoznamu.</p>';
         }
-        
         if (!errorBox) {
             const gformBody = document.querySelector('.gform_body');
             if (gformBody) {
@@ -292,6 +305,7 @@ window.wizardData = {
                     window.wizardData.city_name = spa_remove_diacritics(selectedCityName);
                     window.spaFormState.city = true;
                     window.currentState = 1;
+                    window.spaErrorState.invalidCity = false;
                 } else {
                     // Úplné vymazanie mesta
                     window.wizardData.city_name = '';
@@ -327,6 +341,7 @@ window.wizardData = {
                 if (this.value) {
                     window.wizardData.program_name = selectedOption.text;
                     window.wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
+                    window.spaErrorState.invalidProgram = false;
                     
                     console.log('[SPA Infobox] Program ID:', window.wizardData.program_id);
                     
@@ -656,6 +671,9 @@ window.spa_remove_diacritics = function(str) {
                     
                 } else {
                     console.warn('[SPA GET] City option not found:', cityParam);
+                    window.spaErrorState.invalidCity = true;
+                    window.currentState = 0;
+                    window.updateErrorBox();
                 }
             }
         }
@@ -795,9 +813,12 @@ window.spa_remove_diacritics = function(str) {
                         
                         // Načítaj infobox pre state 2
                         window.loadInfoboxContent(window.currentState);
-                    } else {
-                        console.warn('[SPA GET] ⚠️ Program option not found:', programParam);
-                    }
+                        } else {
+                            console.warn('[SPA GET] ⚠️ Program option not found:', programParam);
+                            window.spaErrorState.invalidProgram = true;
+                            window.currentState = window.wizardData.city_name ? 1 : 0;
+                            window.updateErrorBox();
+                        }
                 }, 100); // Skúšaj každých 100ms
             }, 150); // Počkaj na dokončenie filterProgramsByCity
         }
