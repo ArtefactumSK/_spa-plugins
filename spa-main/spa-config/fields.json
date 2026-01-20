@@ -25,5 +25,6 @@
   "spa_consent_statutes": "input_35.3",
   "spa_consent_terms": "input_35.4",
   "spa_consent_guardian": "input_42.1",
-  "spa_consent_marketing": "input_37.1"
+  "spa_consent_marketing": "input_37.1",
+  "spa_registration_summary": "input_28"
 }

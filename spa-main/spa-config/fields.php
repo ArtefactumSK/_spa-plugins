@@ -49,5 +49,9 @@ return [
     'spa_consent_terms' => 'input_35.4',     // Podmienky zápisu
     'spa_consent_guardian' => 'input_42.1',  // Potvrdenie zástupcu
     'spa_consent_marketing' => 'input_37.1', // Marketing (nepovinný)
+    /* ==========================
+       PREHĽAD REGISTRÁCIE
+       ========================== */
+    'spa_registration_summary' => 'input_28', // Prehľad registrácie
 
 ];

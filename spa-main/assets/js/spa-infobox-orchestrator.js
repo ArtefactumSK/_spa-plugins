@@ -215,6 +215,7 @@ window.updateSectionVisibility = function() {
     const commonSections = document.querySelectorAll('.spa-section-common');
     const adultSections = document.querySelectorAll('.spa-section-adult');
     const childSections = document.querySelectorAll('.spa-section-child');
+    const registrationSummary = document.querySelector('.spa-price-summary');
 
     console.log('[SPA Section Control] Sections found:', {
         common: commonSections.length,
@@ -250,8 +251,17 @@ window.updateSectionVisibility = function() {
         childSections.forEach(section => window.toggleSection(section, false));
         console.log('[SPA Section Control] ❌ All sections: HIDDEN (no program selected)');
     }
-    
 
+    // ⭐ Oprava: Vždy zobraz summary wrapper po togglingu sekcií (ak program vybraný)
+    const summaryElement = document.querySelector('.spa-price-summary');
+    if (summaryElement && programSelected) {
+        const summaryWrapper = summaryElement.closest('.gfield');
+        if (summaryWrapper) {
+            summaryWrapper.style.display = '';
+            console.log('[SPA Section Control] Forced summary wrapper visible (programSelected=true)');
+        }
+    }
+    
     console.log('[SPA Section Control] ========== UPDATE END ==========');
 };
 
@@ -368,6 +378,15 @@ window.toggleSection = function(sectionElement, show) {
             
             nextElement = nextElement.nextElementSibling;
             continue;
+        }
+
+        // ⭐ DEBUG: Loguj ak nastavuješ display:none
+        if (!show) {
+            console.log('[DEBUG toggleSection] Setting display:none on element:', {
+                class: nextElement.className,
+                id: nextElement.id || 'no-id',
+                hasSummary: !!nextElement.querySelector('.spa-price-summary')
+            });
         }
 
         // Zobraz/skry ostatné elementy
