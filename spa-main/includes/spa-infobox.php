@@ -414,15 +414,23 @@ function spa_ajax_get_infobox_content() {
                     $schedule_html .= '</div>';
                 }
             }
-            
+            // Získaj vek a konvertuj na čísla (nie prázdne reťazce)
+            $age_min_raw = get_post_meta($program_id, 'spa_age_from', true);
+            $age_max_raw = get_post_meta($program_id, 'spa_age_to', true);
+
+            $age_min = !empty($age_min_raw) ? floatval($age_min_raw) : null;
+            $age_max = !empty($age_max_raw) ? floatval($age_max_raw) : null;
+
             $program_data = [
                 'title' => $program_post->post_title,
                 'content' => $program_content,
                 'icon' => $icon_svg,
                 'primary_color' => !empty($primary_color) ? $primary_color : '#6d71b2',
                 'secondary_color' => !empty($secondary_color) ? $secondary_color : '#000000',
-                'age_min' => get_post_meta($program_id, 'spa_age_from', true),
-                'age_max' => get_post_meta($program_id, 'spa_age_to', true),
+                /* 'age_min' => get_post_meta($program_id, 'spa_age_from', true),
+                'age_max' => get_post_meta($program_id, 'spa_age_to', true), */
+                'age_min' => $age_min,
+                'age_max' => $age_max,
                 'spa_level' => get_post_meta($program_id, 'spa_level', true),
                 'level_display' => $level_display,
                 'spa_price_1x_weekly' => get_post_meta($program_id, 'spa_price_1x_weekly', true),

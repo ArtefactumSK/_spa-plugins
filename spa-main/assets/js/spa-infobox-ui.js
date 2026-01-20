@@ -49,15 +49,21 @@ window.updatePriceSummary = function() {
         isChild = false;
     }
     // Ak globálna premenná nie je nastavená, použij fallback
-    else if (window.infoboxData?.program?.age_min) {
-        const ageMin = parseFloat(window.infoboxData.program.age_min);
-        // Ak age_min EXISTUJE (nie je NaN) A je < 18 → CHILD
-        if (!isNaN(ageMin) && ageMin < 18) {
+    else if (window.infoboxData?.program) {
+        const ageMinRaw = window.infoboxData.program.age_min;
+        const ageMin = parseFloat(ageMinRaw);
+        
+        // Ak age_min je ČÍSLO (nie prázdny reťazec) A je < 18 → CHILD
+        if (!isNaN(ageMin) && ageMin !== null && ageMin !== '' && ageMin < 18) {
             isChild = true;
+        } else if (!isNaN(ageMin) && ageMin >= 18) {
+            isChild = false; // ADULT (age_min >= 18)
         } else {
-            isChild = false; // ADULT (age_min >= 18 alebo neexistuje číslo)
+            // Ak age_min je prázdny/"" → DEFAULT ADULT
+            isChild = false;
+            console.log('[SPA Summary] age_min is empty, defaulting to ADULT');
         }
-        console.log('[SPA Summary] Fallback detection - age_min:', ageMin, '→ isChild:', isChild);
+        console.log('[SPA Summary] Fallback detection - age_min:', ageMinRaw, '→ parsed:', ageMin, '→ isChild:', isChild);
     } else {
         // Last resort: default ADULT (aby sa prehľad zobrazil)
         isChild = false;
