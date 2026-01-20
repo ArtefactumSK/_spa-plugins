@@ -238,8 +238,10 @@ window.updatePriceSummary = function() {
             );
         }
 
-        html += `<br><strong>Kontakt na účastníka:</strong> ${contactParts.join(', ')}</p>`;
+        html += `<br><strong>Kontakt na účastníka:</strong> ${contactParts.join(', ')}`;
     }
+    
+    html += '</p>';
 
     // 5. Vybraný program
     if (programDisplay) {
