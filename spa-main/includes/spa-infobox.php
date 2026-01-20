@@ -396,19 +396,23 @@ function spa_ajax_get_infobox_content() {
                     $schedule_html .= '<div class="schedule-times">';
                     foreach ($days_short as $day_key => $day_label) {
                         $schedule_html .= '<div class="schedule-time" data-times="' . esc_attr(json_encode($schedule_map[$day_key] ?? [])) . '">';
-                        if (isset($schedule_map[$day_key])) {
-                            $time_parts = [];
+                        
+                        if (isset($schedule_map[$day_key]) && !empty($schedule_map[$day_key])) {
                             foreach ($schedule_map[$day_key] as $time_obj) {
-                                $time_str = esc_html($time_obj['from']);
+                                $schedule_html .= '<div class="schedule-time-slot">';
+                                $schedule_html .= '<span class="from">' . esc_html($time_obj['from']) . '</span>';
+                                
                                 if (!empty($time_obj['to'])) {
-                                    $time_str .= '<span class="schedule-time-delimiter">-</span>' . esc_html($time_obj['to']);
+                                    $schedule_html .= '<span class="schedule-time-delimiter">-</span>';
+                                    $schedule_html .= '<span class="to">' . esc_html($time_obj['to']) . '</span>';
                                 }
-                                $time_parts[] = $time_str;
+                                
+                                $schedule_html .= '</div>';
                             }
-                            $schedule_html .= implode('<br>', $time_parts);
                         } else {
                             $schedule_html .= '—';
                         }
+                        
                         $schedule_html .= '</div>';
                     }
                     $schedule_html .= '</div>';

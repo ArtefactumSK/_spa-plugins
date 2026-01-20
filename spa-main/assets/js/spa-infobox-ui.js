@@ -481,7 +481,7 @@ window.clearAllSectionFields = function() {
             console.log('[DEBUG] Place text added');
         }
         
-        programInfoHtml += `<br>ℹ️ <span class="spa-form-warning">Informácia o zaradení do skupiny.</span>`;
+        programInfoHtml += `<br>ℹ️ <span class="spa-form-warning">Na základe tejto registrácie a jej schválení vás tréner zaradí do vybraného tréningového dňa (rozvrh je uvedený vyššie).</span>`;
         
         console.log('[DEBUG] programInfoHtml length:', programInfoHtml.length);
         
