@@ -186,8 +186,14 @@ window.renderFrequencySelector = function(programData) {
     });
     // Aktualizuj stav page break po renderi frekvencie
     if (activeFrequencies.length === 1) {
-        // Ak je len 1 frekvencia, je automaticky vybraná
+        input.checked = true;
+        window.spaFormState.frequency = true;
         
+        // ⭐ OKAMŽITE AKTUALIZUJ VIDITEĽNOSŤ SEKCIÍ + PREHĽAD
+        setTimeout(() => {
+            window.updateSectionVisibility();
+            window.updatePriceSummary(); // ⭐ PRIDANÉ
+        }, 150);
     }
 };
 
