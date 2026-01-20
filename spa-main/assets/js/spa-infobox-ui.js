@@ -39,7 +39,27 @@ window.updatePriceSummary = function() {
     console.log('[SPA Summary] ========== START ==========');
 
     // Načítaj typ účastníka z GLOBÁLNEJ PREMENNEJ (nastavuje sa v orchestrator.js)
-    const isChild = window.spaCurrentProgramType === 'child';
+    // FALLBACK: Ak premenná nie je nastavená, zisť z programu
+    let isChild = window.spaCurrentProgramType === 'child';
+
+    if (window.spaCurrentProgramType === null || window.spaCurrentProgramType === undefined) {
+        // FALLBACK: Detekuj z age_min programu
+        if (window.infoboxData?.program?.age_min) {
+            const ageMin = parseFloat(window.infoboxData.program.age_min);
+            isChild = !isNaN(ageMin) && ageMin < 18;
+            console.log('[SPA Summary] window.spaCurrentProgramType NOT SET, using fallback:', isChild);
+        } else {
+            // Last resort: skontroluj input_34
+            const resolvedTypeField = document.querySelector('input[name="input_34"]');
+            if (resolvedTypeField && resolvedTypeField.value) {
+                isChild = resolvedTypeField.value === 'child';
+                console.log('[SPA Summary] Using input_34 fallback:', isChild);
+            } else {
+                console.warn('[SPA Summary] Cannot determine program type, defaulting to CHILD');
+                isChild = true; // Default CHILD (aby sa zobrazil prehľad)
+            }
+        }
+    }
 
     // === ZBIERAJ DÁTA ===
     
