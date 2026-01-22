@@ -673,4 +673,25 @@ function spa_remove_diacritics_for_email($string) {
             }
         }
     }
+        /**
+     * FALLBACK: Prázdne funkcie pre staré hooky v WP cache
+     * TODO: Odstrániť po vyčistení WP cache
+     */
+    if (!function_exists('spa_validate_required_consents')) {
+        function spa_validate_required_consents($validation_result) {
+            return $validation_result;
+        }
+    }
+
+    if (!function_exists('spa_mark_validation_errors')) {
+        function spa_mark_validation_errors($message, $form) {
+            return $message;
+        }
+    }
+
+    if (!function_exists('spa_set_field_error')) {
+        function spa_set_field_error(&$form, $field_id, $message) {
+            // Prázdna funkcia
+        }
+    }
 }
