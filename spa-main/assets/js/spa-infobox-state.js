@@ -225,6 +225,60 @@ window.spaErrorState = {
     };
 
     /**
+     * Obnova stavu po validation error (GF re-render)
+     * Prečíta input_34 a aplikuje správne sekcie
+     */
+    window.restoreStateAfterValidation = function() {
+        console.log('[SPA Restore] ========== VALIDATION RESTORE START ==========');
+        
+        // 1. Prečítaj PHP source of truth
+        const resolvedTypeField = document.querySelector('input[name="input_34"]');
+        const resolvedType = resolvedTypeField?.value;
+        
+        console.log('[SPA Restore] input_34 value:', resolvedType);
+        
+        if (!resolvedType || (resolvedType !== 'child' && resolvedType !== 'adult')) {
+            console.log('[SPA Restore] No valid resolved type, skipping');
+            return;
+        }
+        
+        // 2. Nastav globálny state
+        window.spaCurrentProgramType = resolvedType;
+        
+        // 3. Prečítaj hodnoty selectov (už sú vyplnené GF)
+        const citySelect = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
+        const programSelect = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+        
+        if (citySelect?.value && programSelect?.value) {
+            const cityOption = citySelect.options[citySelect.selectedIndex];
+            const programOption = programSelect.options[programSelect.selectedIndex];
+            
+            window.wizardData.city_name = cityOption.text.trim();
+            window.wizardData.program_name = programOption.text.trim();
+            window.wizardData.program_id = programOption.getAttribute('data-program-id') || programOption.value;
+            
+            window.spaFormState.city = true;
+            window.spaFormState.program = true;
+            window.currentState = 2;
+            
+            console.log('[SPA Restore] Restored wizardData:', window.wizardData);
+        }
+        
+        // 4. Aplikuj viditeľnosť sekcií
+        setTimeout(() => {
+            window.updateSectionVisibility();
+            console.log('[SPA Restore] Section visibility applied for type:', resolvedType);
+        }, 150);
+        
+        // 5. Načítaj infobox
+        if (window.currentState === 2) {
+            window.loadInfoboxContent(2);
+        }
+        
+        console.log('[SPA Restore] ========== VALIDATION RESTORE END ==========');
+    };
+
+    /**
      * Sledovanie zmien vo formulári
      */
     window.watchFormChanges = function() {

@@ -38,13 +38,18 @@ window.clearAllSectionFields = function() {
         
         console.log('[DEBUG] Container found');
 
-        // Detekcia typu
+        // Detekcia typu - PRIORITA: input_34 (PHP pravda)
+        const resolvedTypeField = document.querySelector('input[name="input_34"]');
+        const resolvedType = resolvedTypeField?.value;
+
         let isChild = false;
-        
-        if (window.spaCurrentProgramType === 'child') {
-            isChild = true;
-        } else if (window.spaCurrentProgramType === 'adult') {
-            isChild = false;
+
+        if (resolvedType === 'child' || resolvedType === 'adult') {
+            isChild = (resolvedType === 'child');
+            console.log('[DEBUG] Type FROM input_34:', resolvedType);
+        } else if (window.spaCurrentProgramType === 'child' || window.spaCurrentProgramType === 'adult') {
+            isChild = (window.spaCurrentProgramType === 'child');
+            console.log('[DEBUG] Type FROM spaCurrentProgramType:', window.spaCurrentProgramType);
         } else if (window.infoboxData?.program) {
             const ageMinRaw = window.infoboxData.program.age_min;
             const ageMin = parseFloat(ageMinRaw);
@@ -55,9 +60,8 @@ window.clearAllSectionFields = function() {
                 isChild = false;
             } else {
                 isChild = false;
-                console.log('[DEBUG] age_min is empty, defaulting to ADULT');
             }
-            console.log('[DEBUG] Fallback detection - age_min:', ageMinRaw, '→ parsed:', ageMin, '→ isChild:', isChild);
+            console.log('[DEBUG] Fallback detection - age_min:', ageMinRaw, '→ isChild:', isChild);
         } else {
             isChild = false;
             console.log('[DEBUG] No detection method, defaulting to ADULT');
