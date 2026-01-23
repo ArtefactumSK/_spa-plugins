@@ -65,23 +65,24 @@ window.clearAllSectionFields = function() {
         console.log('[DEBUG] Final isChild:', isChild);
 
         // Zbieranie dát
-        const firstNameInput = document.querySelector('input[name="input_6.3"]');
-        const lastNameInput = document.querySelector('input[name="input_6.6"]');
+        const firstNameInput = document.querySelector('input[name="input_6.3"]'); // Meno účastníka
+        const lastNameInput = document.querySelector('input[name="input_6.6"]'); // Priezvisko účastníka
         const participantName = [
             firstNameInput?.value.trim(),
             lastNameInput?.value.trim()
         ].filter(Boolean).join(' ');
 
         let address = '';
-        const addressSingleInput = document.querySelector('input[name="input_17"]');
+        const addressSingleInput = document.querySelector('input[name="input_17"]'); // Adresa
         if (addressSingleInput) {
             address = addressSingleInput.value.trim();
         }
 
-        const phoneInput = document.querySelector('input[name="input_19"]');
+        const phoneInput = document.querySelector('input[name="input_19"]'); // Telefón účastníka
         const phone = phoneInput?.value.trim();
 
         let programDisplay = window.wizardData?.program_name || '';
+        // Miesto tréningov
         let placeDisplay = '';
         if (window.infoboxData?.place) {
             const parts = [];
@@ -89,6 +90,8 @@ window.clearAllSectionFields = function() {
             if (window.infoboxData.place.address) parts.push(window.infoboxData.place.address);
             if (window.infoboxData.place.city) parts.push(window.infoboxData.place.city);
             placeDisplay = parts.join(', ');
+        } else if (window.wizardData?.city_name) {
+            placeDisplay = window.wizardData.city_name;
         }
 
         const selectedFrequency = document.querySelector('input[name="spa_frequency"]:checked');
