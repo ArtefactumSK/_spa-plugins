@@ -74,16 +74,7 @@ if (typeof jQuery !== 'undefined') {
         window.initInfobox();
         window.watchFormChanges();
         window.hideAllSectionsOnInit();
-        
-        // ⭐ PRIORITA: Ak existuje input_34 (po validation error), obnov state
-        const resolvedTypeField = document.querySelector('input[name="input_34"]');
-        if (resolvedTypeField && resolvedTypeField.value) {
-            console.log('[SPA] Detected validation error - restoring state');
-            window.restoreStateAfterValidation();
-        } else {
-            // Normálny flow - aplikuj GET params
-            window.applyGetParams();
-        }
+        window.applyGetParams(); 
     });
 }
 

@@ -93,39 +93,27 @@ window.updateSectionVisibility = function() {
         allSelected
     });
 
-    // ⭐ PRIORITA 1: Prečítaj PHP source of truth (input_34)
-    const resolvedTypeField = document.querySelector('input[name="input_34"]');
-    const resolvedType = resolvedTypeField?.value;
-
+    // ⭐ ZÍSKAJ age_min priamo z programu (nie z data atribútu)
     let isChildProgram = false;
 
-    if (resolvedType === 'child' || resolvedType === 'adult') {
-        // PHP určilo typ → použij to ako definitívnu pravdu
-        isChildProgram = (resolvedType === 'child');
-        console.log('[SPA Section Control] Type FROM input_34:', resolvedType);
-    } else {
-        // Fallback: detekcia z age_min
-        const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
-        if (programField && programField.value) {
-            const selectedOption = programField.options[programField.selectedIndex];
-            const ageMin = parseInt(selectedOption.getAttribute('data-age-min'));
-            
-            if (!isNaN(ageMin)) {
-                isChildProgram = ageMin < 18;
-            }
-        }
+    // ⭐ Deklaruj birthNumberField na začiatku (potrebné neskôr)
+    const birthNumberField = document.querySelector('input[name="input_8"]');
+
+    // Pokús sa získať age_min z vybraného programu
+    const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+    if (programField && programField.value) {
+        const selectedOption = programField.options[programField.selectedIndex];
+        const ageMin = parseInt(selectedOption.getAttribute('data-age-min'));
         
-        // Fallback 2: data-is-child atribút
-        if (!programField || !programField.value) {
-            const birthNumberField = document.querySelector('input[name="input_8"]');
-            isChildProgram = birthNumberField?.getAttribute('data-is-child') === 'true';
+        if (!isNaN(ageMin)) {
+            isChildProgram = ageMin < 18;
         }
-        
-        console.log('[SPA Section Control] Type FROM fallback detection:', isChildProgram ? 'child' : 'adult');
     }
 
-    // ⭐ Deklaruj birthNumberField (ak ešte neexistuje)
-    const birthNumberField = document.querySelector('input[name="input_8"]');
+    // Fallback: skontroluj data-is-child atribút
+    if (!programField || !programField.value) {
+        isChildProgram = birthNumberField?.getAttribute('data-is-child') === 'true';
+    }
 
     console.log('[SPA Section Control] Program type:', {
         isChildProgram,
@@ -135,14 +123,14 @@ window.updateSectionVisibility = function() {
     window.spaCurrentProgramType = isChildProgram ? 'child' : 'adult';
 
     // ⭐ ZAPÍŠ RESOLVED TYPE DO HIDDEN FIELD (input_34)
-    /* const resolvedTypeField = document.querySelector('input[name="input_34"]');
+    const resolvedTypeField = document.querySelector('input[name="input_34"]');
     if (resolvedTypeField) {
         const resolvedValue = isChildProgram ? 'child' : 'adult';
         resolvedTypeField.value = resolvedValue;
         console.log('[SPA Section Control] Resolved type written to input_34:', resolvedValue);
     } else {
         console.warn('[SPA Section Control] ⚠️ Hidden field input_34 NOT FOUND');
-    } */
+    }
 
     // ⭐ POLE "Kto bude účastníkom tréningov?" (input_4)
     // Zobrazuje sa hneď po výbere PROGRAMU (nie až po frekvencii)
