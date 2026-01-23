@@ -199,7 +199,9 @@ document.addEventListener('change', function(e) {
     
     const relevantFields = [
         'input_6.3', 'input_6.6',   // Meno
-        'input_17',                 // Adresa
+        'input_17',                 // Adresa (single field)
+        'input_17.1',               // Adresa - ulica
+        'input_17.3',               // Adresa - mesto
         'input_7',                  // Dátum narodenia
         'input_19',                 // Telefón účastníka
         'input_18.3', 'input_18.6', // Meno zástupcu
