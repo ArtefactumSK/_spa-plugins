@@ -74,21 +74,6 @@ if (typeof jQuery !== 'undefined') {
         window.initInfobox();
         window.watchFormChanges();
         window.hideAllSectionsOnInit();
-        
-        // ⭐ RESTORE po validation error: Prečítaj input_34 a aplikuj state
-        const resolvedTypeField = document.querySelector('input[name="input_34"]');
-        if (resolvedTypeField && resolvedTypeField.value) {
-            const resolvedType = resolvedTypeField.value;
-            window.spaCurrentProgramType = resolvedType;
-            console.log('[SPA Validation Restore] Set type from input_34:', resolvedType);
-            
-            // Aplikuj viditeľnosť sekcií s delay (po hideAllSectionsOnInit)
-            setTimeout(() => {
-                window.updateSectionVisibility();
-                console.log('[SPA Validation Restore] Sections restored');
-            }, 200);
-        }
-        
         window.applyGetParams(); 
     });
 }

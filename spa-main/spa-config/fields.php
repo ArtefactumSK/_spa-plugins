@@ -27,6 +27,7 @@ return [
     /* ==========================
        ÚČASTNÍK – KONTAKT
        ========================== */
+    'spa_member_health_restrictions' => 'input_9', // Zdravotné obmedzenia
     'spa_client_email' => 'input_15',        // Email CHILD (nepovinný)
     'spa_client_email_required' => 'input_16', // Email ADULT (povinný)
     'spa_client_phone' => 'input_19',        // Telefón účastníka (adult)

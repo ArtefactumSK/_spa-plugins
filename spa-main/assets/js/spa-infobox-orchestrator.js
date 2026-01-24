@@ -119,7 +119,6 @@ window.updateSectionVisibility = function() {
         isChildProgram,
         source: programField?.value ? 'age_min' : 'data-is-child'
     });
-    
     // ⭐ ULOŽ DO GLOBÁLNEJ PREMENNEJ
     window.spaCurrentProgramType = isChildProgram ? 'child' : 'adult';
 

@@ -10,6 +10,7 @@
   "spa_member_birthdate": "input_7",
   "spa_member_birthnumber": "input_8",
 
+  "spa_member_health_restrictions": "input_9",
   "spa_client_email": "input_15",
   "spa_client_email_required": "input_16",
   "spa_client_phone": "input_19",
