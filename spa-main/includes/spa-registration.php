@@ -44,7 +44,7 @@ function spa_registration_init() {
  */
 function spa_bypass_child_fields_for_adult($result, $value, $form, $field) {
     // Načítaj resolved_type
-    $resolved_type = rgpost('input_34');
+    $resolved_type = spa_get_field_value($entry, 'spa_resolved_type');
     
     // Ak ADULT → ignoruj všetky child/guardian polia
     if ($resolved_type === 'adult') {
@@ -108,7 +108,7 @@ function spa_autofill_child_email_before_validation($form) {
     }
     
     // Field 34 = spa_resolved_type (hidden)
-    $resolved_type = rgpost('input_34');
+    $resolved_type = spa_get_field_value($entry, 'spa_resolved_type');
     error_log('[SPA REG] resolved_type: ' . $resolved_type);
     
     if ($resolved_type !== 'child') {
@@ -116,7 +116,7 @@ function spa_autofill_child_email_before_validation($form) {
     }
     
     // Field 16 = required email (child)
-    $child_email = rgpost('input_16');
+    $child_email = spa_get_field_value($entry, 'spa_client_email');
     
     if (!empty(trim($child_email))) {
         error_log('[SPA REG] Child email already filled');
@@ -124,8 +124,8 @@ function spa_autofill_child_email_before_validation($form) {
     }
     
     // Field 6.3 = First Name, 6.6 = Last Name
-    $first_name = rgpost('input_6_3');
-    $last_name = rgpost('input_6_6');
+    $first_name = spa_get_field_value($entry, 'spa_member_name_first');
+    $last_name = spa_get_field_value($entry, 'spa_member_name_last');
     
     error_log('[SPA REG] Name: ' . $first_name . ' ' . $last_name);
     
@@ -141,7 +141,7 @@ function spa_autofill_child_email_before_validation($form) {
     error_log('[SPA REG] Generated email: ' . $generated_email);
     
     // Zapíš do POST a transient
-    $_POST['input_16'] = $generated_email;
+    $_POST[spa_get_field_value($entry, 'spa_client_email')] = $generated_email;
     set_transient('spa_generated_child_email_' . $form['id'], $generated_email, 300);
     
     return $form;
@@ -156,7 +156,7 @@ function spa_bypass_child_email_validation($result, $value, $form, $field) {
         return $result;
     }
     
-    $resolved_type = rgpost('input_34');
+    $resolved_type = spa_get_field_value($entry, 'spa_resolved_type');
     
     if ($resolved_type !== 'child') {
         return $result;
@@ -167,7 +167,7 @@ function spa_bypass_child_email_validation($result, $value, $form, $field) {
     if ($generated_email) {
         $result['is_valid'] = true;
         $result['message'] = '';
-        $_POST['input_16'] = $generated_email;
+        $_POST[spa_get_field_value($entry, 'spa_client_email')] = $generated_email;
         
         error_log('[SPA VALIDATION] Bypassed email validation: ' . $generated_email);
         delete_transient('spa_generated_child_email_' . $form['id']);
@@ -182,7 +182,7 @@ function spa_bypass_child_email_validation($result, $value, $form, $field) {
  * Adult → validuj field 19 (client phone)
  */
 function spa_validate_phone_conditionally($result, $value, $form, $field) {
-    $resolved_type = rgpost('input_34');
+    $resolved_type = spa_get_field_value($entry, 'spa_resolved_type');
     
     // Field 13 = spa_parent_phone (child)
     if ($field->id == 13) {
@@ -215,28 +215,28 @@ function spa_validate_phone_conditionally($result, $value, $form, $field) {
 function spa_gf_after_submission($entry, $form) {
     error_log('[SPA SUBMISSION] Entry ID: ' . $entry['id']);
     
-    $resolved_type = rgar($entry, '34'); // spa_resolved_type
+    $resolved_type = spa_get_field_value($entry, 'spa_resolved_type');
     
     error_log('[SPA SUBMISSION] Program: ' . rgar($entry, '2'));
     error_log('[SPA SUBMISSION] Type: ' . $resolved_type);
     
     // Načítaj údaje z formulára
-    $first_name = rgar($entry, '6.3');
-    $last_name = rgar($entry, '6.6');
-    $birthdate = rgar($entry, '7'); // spa_member_birthdate
-    $health_notes = rgar($entry, '9'); // spa_member_health_restrictions
-    $address_street = rgar($entry, '17.1');
-    $address_city = rgar($entry, '17.3');
-    $address_zip = rgar($entry, '17.5');
+    $first_name = spa_get_field_value($entry, 'spa_member_name_first');
+    $last_name = spa_get_field_value($entry, 'spa_member_name_last');
+    $birthdate = spa_get_field_value($entry, 'spa_member_birthdate');
+    $health_notes = spa_get_field_value($entry, 'spa_member_health_restrictions');
+    $address_street = spa_get_field_value($entry, 'spa_client_address');
+    $address_city = spa_get_field_value($entry, 'spa_client_address_city');
+    $address_zip = spa_get_field_value($entry, 'spa_client_address_zip');
     
     // CHILD flow
     if ($resolved_type === 'child') {
-        $child_email = rgar($entry, '16');
-        $parent_email = rgar($entry, '12');
-        $parent_phone = rgar($entry, '13');
-        $parent_first_name = rgar($entry, '18.3');
-        $parent_last_name = rgar($entry, '18.6');
-        $birth_number = rgar($entry, '8');
+        $child_email = spa_get_field_value($entry, 'spa_client_email');
+        $parent_email = spa_get_field_value($entry, 'spa_parent_email');
+        $parent_phone = spa_get_field_value($entry, 'spa_parent_phone');
+        $parent_first_name = spa_get_field_value($entry, 'spa_guardian_name_first');
+        $parent_last_name = spa_get_field_value($entry, 'spa_guardian_name_last');
+        $birth_number = spa_get_field_value($entry, 'spa_member_birthnumber');
         
         error_log('[SPA SUBMISSION] Child email: ' . $child_email);
         error_log('[SPA SUBMISSION] Parent email: ' . $parent_email);
@@ -297,8 +297,8 @@ function spa_gf_after_submission($entry, $form) {
     
     // ADULT flow
     if ($resolved_type === 'adult') {
-        $adult_email = rgar($entry, '16');
-        $adult_phone = rgar($entry, '19');
+        $adult_email = spa_get_field_value($entry, 'spa_client_email');
+        $adult_phone = spa_get_field_value($entry, 'spa_client_phone');
         
         error_log('[SPA SUBMISSION] Adult email: ' . $adult_email);
         error_log('[SPA SUBMISSION] Adult phone: ' . $adult_phone);
@@ -407,7 +407,7 @@ function spa_validate_registration_form($validation_result) {
     //     return $validation_result;
     // }
     
-    $resolved_type = rgpost('input_34');
+    $resolved_type = spa_get_field_value($entry, 'spa_resolved_type');
     error_log('[SPA VALIDATION] Resolved type: ' . $resolved_type);
     
     // Ak nie je určený typ, skonči
@@ -418,8 +418,8 @@ function spa_validate_registration_form($validation_result) {
     // === SPOLOČNÉ VALIDÁCIE (CHILD aj ADULT) ===
     
     // Meno účastníka
-    $first_name = rgpost('input_6.3'); // Meno
-    $last_name  = rgpost('input_6.6'); // Priezvisko    
+    $first_name = spa_get_field_value($entry, 'spa_member_name_first'); // Meno
+    $last_name  = spa_get_field_value($entry, 'spa_member_name_last'); // Priezvisko    
     
     if (empty(trim($first_name)) || empty(trim($last_name))) {
         foreach ($form['fields'] as &$field) {
@@ -432,9 +432,9 @@ function spa_validate_registration_form($validation_result) {
     }
     
     // Adresa - ulica, mesto, PSČ
-    $address_street = rgpost('input_17.1'); // Ulica
-    $address_city   = rgpost('input_17.3'); // Mesto
-    $address_zip    = rgpost('input_17.5'); // PSČ
+    $address_street = spa_get_field_value($entry, 'spa_client_address'); // Ulica
+    $address_city   = spa_get_field_value($entry, 'spa_client_address_city'); // Mesto
+    $address_zip    = spa_get_field_value($entry, 'spa_client_address_zip'); // PSČ
 
     
     $address_errors = [];
@@ -456,7 +456,7 @@ function spa_validate_registration_form($validation_result) {
     if ($resolved_type === 'child') {
         
         // Dátum narodenia
-        $birthdate = rgpost('input_7');
+        $birthdate = spa_get_field_value($entry, 'spa_member_birthdate');
         if (empty(trim($birthdate))) {
             foreach ($form['fields'] as &$field) {
                 if ($field->id == 7) {
@@ -468,7 +468,7 @@ function spa_validate_registration_form($validation_result) {
         }
         
         // Rodné číslo
-        $birth_number = rgpost('input_8');
+        $birth_number = spa_get_field_value($entry, 'spa_member_birthnumber');
         if (empty(trim($birth_number))) {
             foreach ($form['fields'] as &$field) {
                 if ($field->id == 8) {
@@ -481,7 +481,7 @@ function spa_validate_registration_form($validation_result) {
         
         // Vek v tolerancii programu
         if (!empty($birthdate)) {
-            $program_id = rgpost('input_2');
+            $program_id = spa_get_field_value($entry, 'spa_program');
             
             if (!empty($program_id) && is_numeric($program_id)) {
                 $age_min = get_post_meta($program_id, 'spa_age_min', true);
@@ -520,8 +520,8 @@ function spa_validate_registration_form($validation_result) {
         }
         
         // Zákonný zástupca - meno
-        $guardian_first = rgpost('input_18_3');
-        $guardian_last = rgpost('input_18_6');
+        $guardian_first = spa_get_field_value($entry, 'spa_guardian_name_first');
+        $guardian_last = spa_get_field_value($entry, 'spa_guardian_name_last');
         
         if (empty(trim($guardian_first)) || empty(trim($guardian_last))) {
             foreach ($form['fields'] as &$field) {
@@ -534,7 +534,7 @@ function spa_validate_registration_form($validation_result) {
         }
         
         // Zákonný zástupca - email
-        $guardian_email = rgpost('input_12');
+        $guardian_email = spa_get_field_value($entry, 'spa_parent_email');
         if (empty(trim($guardian_email))) {
             foreach ($form['fields'] as &$field) {
                 if ($field->id == 12) {
@@ -546,7 +546,7 @@ function spa_validate_registration_form($validation_result) {
         }
         
         // Zákonný zástupca - telefón
-        $guardian_phone = rgpost('input_13');
+        $guardian_phone = spa_get_field_value($entry, 'spa_parent_phone');
         if (empty(trim($guardian_phone))) {
             foreach ($form['fields'] as &$field) {
                 if ($field->id == 13) {
@@ -558,7 +558,7 @@ function spa_validate_registration_form($validation_result) {
         }
         
         // Súhlas zákonného zástupcu (checkbox 42)
-        $guardian_consent = rgpost('input_42.1'); // Súhlas zákonného zástupcu
+        $guardian_consent = spa_get_field_value($entry, 'spa_consent_guardian'); // Súhlas zákonného zástupcu
         if (empty($guardian_consent)) {
             foreach ($form['fields'] as &$field) {
                 if ($field->id == 42) {
@@ -574,7 +574,7 @@ function spa_validate_registration_form($validation_result) {
     if ($resolved_type === 'adult') {
         
         // Email účastníka
-        $adult_email = rgpost('input_16');
+        $adult_email = spa_get_field_value($entry, 'spa_client_email');
         if (empty(trim($adult_email))) {
             foreach ($form['fields'] as &$field) {
                 if ($field->id == 16) {
@@ -586,7 +586,7 @@ function spa_validate_registration_form($validation_result) {
         }
         
         // Telefón účastníka
-        $adult_phone = rgpost('input_19');
+        $adult_phone = spa_get_field_value($entry, 'spa_client_phone');
         if (empty(trim($adult_phone))) {
             foreach ($form['fields'] as &$field) {
                 if ($field->id == 19) {
@@ -600,10 +600,10 @@ function spa_validate_registration_form($validation_result) {
     
     // === GDPR SÚHLASY (OBA TYPY) ===
     // Field 35 má 4 checkboxy - všetky povinné
-    $consent_1 = rgpost('input_35.1'); // GDPR
-    $consent_2 = rgpost('input_35.2'); // Zdravotné údaje
-    $consent_3 = rgpost('input_35.3'); // Stanovy
-    $consent_4 = rgpost('input_35.4'); // Podmienky
+    $consent_1 = spa_get_field_value($entry, 'spa_consent_gdpr'); // GDPR
+    $consent_2 = spa_get_field_value($entry, 'spa_consent_health'); // Zdravotné údaje
+    $consent_3 = spa_get_field_value($entry, 'spa_consent_statutes'); // Stanovy
+    $consent_4 = spa_get_field_value($entry, 'spa_consent_terms'); // Podmienky
     
     if (empty($consent_1) || empty($consent_2) || empty($consent_3) || empty($consent_4)) {
         foreach ($form['fields'] as &$field) {

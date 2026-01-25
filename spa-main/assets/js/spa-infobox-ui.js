@@ -246,10 +246,12 @@ document.addEventListener('change', function(e) {
     if (!e.target?.name) return;
     
     const relevant = [
-        'input_6.3','input_6.6','input_9','input_17','input_17.1','input_17.3',
-        'input_7','input_8','input_19',
-        'input_18.3','input_18.6','input_12','input_13',
-        'input_15','input_16','spa_frequency'
+        'spa_member_name_first','spa_member_name_last','spa_member_health_restrictions','spa_client_address',
+        'spa_member_birthdate','spa_member_birthnumber','spa_client_phone',
+        'spa_guardian_name_first','spa_guardian_name_last','spa_parent_email','spa_parent_phone',
+        'spa_client_email','spa_client_email_required','spa_client_phone','spa_client_address',
+        'spa_consent_gdpr','spa_consent_health','spa_consent_statutes','spa_consent_terms',
+        'spa_consent_guardian','spa_consent_marketing','spa_registration_summary'
     ];
 
     if (relevant.includes(e.target.name)) {
@@ -262,7 +264,7 @@ document.addEventListener('input', function(e) {
     if (e.target.matches('input, select, textarea')) {
         // Najcitlivejšie polia (meno, dátum narodenia, emaily)
         const name = e.target.name;
-        if (['input_7','input_6.3','input_6.6','input_15','input_16'].includes(name)) {
+        if (['spa_member_birthdate','spa_member_name_first','spa_member_name_last','spa_client_email'].includes(name)) {
             setTimeout(window.updateAgePreview, 120);
         }
     }

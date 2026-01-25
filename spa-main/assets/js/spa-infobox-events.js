@@ -202,7 +202,7 @@ setTimeout(() => {
  document.addEventListener('blur', function(e) {
     if (!e.target || !e.target.name) return;
     
-    const blurFields = ['input_6.3', 'input_6.6', 'input_17'];
+    const blurFields = ['spa_member_name_first', 'spa_member_name_last', 'spa_client_address'];
     
     if (blurFields.includes(e.target.name)) {
         setTimeout(window.updatePriceSummary, 100);

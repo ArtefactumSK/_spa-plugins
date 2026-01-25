@@ -29,7 +29,7 @@ window.hideAllSectionsOnInit = function () {
     /* ----------------------------------------------------
      * 2️⃣ Skry email polia (len init)
      * ---------------------------------------------------- */
-    ['input_15', 'input_16'].forEach(name => {
+    ['spa_client_email', 'spa_parent_email'].forEach(name => {
         const field = document.querySelector(`input[name="${name}"]`)?.closest('.gfield');
         if (field) {
             field.style.display = 'none';

@@ -53,8 +53,8 @@ function spa_enqueue_infobox_scripts() {
     /* wp_localize_script('spa-infobox-js', 'spaConfig', [
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'fields' => [
-            'spa_city' => 'input_1',
-            'spa_program' => 'input_2'
+            'spa_city' => $fields_config['spa_city'],
+            'spa_program' => $fields_config['spa_program'],
         ]
     ]); */
     wp_localize_script('spa-infobox-js', 'spaConfig', [

@@ -125,8 +125,8 @@ function spa_enqueue_scripts() {
     wp_localize_script('spa-registration', 'spaConfig', [
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'fields' => [
-            'spa_city' => $field_config['spa_city'] ?? 'input_1',
-            'spa_program' => $field_config['spa_program'] ?? 'input_2',
+            'spa_city' => $field_config['spa_city'],
+            'spa_program' => $field_config['spa_program'],
         ],
         'programCities' => spa_generate_program_cities_map(),
     ]);

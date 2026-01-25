@@ -42,11 +42,11 @@ function spa_handle_registration_submission($entry, $form) {
     if ($registration_type === 'child') {
         // CHILD MODE
         // Parent údaje z POST (entry môže byť prázdne pri async spracovaní)
-        $parent_email_raw = rgpost('input_12');
-        $parent_email_entry = rgar($entry, '12');
+        $parent_email_raw = spa_get_field_value($entry, 'spa_parent_email');
+        $parent_email_entry = spa_get_field_value($entry, 'spa_parent_email');
         
-        $parent_first_raw = trim(rgpost('input_18_3'));
-        $parent_last_raw = trim(rgpost('input_18_6'));
+        $parent_first_raw = trim(spa_get_field_value($entry, 'spa_guardian_name_first'));
+        $parent_last_raw = trim(spa_get_field_value($entry, 'spa_guardian_name_last'));
         
         error_log('[SPA MAP RAW] input_12=' . ($parent_email_raw ?: 'EMPTY'));
         error_log('[SPA MAP ENTRY] entry_12=' . ($parent_email_entry ?: 'EMPTY'));
@@ -56,15 +56,15 @@ function spa_handle_registration_submission($entry, $form) {
         // Použiť POST ako primárny zdroj
         $parent_email = !empty($parent_email_raw) ? $parent_email_raw : $parent_email_entry;
         
-        $child_email_input = rgar($entry, '15'); // input_15 (spa_client_email)
+        $child_email_input = spa_get_field_value($entry, 'spa_client_email'); // input_15 (spa_client_email)
         
         // Child email: input_15 ALEBO vygenerovať
         if (!empty($child_email_input)) {
             $child_email_final = $child_email_input;
-            $child_email_source = 'input_15';
+            $child_email_source = 'spa_client_email';
         } else {
-            $first = rgar($entry, '6.3');
-            $last = rgar($entry, '6.6');
+            $first = spa_get_field_value($entry, 'spa_member_name_first');
+            $last = spa_get_field_value($entry, 'spa_member_name_last');
             
             if (!empty($first) && !empty($last)) {
                 $child_email_final = spa_generate_child_email($first, $last);
@@ -78,7 +78,7 @@ function spa_handle_registration_submission($entry, $form) {
         
     } elseif ($registration_type === 'adult') {
         // ADULT MODE
-        $adult_email = rgar($entry, '16'); // input_16 (spa_client_email_required)
+        $adult_email = spa_get_field_value($entry, 'spa_client_email'); // input_16 (spa_client_email_required)
         
         // LOG pre ADULT
         error_log('[SPA MAP] adult_email=' . ($adult_email ?: 'EMPTY'));
@@ -87,22 +87,22 @@ function spa_handle_registration_submission($entry, $form) {
     // Základné dáta z entry
     $entry_data = [
         'registration_type' => $registration_type,
-        'member_name_first' => rgar($entry, '6.3'),
-        'member_name_last' => rgar($entry, '6.6'),
-        'member_birthdate' => rgar($entry, '7'),
-        'member_birthnumber' => rgar($entry, '8'),
+        'member_name_first' => spa_get_field_value($entry, 'spa_member_name_first'),
+        'member_name_last' => spa_get_field_value($entry, 'spa_member_name_last'),
+        'member_birthdate' => spa_get_field_value($entry, 'spa_member_birthdate'),
+        'member_birthnumber' => spa_get_field_value($entry, 'spa_member_birthnumber'),
         'client_address' => [
-            'street' => rgar($entry, '17.1'),
-            'city' => rgar($entry, '17.3'),
-            'zip' => rgar($entry, '17.5'),
+            'street' => spa_get_field_value($entry, 'spa_client_address'),
+            'city' => spa_get_field_value($entry, 'spa_client_address_city'),
+            'zip' => spa_get_field_value($entry, 'spa_client_address_zip'),
         ],
-        'client_phone' => rgar($entry, '19'),
+        'client_phone' => spa_get_field_value($entry, 'spa_client_phone'),
         'member_email' => $child_email_final,
         'member_email_adult' => $adult_email,
-        'guardian_name_first' => ($registration_type === 'child' && !empty($parent_first_raw)) ? $parent_first_raw : rgar($entry, '18.3'),
-        'guardian_name_last' => ($registration_type === 'child' && !empty($parent_last_raw)) ? $parent_last_raw : rgar($entry, '18.6'),
+        'guardian_name_first' => ($registration_type === 'child' && !empty($parent_first_raw)) ? $parent_first_raw : spa_get_field_value($entry, 'spa_guardian_name_first'),
+        'guardian_name_last' => ($registration_type === 'child' && !empty($parent_last_raw)) ? $parent_last_raw : spa_get_field_value($entry, 'spa_guardian_name_last'),
         'guardian_email' => $parent_email,
-        'guardian_phone' => rgpost('input_13') ?: rgar($entry, '13'),
+        'guardian_phone' => spa_get_field_value($entry, 'spa_parent_phone') ?: spa_get_field_value($entry, 'spa_parent_phone'),
     ];
     
     error_log('[SPA User Management] Entry data: ' . print_r($entry_data, true));

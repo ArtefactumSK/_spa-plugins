@@ -241,14 +241,14 @@ window.spaErrorState = {
         
         // ⭐ DELEGOVANÝ listener pre mesto (funguje aj po GF rerenderi)
         document.addEventListener('change', function(e) {
-            if (e.target.name === 'input_1') {
+            if (e.target.name === spaConfig.fields.spa_city) {
                 console.log('[SPA GET DEBUG] Change event triggered on input_1');
                 console.log('[SPA GET DEBUG] Change event value:', e.target.value);
                 console.log('[SPA GET DEBUG] Change event triggered by:', e.isTrusted ? 'USER' : 'SCRIPT');
             }
             console.log('[SPA DEBUG] Change event:', e.target.name, e.target.value);
             // Skontroluj či ide o city field
-            if (e.target.name === 'input_1') {
+            if (e.target.name === spaConfig.fields.spa_city) {
                 console.log('[SPA DEBUG] City field detected!');
                 const cityField = e.target;
                 const selectedOption = cityField.options[cityField.selectedIndex];
@@ -288,7 +288,7 @@ window.spaErrorState = {
                 window.spaFormState.frequency = false;
                 
                 // Vyčisti program select
-                const programField = document.querySelector('[name="input_2"]');
+                const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
                 if (programField) {
                     programField.value = '';
                     
