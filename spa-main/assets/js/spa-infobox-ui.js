@@ -165,7 +165,7 @@ window.renderSummary = function() {
     if (isChild) {
         participantEmail = document.querySelector('input[name="spa_client_email"]')?.value.trim() || '';
     } else {
-        participantEmail = document.querySelector('input[name="spa_parent_email"]')?.value.trim() || '';
+        participantEmail = document.querySelector('input[name="input_16"]')?.value.trim() || '';
     }
 
     const programDisplay = window.wizardData?.program_name || '';
