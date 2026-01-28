@@ -30,7 +30,7 @@ function spa_handle_registration_submission($entry, $form) {
     $config = spa_load_field_config();
     
     // Určenie typu účastníka (input_4)
-    $registration_type = rgar($entry, '4');
+    $registration_type = rgar($entry, 'spa_registration_type');
     error_log('[SPA User Management] Registration type: ' . $registration_type);
     
     // Základné dáta z entry
@@ -48,8 +48,8 @@ function spa_handle_registration_submission($entry, $form) {
         $parent_first_raw = trim(spa_get_field_value($entry, 'spa_guardian_name_first'));
         $parent_last_raw = trim(spa_get_field_value($entry, 'spa_guardian_name_last'));
         
-        error_log('[SPA MAP RAW] input_12=' . ($parent_email_raw ?: 'EMPTY'));
-        error_log('[SPA MAP ENTRY] entry_12=' . ($parent_email_entry ?: 'EMPTY'));
+        error_log('[SPA MAP RAW] spa_parent_email=' . ($parent_email_raw ?: 'EMPTY')); 
+        error_log('[SPA MAP ENTRY] spa_parent_email=' . ($parent_email_entry ?: 'EMPTY'));
         error_log('[SPA MAP RAW] parent_first=' . ($parent_first_raw ?: 'EMPTY'));
         error_log('[SPA MAP RAW] parent_last=' . ($parent_last_raw ?: 'EMPTY'));
         
@@ -152,14 +152,14 @@ function spa_create_parent_user_skeleton($data) {
         $email = $data['guardian_email'];
         
         if (empty($email)) {
-            error_log('[SPA Parent User] ERROR: Missing parent email (input_12)');
+            error_log('[SPA Parent User] ERROR: Missing parent email (spa_parent_email)');
             return false;
         }
     } elseif ($data['registration_type'] === 'adult') {
         $email = $data['member_email_adult'];
         
         if (empty($email)) {
-            error_log('[SPA Parent User] ERROR: Missing adult email (input_16)');
+            error_log('[SPA Parent User] ERROR: Missing adult email (spa_parent_email)');
             return false;
         }
     }

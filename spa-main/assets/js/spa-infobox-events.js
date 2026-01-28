@@ -6,7 +6,7 @@
      * Filtrovanie programových options podľa mesta
      */
 window.filterProgramsByCity = function(cityName) {
-    const programField = document.querySelector('[name="input_2"]');
+    const programField = document.querySelector('[name="spa_program"]');
     
     if (!programField) {
         console.warn('[SPA Filter] Program field not found');

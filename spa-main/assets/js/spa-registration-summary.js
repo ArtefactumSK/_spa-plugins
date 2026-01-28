@@ -293,7 +293,7 @@
      * Automatické vyplnenie e-mailu pre CHILD
      */
     function autoFillChildEmail() {
-        const childEmailInput = document.querySelector('input[name="input_15"]');
+        const childEmailInput = document.querySelector('input[name="spa_client_email"]');
         
         if (!childEmailInput || childEmailInput.value.trim() !== '') {
             return;

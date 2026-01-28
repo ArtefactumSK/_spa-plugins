@@ -201,7 +201,7 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
             });
             
             // ⭐ RODNÉ ČÍSLO - ulož info o type programu
-            const birthNumberField = document.querySelector('input[name="input_8"]');
+            const birthNumberField = document.querySelector('input[name="spa_member_birthnumber"]');
             const birthNumberWrapper = birthNumberField ? birthNumberField.closest('.gfield') : null;
         
             if (birthNumberField && birthNumberWrapper) {

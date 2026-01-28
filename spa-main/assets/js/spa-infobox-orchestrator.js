@@ -100,12 +100,12 @@ window.updateSectionVisibility = function () {
     window.spaCurrentProgramType = programType;
 
     // PARTICIPANT TYPE (radio input_4) – len do hidden fieldu
-    const participantRadio = document.querySelector('input[name="input_4"]:checked');
+    const participantRadio = document.querySelector('input[name="spa_registration_type"]:checked');
     const participantType = participantRadio
         ? (participantRadio.value.toLowerCase().includes('dieť') ? 'child' : 'adult')
         : null;
 
-    const resolvedTypeField = document.querySelector('input[name="input_34"]');
+    const resolvedTypeField = document.querySelector('input[name="spa_resolved_type"]');
     if (resolvedTypeField) resolvedTypeField.value = participantType || '';
 
     // input_4 visibility + auto-select podľa PROGRAM TYPE
@@ -114,23 +114,22 @@ window.updateSectionVisibility = function () {
         registrationTypeField.style.display = canShowProgramFlow ? '' : 'none';
 
         if (canShowProgramFlow && programType) {
-            const radios = document.querySelectorAll('input[name="input_4"]');
+            const radios = document.querySelectorAll('input[name="spa_registration_type"]');
             radios.forEach(radio => {
-                const isChild = radio.value.toLowerCase().includes('dieť');
-                radio.disabled = false;
-
+                const isChild = radio.value.toLowerCase().includes('dieťa');
+                
                 if (programType === 'child') {
                     radio.checked = isChild;
-                    radio.disabled = !isChild;
+                    radio.disabled = true;
                 } else {
                     radio.checked = !isChild;
-                    radio.disabled = isChild;
+                    radio.disabled = true;
                 }
             });
         }
 
         if (!canShowProgramFlow) {
-            document.querySelectorAll('input[name="input_4"]').forEach(r => {
+            document.querySelectorAll('input[name="spa_registration_type"]').forEach(r => {
                 r.checked = false;
                 r.disabled = false;
             });
@@ -156,45 +155,41 @@ window.updateSectionVisibility = function () {
         }
     }
 
-    // === EXPLICITNÉ RIADENIE KRITICKÝCH POLÍ ===
-    // input_9 – health restrictions (vždy riadené tu, nie sekciami)
-    const healthField = document.querySelector('textarea[name="input_9"]');
+    // input_9 – health restrictions (VŽDY viditeľné)
+    const healthField = document.querySelector('textarea[name="spa_member_health_restrictions"]');
     if (healthField) {
-        const shouldBeVisible = canShowProgramFlow;
         const wrap = healthField.closest('.gfield');
         if (wrap) {
-            wrap.style.display = shouldBeVisible ? 'block' : 'none';
+            wrap.style.display = 'block';
         }
-        healthField.disabled = !shouldBeVisible;
-        healthField.style.visibility = shouldBeVisible ? 'visible' : 'hidden';
-        healthField.style.opacity = shouldBeVisible ? '1' : '0';
-        console.log('[SPA HEALTH FLOW]', shouldBeVisible ? 'VISIBLE + ENABLED' : 'HIDDEN + DISABLED');
+        healthField.disabled = false;
+        healthField.style.visibility = 'visible';
+        healthField.style.opacity = '1';
+        console.log('[SPA HEALTH FLOW] ALWAYS VISIBLE + ENABLED');
     } else {
         console.warn('[SPA HEALTH FLOW] ⚠️ input_9 NOT FOUND');
     }
 
     // input_15 – email dieťaťa
-    const emailChild = document.querySelector('input[name="input_15"]');
+    const emailChild = document.querySelector('input[name="spa_client_email"]');
     if (emailChild) {
         const visible = canShowProgramFlow && programType === 'child';
         const wrap = emailChild.closest('.gfield');
         if (wrap) wrap.style.display = visible ? 'block' : 'none';
-        //emailChild.disabled = !visible;
         if (!visible) emailChild.value = '';
     }
 
-    // input_16 – email dospelý
-    const emailAdult = document.querySelector('input[name="input_16"]');
+    // input_16 – email účastníka (ADULT required)
+    const emailAdult = document.querySelector('input[name="spa_client_email_required"]');
     if (emailAdult) {
         const visible = canShowProgramFlow && programType === 'adult';
         const wrap = emailAdult.closest('.gfield');
         if (wrap) wrap.style.display = visible ? 'block' : 'none';
-        //emailAdult.disabled = !visible;
         if (!visible) emailAdult.value = '';
     }
 
     // input_8 – rodné číslo (dieťa)
-    const birthNumber = document.querySelector('input[name="input_8"]');
+    const birthNumber = document.querySelector('input[name="spa_member_birthnumber"]');
     if (birthNumber) {
         const visible = canShowProgramFlow && programType === 'child';
         const wrap = birthNumber.closest('.gfield');
@@ -203,13 +198,11 @@ window.updateSectionVisibility = function () {
         if (!visible) birthNumber.value = '';
     }
 
-    // input_19 – telefón účastníka
-    const phone = document.querySelector('input[name="input_19"]');
+    // input_19 – telefón účastníka (VŽDY viditeľné)
+    const phone = document.querySelector('input[name="spa_client_phone"]');
     if (phone) {
-        const visible = canShowProgramFlow;
         const wrap = phone.closest('.gfield');
-        if (wrap) wrap.style.display = visible ? 'block' : 'none';
-        //phone.disabled = !visible;
+        if (wrap) wrap.style.display = 'block';
     }
 
     // pagebreak
@@ -236,13 +229,9 @@ window.toggleSection = function (sectionElement, show) {
 
         // ❌ spa-field-health tu už neriešime (riadi ho updateSectionVisibility)
 
-        // Telefón účastníka (input_19) – len ak je program vybraný globálne
-        const phone = next.querySelector('input[name="input_19"]');
+        // Telefón účastníka (input_19) – VŽDY viditeľné (riadené v updateSectionVisibility)
+        const phone = next.querySelector('input[name="spa_client_phone"]');
         if (phone) {
-            const wrap = phone.closest('.gfield');
-            const canShow = !!(window.wizardData.program_name && window.wizardData.program_name.trim() !== '');
-            if (wrap) wrap.style.display = canShow ? 'block' : 'none';
-            //phone.disabled = !canShow;
             next = next.nextElementSibling;
             continue;
         }
@@ -250,7 +239,7 @@ window.toggleSection = function (sectionElement, show) {
         // Email CHILD (input_15) – podľa PROGRAM TYPE
         const programType = window.spaCurrentProgramType;
 
-        const emailChild = next.querySelector('input[name="input_15"]');
+        const emailChild = next.querySelector('input[name="spa_client_email"]');
         if (emailChild) {
             const wrap = emailChild.closest('.gfield');
             const visible = show && programType === 'child';
@@ -262,19 +251,18 @@ window.toggleSection = function (sectionElement, show) {
         }
 
         // Email ADULT (input_16) – podľa PROGRAM TYPE
-        const emailAdult = next.querySelector('input[name="input_16"]');
+        const emailAdult = next.querySelector('input[name="spa_client_email_required"]');
         if (emailAdult) {
             const wrap = emailAdult.closest('.gfield');
             const visible = show && programType === 'adult';
             if (wrap) wrap.style.display = visible ? 'block' : 'none';
-            //emailAdult.disabled = !visible;
             if (!visible) emailAdult.value = '';
             next = next.nextElementSibling;
             continue;
         }
 
         // Rodné číslo (input_8) – len CHILD program
-        const birth = next.querySelector('input[name="input_8"]');
+        const birth = next.querySelector('input[name="spa_member_birthnumber"]');
         if (birth) {
             const wrap = birth.closest('.gfield');
             const visible = show && programType === 'child';

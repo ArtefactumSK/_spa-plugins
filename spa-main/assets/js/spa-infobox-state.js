@@ -242,7 +242,7 @@ window.spaErrorState = {
         // ⭐ DELEGOVANÝ listener pre mesto (funguje aj po GF rerenderi)
         document.addEventListener('change', function(e) {
             if (e.target.name === spaConfig.fields.spa_city) {
-                console.log('[SPA GET DEBUG] Change event triggered on input_1');
+                console.log('[SPA GET DEBUG] Change event triggered on spa_city');
                 console.log('[SPA GET DEBUG] Change event value:', e.target.value);
                 console.log('[SPA GET DEBUG] Change event triggered by:', e.isTrusted ? 'USER' : 'SCRIPT');
             }
@@ -477,7 +477,7 @@ window.spaErrorState = {
                     );
                     
                     // Health field kontrola
-                    const healthTextareaCallback = document.querySelector('textarea[name="input_9"]');
+                    const healthTextareaCallback = document.querySelector('textarea[name="spa_member_health_restrictions"]');
                     if (healthTextareaCallback) {
                         const healthFieldCallback = healthTextareaCallback.closest('.gfield');
                         if (healthFieldCallback) {
@@ -601,14 +601,14 @@ window.spa_remove_diacritics = function(str) {
             console.error('[SPA GET DEBUG] ❌ City select NOT FOUND with selector:', `[name="${spaConfig.fields.spa_city}"]`);
             
             // Skús alternatívne selektory
-            const altSelect1 = document.querySelector('[name="input_1"]');
-            const altSelect2 = document.querySelector('#input_1_1');
-            const altSelect3 = document.querySelector('select[id^="input_1"]');
+            const altSelect1 = document.querySelector('[name="spa_city"]');
+            const altSelect2 = document.querySelector('#spa_city_1');
+            const altSelect3 = document.querySelector('select[id^="spa_city"]');
             
             console.log('[SPA GET DEBUG] Alternative selectors:');
-            console.log('  [name="input_1"]:', !!altSelect1);
-            console.log('  #input_1_1:', !!altSelect2);
-            console.log('  select[id^="input_1"]:', !!altSelect3);
+            console.log('  [name="spa_city"]:', !!altSelect1);
+            console.log('  #spa_city_1:', !!altSelect2);
+            console.log('  select[id^="spa_city"]:', !!altSelect3);
         }
 
         console.log('[SPA GET DEBUG] ========== END DIAGNOSTICS ==========');

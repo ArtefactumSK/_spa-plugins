@@ -11,7 +11,7 @@ window.clearAllSectionFields = function() {
     console.log('[SPA Clear] Clearing all section fields');
     
     const participantInputs = document.querySelectorAll(
-        '[name^="input_"]:not([name="input_1"]):not([name="input_2"])'
+        '[name^="input_"]:not([name="spa_city"]):not([name="spa_program"])'
     );
     
     participantInputs.forEach(input => {
@@ -53,7 +53,7 @@ window.updateAgePreview = function() {
     let ageDisplay = '';
 
     if (isChild) {
-        const birthdateInput = document.querySelector('input[name="input_7"]');
+        const birthdateInput = document.querySelector('input[name="spa_member_birthdate"]');
         const birthdate = birthdateInput?.value.trim();
         
         if (birthdate) {
@@ -122,17 +122,17 @@ window.renderSummary = function() {
     }
 
     // ── Zbieranie údajov ────────────────────────────────────────
-    const firstNameInput = document.querySelector('input[name="input_6.3"]');
-    const lastNameInput  = document.querySelector('input[name="input_6.6"]');
+    const firstNameInput = document.querySelector('input[name="spa_member_name_first"]');
+    const lastNameInput  = document.querySelector('input[name="spa_member_name_last"]');
     const participantName = [
         firstNameInput?.value.trim(),
         lastNameInput?.value.trim()
     ].filter(Boolean).join(' ');
 
     let address = '';
-    const addrSingle = document.querySelector('input[name="input_17"]');
-    const addrStreet = document.querySelector('input[name="input_17.1"]');
-    const addrCity   = document.querySelector('input[name="input_17.3"]');
+    const addrSingle = document.querySelector('input[name="spa_client_address"]');
+    const addrStreet = document.querySelector('input[name="spa_client_address_street"]');
+    const addrCity   = document.querySelector('input[name="spa_client_city"]');
     if (addrSingle?.value.trim()) {
         address = addrSingle.value.trim();
     } else {
@@ -142,30 +142,30 @@ window.renderSummary = function() {
         address = parts.filter(Boolean).join(', ');
     }
 
-    const phone = document.querySelector('input[name="input_19"]')?.value.trim() || '';
+    const phone = document.querySelector('input[name="spa_client_phone"]')?.value.trim() || '';
 
     // isChild už vieme z preview logiky, ale pre istotu znova
     let isChild = window.spaCurrentProgramType === 'child';
 
     let birthNumber = '';
     if (isChild) {
-        birthNumber = document.querySelector('input[name="input_8"]')?.value.trim() || '';
+        birthNumber = document.querySelector('input[name="spa_member_birthnumber"]')?.value.trim() || '';
     }
 
     let guardianName = '', guardianEmail = '', guardianPhone = '';
     if (isChild) {
-        const gFirst = document.querySelector('input[name="input_18.3"]')?.value.trim();
-        const gLast  = document.querySelector('input[name="input_18.6"]')?.value.trim();
+        const gFirst = document.querySelector('input[name="spa_guardian_name_first"]')?.value.trim();
+        const gLast  = document.querySelector('input[name="spa_guardian_name_last"]')?.value.trim();
         guardianName = [gFirst, gLast].filter(Boolean).join(' ');
-        guardianEmail = document.querySelector('input[name="input_12"]')?.value.trim() || '';
-        guardianPhone = document.querySelector('input[name="input_13"]')?.value.trim() || '';
+        guardianEmail = document.querySelector('input[name="spa_parent_email"]')?.value.trim() || '';
+        guardianPhone = document.querySelector('input[name="spa_parent_phone"]')?.value.trim() || '';
     }
 
     let participantEmail = '';
     if (isChild) {
-        participantEmail = document.querySelector('input[name="input_15"]')?.value.trim() || '';
+        participantEmail = document.querySelector('input[name="spa_client_email"]')?.value.trim() || '';
     } else {
-        participantEmail = document.querySelector('input[name="input_16"]')?.value.trim() || '';
+        participantEmail = document.querySelector('input[name="spa_parent_email"]')?.value.trim() || '';
     }
 
     const programDisplay = window.wizardData?.program_name || '';
