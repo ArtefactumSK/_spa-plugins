@@ -3,6 +3,22 @@
  * CENTRALIZOVANÉ RIADENIE VIDITEĽNOSTI
  */
 
+// ========== FIELDS REGISTRY MERGE ==========
+// Merge JSON registry into spaConfig.fields (if available)
+// This ensures all field mappings (including spa_frequency) are available at runtime
+(function() {
+    if (typeof window.spaFieldsRegistry !== 'undefined') {
+        window.spaConfig = window.spaConfig || {};
+        window.spaConfig.fields = {
+            ...window.spaFieldsRegistry,           // JSON registry (base)
+            ...(window.spaConfig.fields || {})     // Runtime overrides (priority)
+        };
+        console.log('[SPA Registry] Fields merged:', Object.keys(window.spaConfig.fields).length, 'keys');
+    } else {
+        console.warn('[SPA Registry] spaFieldsRegistry not found – using runtime fields only');
+    }
+})();
+
 window.spaCurrentProgramType = null;
 
 /**
@@ -33,45 +49,96 @@ window.getSpaFieldScope = function(fieldName) {
 };
 
 /**
- * Skrytie všetkých sekcií + polí pri INIT
+ * RIADENIE VIDITEĽNOSTI SEKCIÍ + POLÍ
  */
-window.hideAllSectionsOnInit = function() {
-    console.log('[SPA Init] ========== INIT RESET ==========');
+window.updateSectionVisibility = function() {
+    console.log('[SPA Section Control] ========== UPDATE START ==========');
 
     // ⭐ GUARD: spaConfig.fields MUSÍ existovať
     if (!window.spaConfig || !spaConfig.fields) {
-        console.warn('[SPA Init] spaConfig.fields not ready – skipping');
+        console.warn('[SPA Section Control] spaConfig.fields not ready – skipping');
         return;
     }
 
-    if (window.spa_sections_hidden) {
-        console.log('[SPA Init] Already initialized, skipping');
-        return;
+    const citySelected = !!(window.wizardData?.city_name && window.wizardData.city_name.trim() !== '');
+    const programSelected = !!(window.wizardData?.program_name && window.wizardData.program_name.trim() !== '');
+    const canShowProgramFlow = citySelected && programSelected;
+
+    // PROGRAM TYPE
+    let programType = null;
+    const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+    if (programField && programField.value) {
+        const opt = programField.options[programField.selectedIndex];
+        const ageMin = parseInt(opt?.getAttribute('data-age-min'), 10);
+        if (!isNaN(ageMin)) programType = ageMin < 18 ? 'child' : 'adult';
     }
+    window.spaCurrentProgramType = programType;
 
-    // 1. Skry sekcie
-    document.querySelectorAll('.spa-section-common, .spa-section-child, .spa-section-adult').forEach(sec => {
-        sec.style.display = 'none';
-    });
+    // RESOLVED TYPE → spa_resolved_type
+    const resolvedTypeField = document.querySelector(`input[name="${spaConfig.fields.spa_resolved_type}"]`);
+    if (resolvedTypeField) resolvedTypeField.value = programType || '';
 
-    // 2. Skry spa_registration_type
+    // spa_registration_type - zobraz LEN ak program vybratý
     const regTypeField = document.querySelector(`input[name="${spaConfig.fields.spa_registration_type}"]`);
     if (regTypeField) {
         const wrap = regTypeField.closest('.gfield');
-        if (wrap) wrap.style.display = 'none';
+        if (wrap) {
+            wrap.style.display = canShowProgramFlow ? '' : 'none';
+
+            if (canShowProgramFlow && programType) {
+                const radios = document.querySelectorAll(`input[name="${spaConfig.fields.spa_registration_type}"]`);
+                radios.forEach(radio => {
+                    const isChild = radio.value.toLowerCase().includes('dieťa');
+
+                    if (programType === 'child') {
+                        radio.checked = isChild;
+                        radio.disabled = !isChild;
+                    } else {
+                        radio.checked = !isChild;
+                        radio.disabled = isChild;
+                    }
+                });
+            } else {
+                const radios = document.querySelectorAll(`input[name="${spaConfig.fields.spa_registration_type}"]`);
+                radios.forEach(r => {
+                    r.checked = false;
+                    r.disabled = false;
+                });
+            }
+        }
     }
 
-    // 3. Skry child_only + adult_only polia
-    [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
-        const el = document.querySelector(`[name="${fieldName}"]`);
-        if (el) {
-            const wrap = el.closest('.gfield');
-            if (wrap) wrap.style.display = 'none';
-        }
+    // SEKCIE - zobraz LEN ak program vybratý
+    document.querySelectorAll('.spa-section-common').forEach(sec => {
+        sec.style.display = canShowProgramFlow ? '' : 'none';
     });
 
-    window.spa_sections_hidden = true;
-    console.log('[SPA Init] ========== INIT COMPLETE ==========');
+    document.querySelectorAll('.spa-section-child').forEach(sec => {
+        sec.style.display = (canShowProgramFlow && programType === 'child') ? '' : 'none';
+    });
+
+    document.querySelectorAll('.spa-section-adult').forEach(sec => {
+        sec.style.display = (canShowProgramFlow && programType === 'adult') ? '' : 'none';
+    });
+
+    // FIELD SCOPE ENFORCEMENT - polia zobraz LEN ak program vybratý
+    if (canShowProgramFlow && programType) {
+        [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
+            const scope = window.getSpaFieldScope(fieldName);
+            let visible = false;
+
+            if (scope === 'child') visible = (programType === 'child');
+            if (scope === 'adult') visible = (programType === 'adult');
+
+            window.spaSetFieldWrapperVisibility(fieldName, visible);
+        });
+    } else {
+        [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
+            window.spaSetFieldWrapperVisibility(fieldName, false);
+        });
+    }
+
+    console.log('[SPA Section Control] ========== UPDATE END ==========');
 };
 /**
  * Skrytie všetkých sekcií + polí pri INIT
@@ -139,6 +206,7 @@ window.spaSetFieldWrapperVisibility = function(fieldName, visible) {
 
 /**
  * RIADENIE VIDITEĽNOSTI SEKCIÍ + POLÍ
+ * Architektúra: CASE → BASE → SCOPE → DERIVED
  */
 window.updateSectionVisibility = function() {
     console.log('[SPA Section Control] ========== UPDATE START ==========');
@@ -149,11 +217,12 @@ window.updateSectionVisibility = function() {
         return;
     }
 
+    // ========== CASE PHASE ==========
     const citySelected = !!(window.wizardData?.city_name && window.wizardData.city_name.trim() !== '');
     const programSelected = !!(window.wizardData?.program_name && window.wizardData.program_name.trim() !== '');
-    const canShowProgramFlow = citySelected && programSelected;
+    const canShowProgramFlow = citySelected && programSelected; // CASE 2
 
-    // PROGRAM TYPE
+    // PROGRAM TYPE determination
     let programType = null;
     const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
     if (programField && programField.value) {
@@ -167,7 +236,10 @@ window.updateSectionVisibility = function() {
     const resolvedTypeField = document.querySelector(`input[name="${spaConfig.fields.spa_resolved_type}"]`);
     if (resolvedTypeField) resolvedTypeField.value = programType || '';
 
-    // spa_registration_type - zobraz LEN ak program vybraný
+    console.log('[SPA Section Control] CASE determined:', canShowProgramFlow ? '2' : (citySelected ? '1' : '0'), 'Type:', programType);
+
+    // ========== BASE FIELDS (CASE 2) ==========
+    // spa_registration_type - BASE field for CASE 2
     const regTypeField = document.querySelector(`input[name="${spaConfig.fields.spa_registration_type}"]`);
     if (regTypeField) {
         const wrap = regTypeField.closest('.gfield');
@@ -177,7 +249,7 @@ window.updateSectionVisibility = function() {
             if (canShowProgramFlow && programType) {
                 const radios = document.querySelectorAll(`input[name="${spaConfig.fields.spa_registration_type}"]`);
                 radios.forEach(radio => {
-                    const isChild = radio.value.toLowerCase().includes('dieť');
+                    const isChild = radio.value.toLowerCase().includes('dieťa');
 
                     if (programType === 'child') {
                         radio.checked = isChild;
@@ -197,7 +269,16 @@ window.updateSectionVisibility = function() {
         }
     }
 
-    // SEKCIE - zobraz LEN ak program vybraný
+    // spa_frequency - BASE field for CASE 2 (always visible when program selected)
+    const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
+    if (frequencyField) {
+        const wrap = frequencyField.closest('.gfield');
+        if (wrap) {
+            wrap.style.display = canShowProgramFlow ? '' : 'none';
+        }
+    }
+
+    // ========== SECTIONS VISIBILITY (CASE 2) ==========
     document.querySelectorAll('.spa-section-common').forEach(sec => {
         sec.style.display = canShowProgramFlow ? '' : 'none';
     });
@@ -210,7 +291,7 @@ window.updateSectionVisibility = function() {
         sec.style.display = (canShowProgramFlow && programType === 'adult') ? '' : 'none';
     });
 
-    // FIELD SCOPE ENFORCEMENT - polia zobraz LEN ak program vybraný
+    // ========== SCOPE FIELDS (child_only / adult_only) ==========
     if (canShowProgramFlow && programType) {
         [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
             const scope = window.getSpaFieldScope(fieldName);
@@ -222,14 +303,17 @@ window.updateSectionVisibility = function() {
             window.spaSetFieldWrapperVisibility(fieldName, visible);
         });
     } else {
+        // CASE 0 / CASE 1 - hide all SCOPE fields
         [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
             window.spaSetFieldWrapperVisibility(fieldName, false);
         });
     }
 
+    // ========== DERIVED FIELDS ==========
+    // (handled separately in spa-infobox-state.js or other modules)
+
     console.log('[SPA Section Control] ========== UPDATE END ==========');
 };
-
 /**
  * INIT + EVENT BINDING
  */

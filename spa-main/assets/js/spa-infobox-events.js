@@ -81,22 +81,32 @@ if (typeof jQuery !== 'undefined') {
 
 /**
  * Renderovanie frekvenčného selektora
+ * AUTORITATÍVNY SELEKTOR: .gfield.spa-frequency-selector (z GF JSON cssClass)
+ * DÔVOD: data-admin-label nie je dostupný pre radio button fields v GF
  */
 window.renderFrequencySelector = function(programData) {
-    const selector = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
+    // Find GF wrapper by CSS class defined in GF JSON
+    const gfieldWrapper = document.querySelector('.gfield.spa-frequency-selector');
     
-    if (!selector) {
-        console.warn('[SPA Frequency] Selector .spa-frequency-selector nebol nájdený');
+    if (!gfieldWrapper) {
+        console.error('[SPA Frequency] GF wrapper .gfield.spa-frequency-selector not found');
         return;
     }
-
+    
+    // Find GF input container (where radio buttons live)
+    const inputContainer = gfieldWrapper.querySelector('.ginput_container');
+    
+    if (!inputContainer) {
+        console.error('[SPA Frequency] .ginput_container not found inside GF wrapper');
+        return;
+    }
     if (!programData) {
-        selector.innerHTML = '';
+        inputContainer.innerHTML = '';
         window.spaFormState.frequency = false;
         return;
     }
 
-    selector.innerHTML = '';
+    inputContainer.innerHTML = '';
     
     const frequencies = [
         { key: 'spa_price_1x_weekly', label: '1× týždenne' },
@@ -137,42 +147,45 @@ window.renderFrequencySelector = function(programData) {
     
     if (activeFrequencies.length === 0) {
         const disabledOption = document.createElement('label');
-        disabledOption.className = 'spa-frequency-option spa-frequency-disabled';
+        disabledOption.className = 'gchoice gchoice_disabled';
         disabledOption.innerHTML = `
             <input type="radio" disabled>
             <span>Pre tento program nie je dostupná platná frekvencia</span>
         `;
-        selector.appendChild(disabledOption);
+        inputContainer.appendChild(disabledOption);
         return;
     }
     
+    // Get actual input name from existing radio buttons (or construct from field ID)
+    const existingRadio = gfieldWrapper.querySelector('input[type="radio"]');
+    const radioName = existingRadio ? existingRadio.name : 'input_31';
+    
     activeFrequencies.forEach((freq, index) => {
         const label = document.createElement('label');
-        label.className = 'spa-frequency-option';
+        label.className = 'gchoice';
         
         const input = document.createElement('input');
         input.type = 'radio';
-        input.name = 'spa_frequency';
+        input.name = radioName;  // Use actual GF field name
         input.value = freq.key;
+        input.id = `choice_${radioName}_${index}`;
         
         if (activeFrequencies.length === 1) {
             input.checked = true;
             window.spaFormState.frequency = true;
             
-            // ⭐ OKAMŽITE AKTUALIZUJ VIDITEĽNOSŤ SEKCIÍ + PAGE BREAK
             setTimeout(() => {
                 window.updateSectionVisibility();
-                
             }, 150);
         }
         
-        // EVENT LISTENER na zmenu frekvencie
         input.addEventListener('change', function() {
             if (this.checked) {
                 window.spaFormState.frequency = true;
-                
                 window.updateSectionVisibility();
-                window.updatePriceSummary(); // ⭐ AKTUALIZUJ PREHĽAD
+                if (typeof window.updatePriceSummary === 'function') {
+                    window.updatePriceSummary();
+                }
                 console.log('[SPA Frequency] Selected:', this.value);
             }
         });
@@ -182,20 +195,20 @@ window.renderFrequencySelector = function(programData) {
         
         label.appendChild(input);
         label.appendChild(span);
-        selector.appendChild(label);
+        inputContainer.appendChild(label);
     });
-    // Aktualizuj stav page break po renderi frekvencie
+    
     if (activeFrequencies.length === 1) {
-        // Ak je len 1 frekvencia, je automaticky vybraná// Ak je len 1 frekvencia, je automaticky vybraná
-window.spaFormState.frequency = true;
-
-// ⭐ OKAMŽITE AKTUALIZUJ VIDITEĽNOSŤ SEKCIÍ + PAGE BREAK + PREHĽAD
-setTimeout(() => {
-    window.updateSectionVisibility();
-    window.updatePriceSummary(); // ⭐ PRIDANÉ: Aktualizuj prehľad PO nastavení typu
-}, 150);
-        
+        window.spaFormState.frequency = true;
+        setTimeout(() => {
+            window.updateSectionVisibility();
+            if (typeof window.updatePriceSummary === 'function') {
+                window.updatePriceSummary();
+            }
+        }, 150);
     }
+    
+    console.log('[SPA Frequency] Rendered:', activeFrequencies.length, 'options');
 };
 
  // Trigger pri blur (pre meno a adresu)

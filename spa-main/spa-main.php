@@ -37,26 +37,49 @@ require_once SPA_PLUGIN_DIR . 'includes/bootstrap.php';
 add_action('wp_enqueue_scripts', 'spa_enqueue_infobox_scripts');
 
 function spa_enqueue_infobox_scripts() {
-    // JavaScript
+    // JavaScript - Orchestrator (must be enqueued first for localize)
     wp_enqueue_script(
-        'spa-infobox-js',
-        plugin_dir_url(__FILE__) . 'assets/js/spa-infobox.js',
+        'spa-infobox-orchestrator',
+        SPA_PLUGIN_URL . 'assets/js/spa-infobox-orchestrator.js',
         ['jquery'],
         '1.0.0',
         true
     );
 
-    // Načítaj field mapping
-    $fields_config = include(plugin_dir_path(__FILE__) . 'spa-config/fields.php');
+    // JavaScript - Other modules
+    wp_enqueue_script(
+        'spa-infobox-js',
+        SPA_PLUGIN_URL . 'assets/js/spa-infobox.js',
+        ['jquery', 'spa-infobox-orchestrator'],
+        '1.0.0',
+        true
+    );
 
-    // Posli do JS
-    /* wp_localize_script('spa-infobox-js', 'spaConfig', [
-        'ajaxUrl' => admin_url('admin-ajax.php'),
-        'fields' => [
-            'spa_city' => $fields_config['spa_city'],
-            'spa_program' => $fields_config['spa_program'],
-        ]
-    ]); */
+    // Load fields registry from JSON and inject into runtime
+    $fields_json_path = SPA_PLUGIN_DIR . 'spa-config/fields.json';
+    $fields_registry = [];
+    if (file_exists($fields_json_path)) {
+        $json_content = file_get_contents($fields_json_path);
+        $fields_registry = json_decode($json_content, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log('[SPA] Failed to parse fields.json: ' . json_last_error_msg());
+            $fields_registry = [];
+        }
+    } else {
+        error_log('[SPA] fields.json not found at: ' . $fields_json_path);
+    }
+
+    // Inject fields registry before orchestrator runs (via inline script)
+    wp_localize_script(
+        'spa-infobox-orchestrator',
+        'spaFieldsRegistry',
+        $fields_registry
+    );
+
+    // Load PHP-based fields config (legacy/runtime overrides)
+    $fields_config = include(SPA_PLUGIN_DIR . 'spa-config/fields.php');
+
+    // Send config to JS (merged with registry in orchestrator)
     wp_localize_script('spa-infobox-js', 'spaConfig', [
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'fields'  => $fields_config,

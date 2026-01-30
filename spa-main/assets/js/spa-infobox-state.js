@@ -264,10 +264,10 @@ window.watchFormChanges = function() {
                 return;
             }
             
+            // Reset program data (frequency reset handled by orchestrator in CASE transition)
             window.wizardData.program_name = '';
             window.wizardData.program_id = null;
             window.wizardData.program_age = '';
-            window.wizardData.frequency = '';
             window.spaFormState.program = false;
             window.spaFormState.frequency = false;
             
@@ -280,6 +280,7 @@ window.watchFormChanges = function() {
                 }
             }
             
+            // Frequency UI cleanup (orchestrator handles field visibility)
             const frequencySelector = document.querySelector('.spa-frequency-selector');
             if (frequencySelector) {
                 frequencySelector.innerHTML = '';

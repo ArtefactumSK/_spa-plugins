@@ -10,8 +10,9 @@ window.spaFormPhase = 'edit';  // 'edit' | 'summary'
 window.clearAllSectionFields = function() {
     console.log('[SPA Clear] Clearing all section fields');
     
+    // BASE FIELDS protection: spa_frequency is CASE 2 BASE field, never reset here
     const participantInputs = document.querySelectorAll(
-        '[name^="input_"]:not([name="spa_city"]):not([name="spa_program"])'
+        '[name^="input_"]:not([name="spa_city"]):not([name="spa_program"]):not([name="spa_frequency"])'
     );
     
     participantInputs.forEach(input => {
