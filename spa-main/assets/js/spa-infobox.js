@@ -46,18 +46,25 @@ if (typeof spaConfig === 'undefined') {
  * Vykreslenie infoboxu
  */
 window.renderInfobox = function(data, icons, capacityFree, price) {
-    console.log('[renderInfobox] ========== START ==========');
-    console.log('[renderInfobox] State:', window.currentState);
-    console.log('[renderInfobox] wizardData:', JSON.stringify(wizardData));
-    console.log('[renderInfobox] programData:', data.program);
-    console.log('[renderInfobox] programData.title:', data.program?.title);
-    console.log('[renderInfobox] programData.primary_color:', data.program?.primary_color);
-    console.log('[renderInfobox] capacityFree:', capacityFree);
-    console.log('[renderInfobox] price:', price);
     
     const content = data.content;
     const programData = data.program;
+    
+    // 🔄 RESET odvodeného registračného typu (pri každom rerenderi infoboxu)
+    const registrationTypeBlock = document.getElementById('spa_registration_type');
+    if (registrationTypeBlock) {
+        const labelEl = registrationTypeBlock.querySelector('.spa-reg-type-label');
+        const iconEl  = registrationTypeBlock.querySelector('.spa-registration-type__icon');
+        const textEl  = registrationTypeBlock.querySelector('.spa-registration-type__text');
 
+        if (labelEl) labelEl.textContent = '';
+        if (iconEl)  iconEl.textContent = '';
+        if (textEl)  textEl.textContent = '';
+
+        registrationTypeBlock.classList.remove('is-child', 'is-adult');
+
+        console.log('[SPA] Registration type UI reset (renderInfobox)');
+    }
     // ⭐ Ulož do window pre prístup z updatePriceSummary
     if (!window.infoboxData) {
         window.infoboxData = {};
@@ -65,6 +72,7 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
     window.infoboxData.program = programData;
     window.infoboxData.place = data.place;
     
+
     const container = document.getElementById('spa-infobox-container');
     if (!container) {
         window.hideLoader();
@@ -190,27 +198,64 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
         let programHtml = programMainHtml + programIconHtml;
         // Ulož ikonu do premennej pre neskoršie použitie
         window.savedProgramIconHtml = programIconHtml;
-        // ⭐ AUTORITATÍVNE nastavenie adult/child radio v CASE 2
-        setTimeout(() => {
-            const isChild = programData.age_min && programData.age_min < 18;
-            
-            console.log('[SPA Program Type] Age-based detection:', {
-                age_min: programData.age_min,
-                age_max: programData.age_max,
-                isChild: isChild
-            });
+        // Set registration type based on age_min
+        const isChild = programData.age_min && programData.age_min < 18;
+        const programType = isChild ? 'child' : 'adult';
+        // Odvodiť a uložiť typ participantu
+        const resolvedTypeField = document.querySelector('input[name="spa_resolved_type"]');
+        if (resolvedTypeField) {
+            resolvedTypeField.value = programType;
+            console.log('[SPA] Resolved type saved to hidden field:', programType);
+        } else {
+            console.warn('[SPA] Hidden field spa_resolved_type not found - skipping save.');
+        }
+
+        // Aktualizovať textovú informáciu pre používateľa
+        const registrationTypeBlock = document.getElementById('spa_registration_type');
+
+        if (registrationTypeBlock) {
+            const isChild = programType === 'child';
+        
+            const iconEl = registrationTypeBlock.querySelector('.spa-registration-type__icon');
+            const textEl = registrationTypeBlock.querySelector('.spa-registration-type__text');            
+            const labelEl = registrationTypeBlock.querySelector('.spa-reg-type-label');
+        
+            if (iconEl && textEl) {
+                /* const labelText = isChild
+                    ? 'Účastníkom tréningov bude dieťa'
+                    : 'Účastníkom tréningov bude dospelá osoba'; */
+                const labelText = 'Účastníkom tréningov bude';
+        
+                iconEl.textContent = isChild ? '👧' : '👨‍🦱';
+                textEl.textContent = isChild
+                    ? 'Dieťa (mladší ako 18 rokov)'
+                    : 'Dospelá osoba (18+ rokov)';
+                        
+                if (labelEl) {
+                    labelEl.textContent = labelText;
+                } else {
+                    console.warn('[SPA] .spa-reg-type-label nebol nájdený v #spa_registration_type');
+                }
+                // ^^^ KONIEC PRIDANIA ^^^
+            }
+        
+            registrationTypeBlock.classList.toggle('is-child', isChild);
+            registrationTypeBlock.classList.toggle('is-adult', !isChild);
+        } else {
+            console.warn('[SPA] HTML block #spa_registration_type not found – skipping update.');
+        }
+        
+
+        
+        console.log('[SPA Program Type] Age-based detection:', {
+            age_min: programData.age_min,
+            age_max: programData.age_max,
+            programType: programType
+        });              
             
             // ⭐ RODNÉ ČÍSLO - uloží info o type programu
             const birthNumberField = document.querySelector('input[name="spa_member_birthnumber"]');
-            const birthNumberWrapper = birthNumberField ? birthNumberField.closest('.gfield') : null;
-
-            if (birthNumberField && birthNumberWrapper) {
-                // Vždy SKRY pri prvotnom výbere programu
-                birthNumberWrapper.style.display = 'none';
-                birthNumberField.setAttribute('data-is-child', isChild ? 'true' : 'false');
-                console.log('[SPA] Saved program type:', isChild ? 'CHILD' : 'ADULT');
-            }
-        }, 100);
+            const birthNumberWrapper = birthNumberField ? birthNumberField.closest('.gfield') : null;    
         
         programDiv.innerHTML = programHtml;
         container.appendChild(programDiv);

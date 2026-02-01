@@ -74,7 +74,7 @@ function spa_enqueue_scripts() {
         'spa-registration',
         SPA_PLUGIN_URL . 'assets/js/spa-registration-summary.js',
         ['jquery'],
-        '1.1.0',
+        '1.1.1',  // ← VERSION BUMP
         true
     );
     
@@ -119,7 +119,7 @@ function spa_enqueue_scripts() {
         true
     );
     
-    // ⭐ VYTVOR spaConfig objekt
+    // ⭐ VYTVOR spaRegistrationConfig objekt (oddelený od spaConfig)
     $field_config = spa_load_field_config();
     
     wp_localize_script('spa-registration', 'spaRegistrationConfig', [

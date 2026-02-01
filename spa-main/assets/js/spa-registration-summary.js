@@ -5,13 +5,13 @@
 (function() {
     'use strict';
 
-    if (typeof spaConfig === 'undefined') {
-        console.error('[SPA] spaConfig nie je definovaný.');
+    if (typeof spaRegistrationConfig === 'undefined') {
+        console.error('[SPA] spaRegistrationConfig nie je definovaný.');
         return;
     }
 
-    const cityInputId = spaConfig.fields.spa_city;
-    const programInputId = spaConfig.fields.spa_program;
+    const cityInputId = spaRegistrationConfig.fields.spa_city;
+    const programInputId = spaRegistrationConfig.fields.spa_program;
 
     if (!cityInputId || !programInputId) {
         console.error('[SPA] Chýbajúce field ID v spa-config.');
@@ -93,7 +93,7 @@
         const formData = new FormData();
         formData.append('action', 'spa_get_cities');
 
-        fetch(spaConfig.ajaxUrl, {
+        fetch(spaRegistrationConfig.ajaxUrl, {
             method: 'POST',
             body: formData,
             credentials: 'same-origin'
@@ -122,7 +122,7 @@
         formData.append('action', 'spa_get_programs');
         formData.append('city_id', cityId);
 
-        fetch(spaConfig.ajaxUrl, {
+        fetch(spaRegistrationConfig.ajaxUrl, {
             method: 'POST',
             body: formData,
             credentials: 'same-origin'

@@ -48,124 +48,7 @@ window.getSpaFieldScope = function(fieldName) {
     return 'always';
 };
 
-/**
- * RIADENIE VIDITEĽNOSTI SEKCIÍ + POLÍ
- */
-/* window.updateSectionVisibility = function() {
-    console.log('[SPA Section Control] ========== UPDATE START ==========');
 
-    // ⭐ GUARD: spaConfig.fields MUSÍ existovať
-    if (!window.spaConfig || !spaConfig.fields) {
-        console.warn('[SPA Section Control] spaConfig.fields not ready – skipping');
-        return;
-    }
-
-    const citySelected = !!(window.wizardData?.city_name && window.wizardData.city_name.trim() !== '');
-    const programSelected = !!(window.wizardData?.program_name && window.wizardData.program_name.trim() !== '');
-    const canShowProgramFlow = citySelected && programSelected;
-
-    // PROGRAM TYPE
-    let programType = null;
-    const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
-    if (programField && programField.value) {
-        const opt = programField.options[programField.selectedIndex];
-        const ageMin = parseInt(opt?.getAttribute('data-age-min'), 10);
-        if (!isNaN(ageMin)) programType = ageMin < 18 ? 'child' : 'adult';
-    }
-    window.spaCurrentProgramType = programType;
-
-    // RESOLVED TYPE → spa_resolved_type
-    const resolvedTypeField = document.querySelector(`input[name="${spaConfig.fields.spa_resolved_type}"]`);
-    if (resolvedTypeField) resolvedTypeField.value = programType || '';
-
-    // spa_registration_type - zobraz LEN ak program vybratý
-    const regTypeField = document.querySelector(`input[name="${spaConfig.fields.spa_registration_type}"]`);
-    if (regTypeField) {
-        const wrap = regTypeField.closest('.gfield');
-        if (wrap) {
-            wrap.style.display = canShowProgramFlow ? '' : 'none';
-
-            if (canShowProgramFlow) {
-                const radios = document.querySelectorAll(
-                    `input[name="${spaConfig.fields.spa_registration_type}"]`
-                );
-            
-                let ageMin = null;
-                let isChild = null; // ✅ definované v širšom scope
-            
-                const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
-                if (programField && programField.value) {
-                    const opt = programField.options[programField.selectedIndex];
-                    ageMin = parseInt(opt?.getAttribute('data-age-min'), 10);
-                }
-            
-                if (isNaN(ageMin) && window.infoboxData?.program?.age_min) {
-                    ageMin = parseInt(window.infoboxData.program.age_min, 10);
-                }
-            
-                if (!isNaN(ageMin)) {
-                    isChild = ageMin < 18;
-            
-                    radios.forEach(radio => {
-                        // ⚠️ Poznámka: toto musí zodpovedať tvojim reálnym radio value
-                        const radioIsChild = String(radio.value).toLowerCase().includes('dieťa') || String(radio.value).toLowerCase().includes('child');
-            
-                        radio.checked  = (isChild === radioIsChild);
-                        radio.disabled = (isChild !== radioIsChild);
-                    });
-            
-                    const checked = document.querySelector(
-                        `input[name="${spaConfig.fields.spa_registration_type}"]:checked`
-                    );
-                    if (checked) checked.dispatchEvent(new Event('change', { bubbles: true }));
-            
-                    console.log('[SPA Orchestrator] Registration type derived from age_min:', isChild ? 'CHILD' : 'ADULT', '(age_min=', ageMin, ')');
-                } else {
-                    console.warn('[SPA Orchestrator] Cannot derive registration type: age_min missing');
-                }
-            }
-             else {
-                const radios = document.querySelectorAll(`input[name="${spaConfig.fields.spa_registration_type}"]`);
-                radios.forEach(r => {
-                    r.checked = false;
-                    r.disabled = false;
-                });
-            }
-        }
-    }
-
-    // SEKCIE - zobraz LEN ak program vybratý
-    document.querySelectorAll('.spa-section-common').forEach(sec => {
-        sec.style.display = canShowProgramFlow ? '' : 'none';
-    });
-
-    document.querySelectorAll('.spa-section-child').forEach(sec => {
-        sec.style.display = (canShowProgramFlow && programType === 'child') ? '' : 'none';
-    });
-
-    document.querySelectorAll('.spa-section-adult').forEach(sec => {
-        sec.style.display = (canShowProgramFlow && programType === 'adult') ? '' : 'none';
-    });
-
-    // FIELD SCOPE ENFORCEMENT - polia zobraz LEN ak program vybratý
-    if (canShowProgramFlow && programType) {
-        [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
-            const scope = window.getSpaFieldScope(fieldName);
-            let visible = false;
-
-            if (scope === 'child') visible = (programType === 'child');
-            if (scope === 'adult') visible = (programType === 'adult');
-
-            window.spaSetFieldWrapperVisibility(fieldName, visible);
-        });
-    } else {
-        [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
-            window.spaSetFieldWrapperVisibility(fieldName, false);
-        });
-    }
-
-    console.log('[SPA Section Control] ========== UPDATE END ==========');
-}; */
 /**
  * Skrytie všetkých sekcií + polí pri INIT
  */
@@ -188,14 +71,7 @@ window.hideAllSectionsOnInit = function() {
         sec.style.display = 'none';
     });
 
-    // 2. Skry spa_registration_type
-    const regTypeField = document.querySelector(`input[name="${spaConfig.fields.spa_registration_type}"]`);
-    if (regTypeField) {
-        const wrap = regTypeField.closest('.gfield');
-        if (wrap) wrap.style.display = 'none';
-    }
-
-    // 3. Skry child_only + adult_only polia
+    // 2. Skry child_only + adult_only polia
     [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
         const el = document.querySelector(`[name="${fieldName}"]`);
         if (el) {
@@ -274,43 +150,9 @@ window.updateSectionVisibility = function() {
 
     console.log('[SPA Section Control] CASE determined:', canShowProgramFlow ? '2' : (citySelected ? '1' : '0'), 'Type:', programType);
 
-    // ========== BASE FIELDS (CASE 2) ==========
-    // spa_registration_type - BASE field for CASE 2
-    const regTypeField = document.querySelector(`input[name="${spaConfig.fields.spa_registration_type}"]`);
-    if (regTypeField) {
-        const wrap = regTypeField.closest('.gfield');
-        if (wrap) {
-            wrap.style.display = canShowProgramFlow ? '' : 'none';
-
-            if (canShowProgramFlow && programType) {
-                const radios = document.querySelectorAll(`input[name="${spaConfig.fields.spa_registration_type}"]`);
-                radios.forEach(radio => {
-                    const isChild = radio.value.toLowerCase().includes('dieťa');
-
-                    if (programType === 'child') {
-                        radio.checked = isChild;
-                        radio.disabled = !isChild;
-                    } else {
-                        radio.checked = !isChild;
-                        radio.disabled = isChild;
-                    }
-                });
-                
-                // CRITICAL: Trigger change event on checked radio for consistency
-                const checkedRadio = document.querySelector(`input[name="${spaConfig.fields.spa_registration_type}"]:checked`);
-                if (checkedRadio) {
-                    const changeEvent = new Event('change', { bubbles: true });
-                    checkedRadio.dispatchEvent(changeEvent);
-                    console.log('[SPA Orchestrator] Registration type auto-set:', programType);
-                }
-            } else {
-                const radios = document.querySelectorAll(`input[name="${spaConfig.fields.spa_registration_type}"]`);
-                radios.forEach(r => {
-                    r.checked = false;
-                    r.disabled = false;
-                });
-            }
-        }
+    // Set radio based on program type
+    if (canShowProgramFlow && programType) {
+        window.setSpaRegistrationType(programType);
     }
 
     // spa_frequency - BASE field for CASE 2 (always visible when program selected)
@@ -376,6 +218,7 @@ window.updateSectionVisibility = function() {
 
     console.log('[SPA Section Control] ========== UPDATE END ==========');
 };
+
 /**
  * INIT + EVENT BINDING
  */
@@ -393,8 +236,7 @@ window.spaInitSectionOrchestrator = function() {
 
     const cityEl = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
     const programEl = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
-    const freqEl = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
-    const regTypeEls = document.querySelectorAll(`input[name="${spaConfig.fields.spa_registration_type}"]`);
+    const freqEl = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);   
 
     const handler = () => {
         if (typeof window.updateSectionVisibility === 'function') window.updateSectionVisibility();

@@ -2,7 +2,7 @@
 
 spa_city
 spa_program
-spa_registration_type
+
 spa_resolved_type
 spa_frequency
 spa_member_name (Úplné)
