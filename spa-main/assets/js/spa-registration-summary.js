@@ -252,7 +252,7 @@
     /**
      * Odstránenie diakritiky
      */
-    function removeDiacritics(str) {
+    /* function removeDiacritics(str) {
         const diacriticsMap = {
             'á': 'a', 'ä': 'a', 'č': 'c', 'ď': 'd', 'é': 'e',
             'í': 'i', 'ľ': 'l', 'ĺ': 'l', 'ň': 'n', 'ó': 'o',
@@ -263,7 +263,7 @@
         return str.replace(/[^\w\s]/g, char => diacriticsMap[char] || char)
                   .toLowerCase()
                   .replace(/[^a-z0-9]/g, '');
-    }
+    } */
 
     /**
      * Generovanie e-mailu pre CHILD
@@ -283,8 +283,8 @@
             return null;
         }
         
-        const firstPart = removeDiacritics(firstName);
-        const lastPart = removeDiacritics(lastName);
+        const firstPart = spa_remove_diacritics(firstName);
+        const lastPart = spa_remove_diacritics(lastName);
         
         return `${firstPart}.${lastPart}@piaseckyacademy.sk`;
     }

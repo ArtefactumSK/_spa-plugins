@@ -60,13 +60,14 @@ window.filterProgramsByCity = function(cityName) {
     }
 };
 
-document.addEventListener('DOMContentLoaded', function() {    
-    if (window.initialized) return;
+// LISTENERS - pri prvom načítaní stránky
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.listenersAttached) return;
     window.initInfobox();
     window.watchFormChanges();
-    // ⭐ NEAPLIKUJ GET - GF options ešte neexistujú pri DOMContentLoaded
-    window.initialized = true;
+    window.listenersAttached = true;
 });
+
 
 // Gravity Forms AJAX callback
 if (typeof jQuery !== 'undefined') {
