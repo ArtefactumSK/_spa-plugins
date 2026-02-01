@@ -6,7 +6,7 @@
      * Filtrovanie programových options podľa mesta
      */
 window.filterProgramsByCity = function(cityName) {
-    const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+    const programField = document.querySelector(`[name="${spaRegistrationConfig.fields.spa_program}"]`);
     
     if (!programField) {
         console.warn('[SPA Filter] Program field not found');
@@ -169,7 +169,7 @@ window.renderFrequencySelector = function(programData) {
         input.type = 'radio';
         // CRITICAL: Radio buttons MUST have a name to function as a group
         // Fallback to wrapper's field ID if spaConfig mapping unavailable
-        const radioName = spaConfig.fields?.spa_frequency || 
+        const radioName = spaRegistrationConfig.fields?.spa_frequency || 
                         gfieldWrapper.id.replace('field_', 'input_');
         input.name = radioName;
         input.value = freq.key;

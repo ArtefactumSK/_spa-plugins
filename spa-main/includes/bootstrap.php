@@ -122,7 +122,7 @@ function spa_enqueue_scripts() {
     // ⭐ VYTVOR spaConfig objekt
     $field_config = spa_load_field_config();
     
-    wp_localize_script('spa-registration', 'spaConfig', [
+    wp_localize_script('spa-registration', 'spaRegistrationConfig', [
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'fields' => [
             'spa_city' => $field_config['spa_city'],

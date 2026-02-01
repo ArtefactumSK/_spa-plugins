@@ -400,20 +400,17 @@ function spa_remove_diacritics_for_email($string) {
  */
 function spa_validate_registration_form($validation_result) {
     $form = $validation_result['form'];
+        
+    // KRITICKÉ: Zisti resolved_type z $_POST (nie z $entry - ten tu ešte neexistuje)
+    $resolved_type = rgpost('spa_resolved_type'); // input_34 = spa_resolved_type
+
+    if (empty($resolved_type)) {
+        error_log('[SPA VALIDATION] No spa_resolved_type – skipping validation');
+        return $validation_result;
+    }    
     
-    // Zisti form ID - aplikuj len na registračný formulár
-    // TODO: Uprav form ID podľa skutočného ID
-    // if ($form['id'] != YOUR_FORM_ID) {
-    //     return $validation_result;
-    // }
-    
-    $resolved_type = spa_get_field_value($entry, 'spa_resolved_type');
     error_log('[SPA VALIDATION] Resolved type: ' . $resolved_type);
     
-    // Ak nie je určený typ, skonči
-    if (empty($resolved_type)) {
-        return $validation_result;
-    }
     
     // === SPOLOČNÉ VALIDÁCIE (CHILD aj ADULT) ===
     
