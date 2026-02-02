@@ -289,137 +289,7 @@ window.spaDebugDump = function() {
     
     console.log('[SPA DUMP] ========================================');
 };
-window.spaDebugDump.__source = 'spa-infobox-orchestrator.js';
 
-
-/**
- * CASE GATE HELPERS - Force control over gfields
- */
-function showGfield(gf) {
-    if (!gf) return;
-    gf.style.display = '';
-    gf.style.visibility = '';
-    delete gf.dataset.spaCaseHidden;
-}
-
-function hideGfield(gf) {
-    if (!gf) return;
-    gf.style.display = 'none';
-    gf.style.visibility = 'hidden';
-    gf.dataset.spaCaseHidden = '1';
-}
-
-function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
-    const MAX_RETRIES = 10;
-    const RETRY_DELAY = 80;
-    
-    console.log('[SPA CASE Gate] Applying CASE', caseNum, 'retry:', retryCount);
-    
-    const allGfields = document.querySelectorAll('.gfield');
-    const submitBtn = document.querySelector('.gform_footer, .gform_page_footer');
-    const pageBreaks = document.querySelectorAll('.gform_page_footer, .gf_step');
-    
-    if (caseNum === 0) {
-        allGfields.forEach(gf => {
-            if (gf === cityGfield) {
-                showGfield(gf);
-            } else if (gf.classList.contains('spa-infobox-container')) {
-                showGfield(gf);
-            } else {
-                hideGfield(gf);
-            }
-        });
-        if (submitBtn) hideGfield(submitBtn);
-        pageBreaks.forEach(pb => hideGfield(pb));
-        
-    } else if (caseNum === 1) {
-        if (!programGfield || programGfield.style.display === 'none') {
-            if (retryCount < MAX_RETRIES) {
-                console.warn('[SPA CASE Gate] Program field not ready, retrying...', retryCount + 1);
-                setTimeout(() => {
-                    const freshProgramGfield = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`)?.closest('.gfield');
-                    applyCaseGate(caseNum, cityGfield, freshProgramGfield, retryCount + 1);
-                }, RETRY_DELAY);
-                return;
-            } else {
-                console.error('[SPA CASE Gate] Program field not found after', MAX_RETRIES, 'retries');
-            }
-        }
-        
-        allGfields.forEach(gf => {
-            if (gf === cityGfield || gf === programGfield) {
-                showGfield(gf);
-            } else if (gf.classList.contains('spa-infobox-container')) {
-                showGfield(gf);
-            } else {
-                hideGfield(gf);
-            }
-        });
-        if (submitBtn) hideGfield(submitBtn);
-        pageBreaks.forEach(pb => hideGfield(pb));
-    }
-}
-
-function clearCaseGate() {
-    console.log('[SPA CASE Gate] Clearing all gates');
-    const allGfields = document.querySelectorAll('.gfield[data-spa-case-hidden="1"]');
-    allGfields.forEach(gf => {
-        gf.style.display = '';
-        gf.style.visibility = '';
-        delete gf.dataset.spaCaseHidden;
-    });
-    
-    const submitBtn = document.querySelector('.gform_footer, .gform_page_footer');
-    const pageBreaks = document.querySelectorAll('.gform_page_footer, .gf_step');
-    if (submitBtn && submitBtn.dataset.spaCaseHidden === '1') {
-        showGfield(submitBtn);
-    }
-    pageBreaks.forEach(pb => {
-        if (pb.dataset.spaCaseHidden === '1') {
-            showGfield(pb);
-        }
-    });
-}
-
-window.spaCaseProbe = function() {
-    if (!window.spaConfig || !spaConfig.fields) {
-        console.error('[SPA CASE Probe] spaConfig.fields not ready');
-        return;
-    }
-    
-    const cityEl = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
-    const programEl = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
-    
-    const cityValue = cityEl?.value || '';
-    const programValue = programEl?.value || '';
-    
-    const citySelectedDOM = cityValue.trim() !== '';
-    const programSelectedDOM = programValue.trim() !== '';
-    
-    const caseNum = !citySelectedDOM ? 0 : (!programSelectedDOM ? 1 : 2);
-    
-    const visibleGfields = document.querySelectorAll('.gfield:not([style*="display: none"]):not([style*="display:none"])').length;
-    const commonVisible = document.querySelectorAll('.spa-section-common:not([style*="display: none"])').length;
-    const childVisible = document.querySelectorAll('.spa-section-child:not([style*="display: none"])').length;
-    const adultVisible = document.querySelectorAll('.spa-section-adult:not([style*="display: none"])').length;
-    
-    console.log('[SPA CASE Probe]', {
-        case: caseNum,
-        dom: { cityValue, programValue },
-        wizardData: { 
-            city: window.wizardData?.city_name, 
-            program: window.wizardData?.program_name,
-            program_type: window.wizardData?.program_type
-        },
-        visible: {
-            gfields: visibleGfields,
-            common: commonVisible,
-            child: childVisible,
-            adult: adultVisible
-        }
-    });
-};
-window.spaCaseProbe.__source = 'spa-infobox-orchestrator.js';
 
 
 /**
@@ -634,13 +504,29 @@ function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
     const allGfields = document.querySelectorAll('.gfield');
     const submitBtn = document.querySelector('.gform_footer, .gform_page_footer');
     const pageBreaks = document.querySelectorAll('.gform_page_footer, .gf_step');
+    // Získaj program element pre RESET
+    const programEl = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+    
+    // Helper: Je to infobox?
+    const isInfobox = (gf) => {
+        return gf.classList.contains('spa-infobox-container') || 
+               gf.querySelector('.spa-infobox-wrapper') !== null ||
+               gf.querySelector('.spa-infobox-content') !== null;
+    };
     
     if (caseNum === 0) {
+        // RESET: Vyčisti program select
+        if (programEl) {
+            programEl.value = '';
+            programEl.selectedIndex = 0;
+        }
+        
         allGfields.forEach(gf => {
             if (gf === cityGfield) {
                 showGfield(gf);
-            } else if (gf.classList.contains('spa-infobox-container')) {
+            } else if (isInfobox(gf)) {
                 showGfield(gf);
+                console.log('[SPA CASE Gate] Infobox protected (CASE 0)');
             } else {
                 hideGfield(gf);
             }
@@ -653,8 +539,10 @@ function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
             if (retryCount < MAX_RETRIES) {
                 console.warn('[SPA CASE Gate] Program field not ready, retrying...', retryCount + 1);
                 setTimeout(() => {
+                    const cityEl = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
                     const freshProgramGfield = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`)?.closest('.gfield');
-                    applyCaseGate(caseNum, cityGfield, freshProgramGfield, retryCount + 1);
+                    const freshCityGfield = cityEl?.closest('.gfield');
+                    applyCaseGate(caseNum, freshCityGfield, freshProgramGfield, retryCount + 1);
                 }, RETRY_DELAY);
                 return;
             } else {
@@ -662,11 +550,32 @@ function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
             }
         }
         
+        // RESET: Vyčisti všetky polia okrem city a program
+        allGfields.forEach(gf => {
+            if (gf === cityGfield || gf === programGfield || isInfobox(gf)) {
+                return; // Preskočiť
+            }
+            
+            // Vyčisti input values
+            const inputs = gf.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.type === 'checkbox' || input.type === 'radio') {
+                    input.checked = false;
+                } else if (input.tagName === 'SELECT') {
+                    input.selectedIndex = 0;
+                    input.value = '';
+                } else {
+                    input.value = '';
+                }
+            });
+        });
+
         allGfields.forEach(gf => {
             if (gf === cityGfield || gf === programGfield) {
                 showGfield(gf);
-            } else if (gf.classList.contains('spa-infobox-container')) {
+            } else if (isInfobox(gf)) {
                 showGfield(gf);
+                console.log('[SPA CASE Gate] Infobox protected (CASE 1)');
             } else {
                 hideGfield(gf);
             }
