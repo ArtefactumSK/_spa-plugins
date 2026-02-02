@@ -124,22 +124,35 @@ window.updateSectionVisibility = function() {
     const programSelected = !!(window.wizardData?.program_name && window.wizardData.program_name.trim() !== '');
     const canShowProgramFlow = citySelected && programSelected; // CASE 2
 
-    // PROGRAM TYPE determination
+    // ========== SCOPE DETERMINATION (SINGLE SOURCE OF TRUTH) ==========
     let programType = null;
 
-    // Try to determine from program select (PAGE 1)
-    const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
-    if (programField && programField.value) {
-        const opt = programField.options[programField.selectedIndex];
-        const ageMin = parseInt(opt?.getAttribute('data-age-min'), 10);
-        if (!isNaN(ageMin)) programType = ageMin < 18 ? 'child' : 'adult';
+    // ✅ PRIMARY SOURCE: window.infoboxData.program.age_min (from AJAX)
+    if (window.infoboxData?.program?.age_min !== undefined) {
+        const ageMin = parseFloat(window.infoboxData.program.age_min);
+        
+        if (!isNaN(ageMin)) {
+            programType = ageMin < 18 ? 'child' : 'adult';
+            console.log('[SPA Orchestrator] Program type determined from infoboxData:', programType, '(age_min=' + ageMin + ')');
+        }
+    }
+    // FALLBACK: DOM select (only if infoboxData not available yet)
+    else if (canShowProgramFlow) {
+        const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+        if (programField && programField.value) {
+            const opt = programField.options[programField.selectedIndex];
+            const ageMin = parseInt(opt?.getAttribute('data-age-min'), 10);
+            
+            if (!isNaN(ageMin)) {
+                programType = ageMin < 18 ? 'child' : 'adult';
+                console.log('[SPA Orchestrator] Program type determined from DOM (fallback):', programType, '(age_min=' + ageMin + ')');
+            }
+        }
     }
 
-    // Fallback: determine from infoboxData (PAGE 2+, when select is not in DOM)
-    if (!programType && window.infoboxData?.program?.age_min) {
-        const ageMin = parseFloat(window.infoboxData.program.age_min);
-        if (!isNaN(ageMin)) programType = ageMin < 18 ? 'child' : 'adult';
-        console.log('[SPA Orchestrator] Program type determined from infoboxData:', programType);
+    // If program not selected or age_min missing → scope is NULL
+    if (!programType) {
+        console.log('[SPA Orchestrator] Program type is NULL (no valid program selected)');
     }
 
     window.spaCurrentProgramType = programType;
@@ -148,12 +161,14 @@ window.updateSectionVisibility = function() {
     const resolvedTypeField = document.querySelector(`input[name="${spaConfig.fields.spa_resolved_type}"]`);
     if (resolvedTypeField) resolvedTypeField.value = programType || '';
 
+    // ✅ SCOPE → STATE (single source of truth)
+    if (typeof window.spaSetProgramType === 'function') {
+        window.spaSetProgramType(programType);
+    }
+
     console.log('[SPA Section Control] CASE determined:', canShowProgramFlow ? '2' : (citySelected ? '1' : '0'), 'Type:', programType);
 
-    // Set radio based on program type
-    if (canShowProgramFlow && programType) {
-        window.setSpaRegistrationType(programType);
-    }
+    // Scope is now determined - no form field writes needed
 
     // spa_frequency - BASE field for CASE 2 (always visible when program selected)
     const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
@@ -196,24 +211,20 @@ window.updateSectionVisibility = function() {
     }
     
     // ========== DERIVED FIELDS ==========
-    // DERIVED FIELD: Set data-is-child on birthnumber field based on program age_min
-        const birthNumberField = document.querySelector(
-            `input[name="${spaConfig.fields.spa_member_birthnumber}"]`
-        );
+    const birthNumberField = document.querySelector(
+        `input[name="${spaConfig.fields.spa_member_birthnumber}"]`
+    );
 
-        const ageMin = parseInt(programData?.age_min, 10);
-
-        if (birthNumberField && !isNaN(ageMin)) {
-            const isChild = ageMin < 18;
-
-            birthNumberField.setAttribute('data-is-child', isChild ? 'true' : 'false');
-
-            console.log(
-                '[SPA Orchestrator] Derived program type from age_min:',
-                isChild ? 'CHILD' : 'ADULT',
-                '(age_min =', ageMin, ')'
-            );
+    if (birthNumberField) {
+        if (programType === 'child') {
+            birthNumberField.setAttribute('data-is-child', 'true');
+        } else if (programType === 'adult') {
+            birthNumberField.setAttribute('data-is-child', 'false');
+        } else {
+            // No program selected → remove attribute
+            birthNumberField.removeAttribute('data-is-child');
         }
+    }
 
 
     console.log('[SPA Section Control] ========== UPDATE END ==========');

@@ -19,7 +19,8 @@ window.wizardData = {
     city_name: '',
     city_slug: '',
     program_name: '',
-    program_age: ''
+    program_age: '',
+    program_type: null  // 'child' | 'adult' | null
 };
 
 window.spaErrorState = {
@@ -93,6 +94,17 @@ window.determineCaseState = function() {
         return 2;
     }
     return 0;
+};
+
+/**
+ * PASÍVNY PRÍJEM SCOPE Z ORCHESTRÁTORA
+ * State NEPOČÍTA scope, len ho preberá
+ */
+window.spaSetProgramType = function(programType) {
+    if (programType !== window.wizardData.program_type) {
+        console.log('[SPA State] Program type updated:', window.wizardData.program_type, '→', programType);
+        window.wizardData.program_type = programType;
+    }
 };
 
 /**
@@ -268,6 +280,7 @@ window.watchFormChanges = function() {
             window.wizardData.program_name = '';
             window.wizardData.program_id = null;
             window.wizardData.program_age = '';
+            window.wizardData.program_type = null;  // ⭐ RESET SCOPE
             window.spaFormState.program = false;
             window.spaFormState.frequency = false;
             
@@ -353,9 +366,11 @@ window.watchFormChanges = function() {
                 window.spaFormState.program = true;
                 window.currentState = 2;
             } else {
+                // ⭐ RESET PROGRAMU
                 window.wizardData.program_name = '';
                 window.wizardData.program_id = null;
                 window.wizardData.program_age = '';
+                window.wizardData.program_type = null;  // ⭐ RESET SCOPE
                 window.spaFormState.program = false;
                 window.spaFormState.frequency = false;
                 window.currentState = window.wizardData.city_name ? 1 : 0;

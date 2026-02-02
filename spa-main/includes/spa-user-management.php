@@ -29,9 +29,17 @@ function spa_handle_registration_submission($entry, $form) {
     // Načítaj field config
     $config = spa_load_field_config();
     
-    // Určenie typu účastníka (input_4)
-    $registration_type = rgar($entry, 'spa_registration_type');
-    error_log('[SPA User Management] Registration type: ' . $registration_type);
+    // Určenie typu účastníka z resolved type field
+    $registration_type = spa_get_field_value($entry, 'spa_resolved_type');
+    
+    // FAIL FAST: Ak resolved type chýba, je to kritická chyba
+    if (empty($registration_type)) {
+        error_log('[SPA User Management] CRITICAL ERROR: spa_resolved_type (input_34) is empty');
+        error_log('[SPA User Management] Entry data: ' . print_r($entry, true));
+        return;
+    }
+    
+    error_log('[SPA User Management] Registration type (spa_resolved_type): ' . $registration_type);
     
     // Základné dáta z entry
     // E-maily podľa field ID a typu registrácie
@@ -178,9 +186,12 @@ function spa_create_parent_user_skeleton($data) {
         return false;
     }
     
-    if (empty($data['guardian_name_first']) || empty($data['guardian_name_last'])) {
-        error_log('[SPA Parent User] ERROR: Missing guardian name');
-        return false;
+    // Validácia guardian údajov LEN pre CHILD typ
+    if ($data['registration_type'] === 'child') {
+        if (empty($data['guardian_name_first']) || empty($data['guardian_name_last'])) {
+            error_log('[SPA Parent User] ERROR: Missing guardian name (CHILD registration)');
+            return false;
+        }
     }
     
     // Kontrola duplicity
