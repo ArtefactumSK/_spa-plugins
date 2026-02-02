@@ -1,9 +1,27 @@
 /**
  * SPA Infobox Wizard – Frontend logika
- * CENTRALIZOVANÁ STATE MANAGEMENT
+ * CENTRALIZOVANÉ STATE MANAGEMENT
  */
 
-// ⭐ GLOBÁLNE PREMENNÉ (prístupné všetkým súborom)
+// ========== DUPLICATE DETECTION ==========
+(function() {
+    const functionsToCheck = [
+        'spaSetProgramType',
+        'updateInfoboxState',
+        'determineCaseState'
+    ];
+    
+    functionsToCheck.forEach(fnName => {
+        if (typeof window[fnName] === 'function') {
+            console.warn('[SPA DUPLICATE] ' + fnName + ' already exists before state load', {
+                __source: window[fnName].__source || 'unknown',
+                type: typeof window[fnName]
+            });
+        }
+    });
+})();
+
+// ⚠️ GLOBÁLNE PREMENNÉ (prístupné všetkým súborom)
 window.spaFormState = {
     city: false,
     program: false,
@@ -97,15 +115,66 @@ window.determineCaseState = function() {
 };
 
 /**
- * PASÍVNY PRÍJEM SCOPE Z ORCHESTRÁTORA
- * State NEPOČÍTA scope, len ho preberá
+ * SETTER: Centrálne nastavenie program type (SINGLE SOURCE OF TRUTH)
  */
-window.spaSetProgramType = function(programType) {
-    if (programType !== window.wizardData.program_type) {
-        console.log('[SPA State] Program type updated:', window.wizardData.program_type, '→', programType);
-        window.wizardData.program_type = programType;
+window.spaSetProgramType = function(newType) {
+    const oldType = window.wizardData.program_type;
+    
+    if (newType !== oldType) {
+        window.wizardData.program_type = newType;
+        
+        // Mirror do window.spaCurrentProgramType (backward compatibility)
+        window.spaCurrentProgramType = newType;
+        
+        console.log('[SPA State] Program type updated:', {
+            old: oldType,
+            new: newType,
+            wizardData_program_type: window.wizardData.program_type,
+            spaCurrentProgramType: window.spaCurrentProgramType,
+            callStack: new Error().stack.split('\n').slice(1, 4).join('\n')  // Show caller
+        });
+        
+        // AUTOMATIC TRIGGER: updateSectionVisibility with retry + debounce
+        if (window.__spaVisibilityUpdateTimeout) {
+            clearTimeout(window.__spaVisibilityUpdateTimeout);
+        }
+        
+        window.__spaVisibilityUpdateTimeout = setTimeout(() => {
+            let attempts = 0;
+            const maxAttempts = 15; // Increased from 10
+            
+            const tryUpdate = () => {
+                attempts++;
+                
+                if (typeof window.updateSectionVisibility === 'function') {
+                    const domReady = document.readyState === 'complete' || document.readyState === 'interactive';
+                    
+                    if (domReady) {
+                        console.log('[SPA State] Auto-triggering updateSectionVisibility (attempt ' + attempts + ')');
+                        window.updateSectionVisibility();
+                    } else if (attempts < maxAttempts) {
+                        setTimeout(tryUpdate, 100);
+                    } else {
+                        console.error('[SPA State] FAILED: DOM not ready after ' + maxAttempts + ' attempts');
+                    }
+                } else if (attempts < maxAttempts) {
+                    console.warn('[SPA State] updateSectionVisibility not defined, retrying... (' + attempts + '/' + maxAttempts + ')');
+                    setTimeout(tryUpdate, 50);
+                } else {
+                    console.error('[SPA State] FAILED: updateSectionVisibility not defined after ' + maxAttempts + ' attempts', {
+                        'window.updateSectionVisibility': typeof window.updateSectionVisibility,
+                        'window.__spaOrchestratorBound': window.__spaOrchestratorBound
+                    });
+                }
+            };
+            
+            tryUpdate();
+        }, 50);
     }
 };
+// Tag source for debugging
+window.spaSetProgramType.__source = 'spa-infobox-state.js';
+console.log('[SPA SRC] spaSetProgramType defined in:', window.spaSetProgramType.__source);
 
 /**
  * CENTRÁLNY UPDATE STAVU

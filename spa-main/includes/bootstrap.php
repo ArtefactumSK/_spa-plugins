@@ -70,64 +70,96 @@ function spa_enqueue_scripts() {
         return;
     }
     
-    wp_enqueue_script(
-        'spa-registration',
-        SPA_PLUGIN_URL . 'assets/js/spa-registration-summary.js',
-        ['jquery'],
-        '1.1.1',  // ← VERSION BUMP
-        true
-    );
-    
-    // ⭐ ROZDELENÉ JS SÚBORY - SPRÁVNE PORADIE
-    wp_enqueue_script(
-        'spa-infobox-state',
-        SPA_PLUGIN_URL . 'assets/js/spa-infobox-state.js',
-        ['spa-registration'],
-        '1.1.0',
-        true
-    );
-    
+    // === LOAD ORDER CRITICAL ===
+    // 1. ORCHESTRATOR FIRST (defines updateSectionVisibility)
     wp_enqueue_script(
         'spa-infobox-orchestrator',
         SPA_PLUGIN_URL . 'assets/js/spa-infobox-orchestrator.js',
-        ['spa-infobox-state'],
-        '1.1.0',
+        ['jquery'],  // ← NO OTHER DEPENDENCIES
+        '1.4.0',     // ← VERSION BUMP to force reload
         true
     );
     
+    // 2. STATE (reads orchestrator functions)
+    wp_enqueue_script(
+        'spa-infobox-state',
+        SPA_PLUGIN_URL . 'assets/js/spa-infobox-state.js',
+        ['spa-infobox-orchestrator'],  // ← DEPENDS ON ORCHESTRATOR
+        '1.4.0',
+        true
+    );
+    
+    // 3. REGISTRATION
+    wp_enqueue_script(
+        'spa-registration',
+        SPA_PLUGIN_URL . 'assets/js/spa-registration-summary.js',
+        ['jquery', 'spa-infobox-state'],
+        '1.2.0',
+        true
+    );
+    
+    // 4. UI
     wp_enqueue_script(
         'spa-infobox-ui',
         SPA_PLUGIN_URL . 'assets/js/spa-infobox-ui.js',
         ['spa-infobox-state'],
-        '1.1.0',
+        '1.2.0',
         true
     );
     
+    // 5. MAIN INFOBOX
     wp_enqueue_script(
         'spa-infobox',
         SPA_PLUGIN_URL . 'assets/js/spa-infobox.js',
-        ['spa-infobox-state'],
-        '1.1.0',
+        ['spa-infobox-state', 'spa-infobox-orchestrator'],
+        '1.4.0',
         true
     );
     
+    // 6. EVENTS (last, depends on everything)
     wp_enqueue_script(
         'spa-infobox-events',
         SPA_PLUGIN_URL . 'assets/js/spa-infobox-events.js',
         ['spa-infobox-state', 'spa-infobox-orchestrator', 'spa-infobox-ui', 'spa-infobox'],
-        '1.1.0',
+        '1.2.0',
         true
     );
     
-    // ⭐ VYTVOR spaRegistrationConfig objekt (oddelený od spaConfig)
+    // === CONFIG OBJECTS ===
     $field_config = spa_load_field_config();
     
+    // Load fields registry from JSON
+    $fields_json_path = SPA_CONFIG_DIR . 'fields.json';
+    $fields_registry = [];
+    
+    if (file_exists($fields_json_path)) {
+        $json_content = file_get_contents($fields_json_path);
+        $fields_registry = json_decode($json_content, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log('[SPA ERROR] Failed to parse fields.json: ' . json_last_error_msg());
+            $fields_registry = [];
+        }
+    }
+    
+    // MERGE: PHP + JSON
+    $merged_fields = array_merge($field_config, $fields_registry);
+    
+    // spaRegistrationConfig (for spa-registration.js)
     wp_localize_script('spa-registration', 'spaRegistrationConfig', [
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'fields' => [
-            'spa_city' => $field_config['spa_city'],
-            'spa_program' => $field_config['spa_program'],
+            'spa_city' => $merged_fields['spa_city'] ?? 'input_1',
+            'spa_program' => $merged_fields['spa_program'] ?? 'input_2',
+            'spa_frequency' => $merged_fields['spa_frequency'] ?? 'input_31',
         ],
+        'programCities' => spa_generate_program_cities_map(),
+    ]);
+    
+    // spaConfig (for spa-infobox.js)
+    wp_localize_script('spa-infobox', 'spaConfig', [
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'fields' => $merged_fields,
         'programCities' => spa_generate_program_cities_map(),
     ]);
 }

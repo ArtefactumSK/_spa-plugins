@@ -34,7 +34,7 @@ require_once SPA_PLUGIN_DIR . 'includes/bootstrap.php';
 /**
  * Registrácia frontend skriptov a konfigurácie
  */
-add_action('wp_enqueue_scripts', 'spa_enqueue_infobox_scripts');
+/* add_action('wp_enqueue_scripts', 'spa_enqueue_infobox_scripts');
 
 function spa_enqueue_infobox_scripts() {
     
@@ -87,4 +87,4 @@ function spa_enqueue_infobox_scripts() {
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'fields'  => $merged_fields,
     ]);
-}
+} */

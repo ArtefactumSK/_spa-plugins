@@ -3,6 +3,24 @@
  * CENTRALIZOVANÉ RIADENIE VIDITEĽNOSTI
  */
 
+// ========== DUPLICATE DETECTION ==========
+(function() {
+    const functionsToCheck = [
+        'updateSectionVisibility',
+        'spaInitSectionOrchestrator',
+        'hideAllSectionsOnInit'
+    ];
+    
+    functionsToCheck.forEach(fnName => {
+        if (typeof window[fnName] === 'function') {
+            console.warn('[SPA DUPLICATE] ' + fnName + ' already exists before orchestrator load', {
+                __source: window[fnName].__source || 'unknown',
+                type: typeof window[fnName]
+            });
+        }
+    });
+})();
+
 // ========== FIELDS REGISTRY MERGE ==========
 // Merge JSON registry into spaConfig.fields (if available)
 // This ensures all field mappings (including spa_frequency) are available at runtime
@@ -24,27 +42,65 @@ window.spaCurrentProgramType = null;
 /**
  * SPA FIELD SCOPE – JEDINÝ ZDROJ PRAVDY
  */
-window.spaFieldScopes = {
-    child_only: [
-        spaConfig.fields.spa_guardian_name_first,
-        spaConfig.fields.spa_guardian_name_last,
-        spaConfig.fields.spa_parent_email,
-        spaConfig.fields.spa_parent_phone,
-        spaConfig.fields.spa_client_email,
-        spaConfig.fields.spa_consent_guardian,
-        spaConfig.fields.spa_member_birthnumber
-    ],
-    adult_only: [
-        spaConfig.fields.spa_client_email_required
-    ]
+window.spaCurrentProgramType = null;
+
+/**
+ * SPA FIELD SCOPE – JEDINÝ ZDROJ PRAVDY
+ * GUARD: Wait for spaConfig to be ready
+ */
+(function() {
+    // Retry until spaConfig.fields is available
+    let attempts = 0;
+    const maxAttempts = 50;
+    
+    const initScopes = function() {
+        attempts++;
+        
+        // Check if spaConfig.fields exists
+        if (typeof window.spaConfig !== 'undefined' && window.spaConfig.fields) {
+            console.log('[SPA Orchestrator] spaConfig.fields ready, initializing scopes');
+            
+            window.spaFieldScopes = {
+                child_only: [
+                    spaConfig.fields.spa_guardian_name_first,
+                    spaConfig.fields.spa_guardian_name_last,
+                    spaConfig.fields.spa_parent_email,
+                    spaConfig.fields.spa_parent_phone,
+                    spaConfig.fields.spa_client_email,
+                    spaConfig.fields.spa_consent_guardian,
+                    spaConfig.fields.spa_member_birthnumber
+                ],
+                adult_only: [
+                    spaConfig.fields.spa_client_email_required
+                ]
+            };
+            
+            console.log('[SPA Orchestrator] Field scopes initialized:', Object.keys(window.spaFieldScopes));
+        } else if (attempts < maxAttempts) {
+            console.warn('[SPA Orchestrator] spaConfig.fields not ready, retrying... (' + attempts + '/' + maxAttempts + ')');
+            setTimeout(initScopes, 50);
+        } else {
+            console.error('[SPA Orchestrator] TIMEOUT: spaConfig.fields never loaded');
+        }
+    };
+    
+    // Start retry loop
+    initScopes();
+})();
+
+// TEMPORARY FALLBACK (until scopes are loaded)
+window.spaFieldScopes = window.spaFieldScopes || {
+    child_only: [],
+    adult_only: []
 };
 
 /**
  * Vráti scope podľa: 'child' | 'adult' | 'always'
  */
 window.getSpaFieldScope = function(fieldName) {
-    if (window.spaFieldScopes.child_only.includes(fieldName)) return 'child';
-    if (window.spaFieldScopes.adult_only.includes(fieldName)) return 'adult';
+    if (!window.spaFieldScopes) return 'always';
+    if (window.spaFieldScopes.child_only && window.spaFieldScopes.child_only.includes(fieldName)) return 'child';
+    if (window.spaFieldScopes.adult_only && window.spaFieldScopes.adult_only.includes(fieldName)) return 'adult';
     return 'always';
 };
 
@@ -55,14 +111,15 @@ window.getSpaFieldScope = function(fieldName) {
 window.hideAllSectionsOnInit = function() {
     console.log('[SPA Init] ========== INIT RESET ==========');
 
-    // ⭐ GUARD: spaConfig.fields MUSÍ existovať
+    // ⚠️ GUARD: spaConfig.fields MUSÍ existovať
     if (!window.spaConfig || !spaConfig.fields) {
         console.warn('[SPA Init] spaConfig.fields not ready – skipping');
         return;
     }
-
-    if (window.spa_sections_hidden) {
-        console.log('[SPA Init] Already initialized, skipping');
+    
+    // ⚠️ GUARD: spaFieldScopes MUSÍ existovať
+    if (!window.spaFieldScopes || !window.spaFieldScopes.child_only) {
+        console.warn('[SPA Init] spaFieldScopes not ready – skipping');
         return;
     }
 
@@ -80,7 +137,7 @@ window.hideAllSectionsOnInit = function() {
         }
     });
 
-    window.spa_sections_hidden = true;
+    // window.spa_sections_hidden = true;
     console.log('[SPA Init] ========== INIT COMPLETE ==========');
 };
 
@@ -107,140 +164,562 @@ window.spaSetFieldWrapperVisibility = function(fieldName, visible) {
 };
 
 /**
+ * DEBUG HELPER: Diagnostika sekcií
+ */
+window.spaDebugVisibility = function() {
+    console.log('[SPA DEBUG] ========== VISIBILITY DIAGNOSTIC ==========');
+    
+    // Scope state
+    console.log('[SPA DEBUG] Scope State:', {
+        wizard_program_type: window.wizardData?.program_type,
+        spaCurrentProgramType: window.spaCurrentProgramType,
+        age_min: window.infoboxData?.program?.age_min,
+        program_name: window.wizardData?.program_name
+    });
+    
+    // Section detection
+    const patterns = ['common', 'child', 'adult'];
+    patterns.forEach(type => {
+        const selectors = [
+            `.spa-section-${type}`,
+            `[data-section="${type}"]`,
+            `#spa_section_${type}`,
+            `.gfield[id*="section_${type}"]`,
+            `.gsection.spa-section-${type}`
+        ];
+        
+        console.log(`[SPA DEBUG] Sections for "${type}":`);
+        selectors.forEach(sel => {
+            const found = document.querySelectorAll(sel);
+            if (found.length > 0) {
+                console.log(`  ✅ ${sel}: ${found.length} found`);
+                found.forEach((el, i) => {
+                    const visible = el.style.display !== 'none' && el.style.visibility !== 'hidden';
+                    console.log(`     [${i}] visible=${visible}, display="${el.style.display}", visibility="${el.style.visibility}"`);
+                });
+            } else {
+                console.log(`  ❌ ${sel}: 0 found`);
+            }
+        });
+    });
+    
+    // Field detection
+    if (window.spaFieldScopes) {
+        console.log('[SPA DEBUG] Child-only fields:');
+        window.spaFieldScopes.child_only.forEach(fieldName => {
+            const el = document.querySelector(`[name="${fieldName}"]`);
+            if (el) {
+                const wrap = el.closest('.gfield');
+                const visible = wrap && wrap.style.display !== 'none';
+                console.log(`  ${fieldName}: ${visible ? '✅ visible' : '❌ hidden'}`);
+            } else {
+                console.log(`  ${fieldName}: ⚠️ not found`);
+            }
+        });
+    }
+    
+    console.log('[SPA DEBUG] ========================================');
+};
+// Tag source
+window.spaDebugVisibility.__source = 'spa-infobox-orchestrator.js';
+
+/**
+ * EXTENDED DEBUG DUMP: Comprehensive state + DOM reality check
+ */
+window.spaDebugDump = function() {
+    console.log('[SPA DUMP] ========== COMPREHENSIVE DIAGNOSTIC ==========');
+    
+    // STATE
+    console.log('[SPA DUMP] STATE:', {
+        'wizardData.program_type': window.wizardData?.program_type,
+        'wizardData.city_name': window.wizardData?.city_name,
+        'wizardData.program_name': window.wizardData?.program_name,
+        'spaCurrentProgramType': window.spaCurrentProgramType,
+        'currentState': window.currentState
+    });
+    
+    // PROGRAM DATA
+    if (window.infoboxData?.program) {
+        console.log('[SPA DUMP] PROGRAM DATA:', {
+            'age_min': window.infoboxData.program.age_min,
+            'age_max': window.infoboxData.program.age_max,
+            'title': window.infoboxData.program.title
+        });
+    } else {
+        console.log('[SPA DUMP] PROGRAM DATA: not loaded');
+    }
+    
+    // SECTION WRAPPERS
+    const sectionCounts = {
+        common: document.querySelectorAll('.spa-section-common').length,
+        child: document.querySelectorAll('.spa-section-child').length,
+        adult: document.querySelectorAll('.spa-section-adult').length
+    };
+    console.log('[SPA DUMP] SECTION WRAPPERS:', sectionCounts);
+    
+    if (sectionCounts.child === 0 && sectionCounts.adult === 0) {
+        console.warn('[SPA DUMP] ⚠️ SECTION WRAPPERS MISSING – FIELD MODE REQUIRED');
+    }
+    
+    // FIELD MAPPING CHECK
+    if (window.spaFieldScopes) {
+        console.log('[SPA DUMP] FIELD MAPPING CHECK:');
+        
+        const checkFields = [
+            ...window.spaFieldScopes.child_only.slice(0, 2),
+            ...window.spaFieldScopes.adult_only
+        ];
+        
+        checkFields.forEach(fieldName => {
+            const configKey = Object.keys(spaConfig.fields || {}).find(k => spaConfig.fields[k] === fieldName);
+            const el = document.querySelector(`[name="${fieldName}"]`);
+            const wrap = el ? el.closest('.gfield') : null;
+            const computedDisplay = wrap ? window.getComputedStyle(wrap).display : 'N/A';
+            const computedVisibility = wrap ? window.getComputedStyle(wrap).visibility : 'N/A';
+            
+            console.log(`  ${configKey || 'UNKNOWN'} (${fieldName}):`, {
+                'in_spaConfig': !!configKey,
+                'element_exists': !!el,
+                'wrapper_exists': !!wrap,
+                'computed_display': computedDisplay,
+                'computed_visibility': computedVisibility,
+                'visible': computedDisplay !== 'none' && computedVisibility !== 'hidden'
+            });
+        });
+    }
+    
+    console.log('[SPA DUMP] ========================================');
+};
+window.spaDebugDump.__source = 'spa-infobox-orchestrator.js';
+
+
+/**
+ * CASE GATE HELPERS - Force control over gfields
+ */
+function showGfield(gf) {
+    if (!gf) return;
+    gf.style.display = '';
+    gf.style.visibility = '';
+    delete gf.dataset.spaCaseHidden;
+}
+
+function hideGfield(gf) {
+    if (!gf) return;
+    gf.style.display = 'none';
+    gf.style.visibility = 'hidden';
+    gf.dataset.spaCaseHidden = '1';
+}
+
+function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
+    const MAX_RETRIES = 10;
+    const RETRY_DELAY = 80;
+    
+    console.log('[SPA CASE Gate] Applying CASE', caseNum, 'retry:', retryCount);
+    
+    const allGfields = document.querySelectorAll('.gfield');
+    const submitBtn = document.querySelector('.gform_footer, .gform_page_footer');
+    const pageBreaks = document.querySelectorAll('.gform_page_footer, .gf_step');
+    
+    if (caseNum === 0) {
+        allGfields.forEach(gf => {
+            if (gf === cityGfield) {
+                showGfield(gf);
+            } else if (gf.classList.contains('spa-infobox-container')) {
+                showGfield(gf);
+            } else {
+                hideGfield(gf);
+            }
+        });
+        if (submitBtn) hideGfield(submitBtn);
+        pageBreaks.forEach(pb => hideGfield(pb));
+        
+    } else if (caseNum === 1) {
+        if (!programGfield || programGfield.style.display === 'none') {
+            if (retryCount < MAX_RETRIES) {
+                console.warn('[SPA CASE Gate] Program field not ready, retrying...', retryCount + 1);
+                setTimeout(() => {
+                    const freshProgramGfield = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`)?.closest('.gfield');
+                    applyCaseGate(caseNum, cityGfield, freshProgramGfield, retryCount + 1);
+                }, RETRY_DELAY);
+                return;
+            } else {
+                console.error('[SPA CASE Gate] Program field not found after', MAX_RETRIES, 'retries');
+            }
+        }
+        
+        allGfields.forEach(gf => {
+            if (gf === cityGfield || gf === programGfield) {
+                showGfield(gf);
+            } else if (gf.classList.contains('spa-infobox-container')) {
+                showGfield(gf);
+            } else {
+                hideGfield(gf);
+            }
+        });
+        if (submitBtn) hideGfield(submitBtn);
+        pageBreaks.forEach(pb => hideGfield(pb));
+    }
+}
+
+function clearCaseGate() {
+    console.log('[SPA CASE Gate] Clearing all gates');
+    const allGfields = document.querySelectorAll('.gfield[data-spa-case-hidden="1"]');
+    allGfields.forEach(gf => {
+        gf.style.display = '';
+        gf.style.visibility = '';
+        delete gf.dataset.spaCaseHidden;
+    });
+    
+    const submitBtn = document.querySelector('.gform_footer, .gform_page_footer');
+    const pageBreaks = document.querySelectorAll('.gform_page_footer, .gf_step');
+    if (submitBtn && submitBtn.dataset.spaCaseHidden === '1') {
+        showGfield(submitBtn);
+    }
+    pageBreaks.forEach(pb => {
+        if (pb.dataset.spaCaseHidden === '1') {
+            showGfield(pb);
+        }
+    });
+}
+
+window.spaCaseProbe = function() {
+    if (!window.spaConfig || !spaConfig.fields) {
+        console.error('[SPA CASE Probe] spaConfig.fields not ready');
+        return;
+    }
+    
+    const cityEl = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
+    const programEl = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+    
+    const cityValue = cityEl?.value || '';
+    const programValue = programEl?.value || '';
+    
+    const citySelectedDOM = cityValue.trim() !== '';
+    const programSelectedDOM = programValue.trim() !== '';
+    
+    const caseNum = !citySelectedDOM ? 0 : (!programSelectedDOM ? 1 : 2);
+    
+    const visibleGfields = document.querySelectorAll('.gfield:not([style*="display: none"]):not([style*="display:none"])').length;
+    const commonVisible = document.querySelectorAll('.spa-section-common:not([style*="display: none"])').length;
+    const childVisible = document.querySelectorAll('.spa-section-child:not([style*="display: none"])').length;
+    const adultVisible = document.querySelectorAll('.spa-section-adult:not([style*="display: none"])').length;
+    
+    console.log('[SPA CASE Probe]', {
+        case: caseNum,
+        dom: { cityValue, programValue },
+        wizardData: { 
+            city: window.wizardData?.city_name, 
+            program: window.wizardData?.program_name,
+            program_type: window.wizardData?.program_type
+        },
+        visible: {
+            gfields: visibleGfields,
+            common: commonVisible,
+            child: childVisible,
+            adult: adultVisible
+        }
+    });
+};
+window.spaCaseProbe.__source = 'spa-infobox-orchestrator.js';
+
+
+/**
  * RIADENIE VIDITEĽNOSTI SEKCIÍ + POLÍ
  * Architektúra: CASE → BASE → SCOPE → DERIVED
  */
 window.updateSectionVisibility = function() {
     console.log('[SPA Section Control] ========== UPDATE START ==========');
-
-    // ⭐ GUARD: spaConfig.fields MUSÍ existovať
+    
+    if (window.SPA_DEBUG === true) {
+        console.trace('[SPA Section Control] Called from:');
+    }
+    
+    document.querySelectorAll('.spa-section-common, .spa-section-child, .spa-section-adult').forEach(sec => {
+        sec.style.display = 'none';
+        sec.style.visibility = 'hidden';
+    });
+    console.log('[SPA Section Control] Hard reset applied');
+    
     if (!window.spaConfig || !spaConfig.fields) {
         console.warn('[SPA Section Control] spaConfig.fields not ready – skipping');
         return;
     }
 
-    // ========== CASE PHASE ==========
-    const citySelected = !!(window.wizardData?.city_name && window.wizardData.city_name.trim() !== '');
-    const programSelected = !!(window.wizardData?.program_name && window.wizardData.program_name.trim() !== '');
-    const canShowProgramFlow = citySelected && programSelected; // CASE 2
-
-    // ========== SCOPE DETERMINATION (SINGLE SOURCE OF TRUTH) ==========
-    let programType = null;
-
-    // ✅ PRIMARY SOURCE: window.infoboxData.program.age_min (from AJAX)
-    if (window.infoboxData?.program?.age_min !== undefined) {
-        const ageMin = parseFloat(window.infoboxData.program.age_min);
+    // ========== CASE DETECTION (DOM-FIRST) ==========
+    const cityEl = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
+    const programEl = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+    
+    const cityValueDOM = cityEl?.value || '';
+    const programValueDOM = programEl?.value || '';
+    
+    const citySelected = cityValueDOM.trim() !== '' 
+        ? true 
+        : !!(window.wizardData?.city_name && window.wizardData.city_name.trim() !== '');
+    
+    const programSelected = programValueDOM.trim() !== '' 
+        ? true 
+        : !!(window.wizardData?.program_name && window.wizardData.program_name.trim() !== '');
+    
+    const caseNum = !citySelected ? 0 : (!programSelected ? 1 : 2);
+    
+    console.log('[SPA CASE Detection]', {
+        case: caseNum,
+        citySelected,
+        programSelected,
+        dom: { cityValue: cityValueDOM, programValue: programValueDOM },
+        wizardData: { 
+            city: window.wizardData?.city_name, 
+            program: window.wizardData?.program_name 
+        }
+    });
+    
+    // ========== CASE GATE APPLICATION ==========
+    const cityGfield = cityEl?.closest('.gfield');
+    const programGfield = programEl?.closest('.gfield');
+    
+    if (caseNum === 0 || caseNum === 1) {
+        applyCaseGate(caseNum, cityGfield, programGfield);
         
-        if (!isNaN(ageMin)) {
-            programType = ageMin < 18 ? 'child' : 'adult';
-            console.log('[SPA Orchestrator] Program type determined from infoboxData:', programType, '(age_min=' + ageMin + ')');
-        }
-    }
-    // FALLBACK: DOM select (only if infoboxData not available yet)
-    else if (canShowProgramFlow) {
-        const programField = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
-        if (programField && programField.value) {
-            const opt = programField.options[programField.selectedIndex];
-            const ageMin = parseInt(opt?.getAttribute('data-age-min'), 10);
-            
-            if (!isNaN(ageMin)) {
-                programType = ageMin < 18 ? 'child' : 'adult';
-                console.log('[SPA Orchestrator] Program type determined from DOM (fallback):', programType, '(age_min=' + ageMin + ')');
+        console.log('[SPA Section Control] CASE', caseNum, '– early return (gate applied)');
+        
+        // FINAL LOG
+        const gfieldsVisible = document.querySelectorAll('.gfield:not([style*="display: none"]):not([style*="display:none"])').length;
+        console.log('[SPA CASE FINAL]', {
+            case: caseNum,
+            citySelected,
+            programSelected,
+            programType: null,
+            dom: { cityValue: cityValueDOM, programValue: programValueDOM },
+            visibleCounts: {
+                gfieldsVisible: gfieldsVisible,
+                commonSectionsVisible: 0,
+                childSectionsVisible: 0,
+                adultSectionsVisible: 0
             }
-        }
+        });
+        
+        console.log('[SPA Section Control] ========== UPDATE END ==========');
+        return;
     }
-
-    // If program not selected or age_min missing → scope is NULL
-    if (!programType) {
-        console.log('[SPA Orchestrator] Program type is NULL (no valid program selected)');
-    }
-
+    
+    // ========== CASE2: Clear gate + apply scope ==========
+    clearCaseGate();
+    
+    const programType = window.wizardData?.program_type ?? null;
+    
+    console.log('[SPA Section Control] CASE2 – programType:', programType);
+    
     window.spaCurrentProgramType = programType;
-
-    // RESOLVED TYPE → spa_resolved_type
+    
     const resolvedTypeField = document.querySelector(`input[name="${spaConfig.fields.spa_resolved_type}"]`);
     if (resolvedTypeField) resolvedTypeField.value = programType || '';
-
-    // ✅ SCOPE → STATE (single source of truth)
-    if (typeof window.spaSetProgramType === 'function') {
-        window.spaSetProgramType(programType);
-    }
-
-    console.log('[SPA Section Control] CASE determined:', canShowProgramFlow ? '2' : (citySelected ? '1' : '0'), 'Type:', programType);
-
-    // Scope is now determined - no form field writes needed
-
-    // spa_frequency - BASE field for CASE 2 (always visible when program selected)
+    
     const frequencyField = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
     if (frequencyField) {
         const wrap = frequencyField.closest('.gfield');
-        if (wrap) {
-            wrap.style.display = canShowProgramFlow ? '' : 'none';
+        if (wrap) wrap.style.display = '';
+    }
+    
+    // ========== SECTIONS VISIBILITY (scope MUSÍ byť určený) ==========
+    const canShowSections = (programType !== null);
+    
+    const sectionWrappersExist = {
+        common: document.querySelectorAll('.spa-section-common').length > 0,
+        child: document.querySelectorAll('.spa-section-child').length > 0,
+        adult: document.querySelectorAll('.spa-section-adult').length > 0
+    };
+    
+    const hasScopeWrappers = sectionWrappersExist.child || sectionWrappersExist.adult;
+    
+    if (!hasScopeWrappers && canShowSections) {
+        console.warn('[SPA Section Control] ⚠️ SECTION WRAPPERS MISSING – using FIELD MODE');
+    }
+    
+    if (canShowSections) {
+        if (sectionWrappersExist.common) {
+            document.querySelectorAll('.spa-section-common').forEach(sec => {
+                sec.style.display = '';
+                sec.style.visibility = 'visible';
+            });
+        }
+
+        if (programType === 'child' && sectionWrappersExist.child) {
+            document.querySelectorAll('.spa-section-child').forEach(sec => {
+                sec.style.display = '';
+                sec.style.visibility = 'visible';
+            });
+            console.log('[SPA Section Control] ✅ CHILD sections shown');
+        } else if (programType === 'adult' && sectionWrappersExist.adult) {
+            document.querySelectorAll('.spa-section-adult').forEach(sec => {
+                sec.style.display = '';
+                sec.style.visibility = 'visible';
+            });
+            console.log('[SPA Section Control] ✅ ADULT sections shown');
+        } else if (!hasScopeWrappers) {
+            console.log('[SPA Section Control] Using FIELD MODE (no section wrappers)');
         }
     }
 
-    // ========== SECTIONS VISIBILITY (CASE 2) ==========
-    document.querySelectorAll('.spa-section-common').forEach(sec => {
-        sec.style.display = canShowProgramFlow ? '' : 'none';
-    });
-
-    document.querySelectorAll('.spa-section-child').forEach(sec => {
-        sec.style.display = (canShowProgramFlow && programType === 'child') ? '' : 'none';
-    });
-
-    document.querySelectorAll('.spa-section-adult').forEach(sec => {
-        sec.style.display = (canShowProgramFlow && programType === 'adult') ? '' : 'none';
-    });
-
     // ========== SCOPE FIELDS (child_only / adult_only) ==========
-    if (canShowProgramFlow && programType) {
+    if (programType) {
         [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
-            const scope = window.getSpaFieldScope(fieldName);
+            const fieldScope = window.getSpaFieldScope(fieldName);
             let visible = false;
 
-            if (scope === 'child') visible = (programType === 'child');
-            if (scope === 'adult') visible = (programType === 'adult');
+            if (fieldScope === 'child') visible = (programType === 'child');
+            if (fieldScope === 'adult') visible = (programType === 'adult');
 
             window.spaSetFieldWrapperVisibility(fieldName, visible);
         });
     } else {
-        // CASE 0 / CASE 1 - hide all SCOPE fields
         [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
             window.spaSetFieldWrapperVisibility(fieldName, false);
         });
     }
     
     // ========== DERIVED FIELDS ==========
-    const birthNumberField = document.querySelector(
-        `input[name="${spaConfig.fields.spa_member_birthnumber}"]`
-    );
-
+    const birthNumberField = document.querySelector(`input[name="${spaConfig.fields.spa_member_birthnumber}"]`);
     if (birthNumberField) {
         if (programType === 'child') {
             birthNumberField.setAttribute('data-is-child', 'true');
         } else if (programType === 'adult') {
             birthNumberField.setAttribute('data-is-child', 'false');
         } else {
-            // No program selected → remove attribute
             birthNumberField.removeAttribute('data-is-child');
         }
     }
 
-
+    // ========== FINAL LOG ==========
+    const gfieldsVisible = document.querySelectorAll('.gfield:not([style*="display: none"]):not([style*="display:none"])').length;
+    const commonVisible = document.querySelectorAll('.spa-section-common:not([style*="display: none"])').length;
+    const childVisible = document.querySelectorAll('.spa-section-child:not([style*="display: none"])').length;
+    const adultVisible = document.querySelectorAll('.spa-section-adult:not([style*="display: none"])').length;
+    
+    console.log('[SPA CASE FINAL]', {
+        case: caseNum,
+        citySelected,
+        programSelected,
+        programType,
+        dom: { cityValue: cityValueDOM, programValue: programValueDOM },
+        visibleCounts: {
+            gfieldsVisible: gfieldsVisible,
+            commonSectionsVisible: commonVisible,
+            childSectionsVisible: childVisible,
+            adultSectionsVisible: adultVisible
+        }
+    });
+    
     console.log('[SPA Section Control] ========== UPDATE END ==========');
 };
+
+function showGfield(gf) {
+    if (!gf) return;
+    gf.style.display = '';
+    gf.style.visibility = '';
+    delete gf.dataset.spaCaseHidden;
+}
+
+function hideGfield(gf) {
+    if (!gf) return;
+    gf.style.display = 'none';
+    gf.style.visibility = 'hidden';
+    gf.dataset.spaCaseHidden = '1';
+}
+
+function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
+    const MAX_RETRIES = 10;
+    const RETRY_DELAY = 80;
+    
+    console.log('[SPA CASE Gate] Applying CASE', caseNum, 'retry:', retryCount);
+    
+    const allGfields = document.querySelectorAll('.gfield');
+    const submitBtn = document.querySelector('.gform_footer, .gform_page_footer');
+    const pageBreaks = document.querySelectorAll('.gform_page_footer, .gf_step');
+    
+    if (caseNum === 0) {
+        allGfields.forEach(gf => {
+            if (gf === cityGfield) {
+                showGfield(gf);
+            } else if (gf.classList.contains('spa-infobox-container')) {
+                showGfield(gf);
+            } else {
+                hideGfield(gf);
+            }
+        });
+        if (submitBtn) hideGfield(submitBtn);
+        pageBreaks.forEach(pb => hideGfield(pb));
+        
+    } else if (caseNum === 1) {
+        if (!programGfield || programGfield.style.display === 'none') {
+            if (retryCount < MAX_RETRIES) {
+                console.warn('[SPA CASE Gate] Program field not ready, retrying...', retryCount + 1);
+                setTimeout(() => {
+                    const freshProgramGfield = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`)?.closest('.gfield');
+                    applyCaseGate(caseNum, cityGfield, freshProgramGfield, retryCount + 1);
+                }, RETRY_DELAY);
+                return;
+            } else {
+                console.error('[SPA CASE Gate] Program field not found after', MAX_RETRIES, 'retries');
+            }
+        }
+        
+        allGfields.forEach(gf => {
+            if (gf === cityGfield || gf === programGfield) {
+                showGfield(gf);
+            } else if (gf.classList.contains('spa-infobox-container')) {
+                showGfield(gf);
+            } else {
+                hideGfield(gf);
+            }
+        });
+        if (submitBtn) hideGfield(submitBtn);
+        pageBreaks.forEach(pb => hideGfield(pb));
+    }
+}
+
+function clearCaseGate() {
+    console.log('[SPA CASE Gate] Clearing all gates');
+    const allGfields = document.querySelectorAll('.gfield[data-spa-case-hidden="1"]');
+    allGfields.forEach(gf => {
+        gf.style.display = '';
+        gf.style.visibility = '';
+        delete gf.dataset.spaCaseHidden;
+    });
+    
+    const submitBtn = document.querySelector('.gform_footer, .gform_page_footer');
+    const pageBreaks = document.querySelectorAll('.gform_page_footer, .gf_step');
+    if (submitBtn && submitBtn.dataset.spaCaseHidden === '1') {
+        showGfield(submitBtn);
+    }
+    pageBreaks.forEach(pb => {
+        if (pb.dataset.spaCaseHidden === '1') {
+            showGfield(pb);
+        }
+    });
+}
+
 
 /**
  * INIT + EVENT BINDING
  */
 window.spaInitSectionOrchestrator = function() {
-    // ⭐ GUARD: spaConfig.fields MUSÍ existovať
+    console.log('[SPA SRC] spaInitSectionOrchestrator called');
+    
+    // GUARD: Already initialized
+    if (window.__spaOrchestratorBound) {
+        console.log('[SPA Orchestrator] Already initialized at:', new Date(window.__spaOrchestratorBoundAt).toISOString(), '- skipping');
+        return;
+    }
+    
+    // ⚠️ GUARD: spaConfig.fields MUSÍ existovať
     if (!window.spaConfig || !spaConfig.fields) {
         console.warn('[SPA Orchestrator] spaConfig.fields not ready – skipping');
         return;
     }
 
     window.spaVisibilityControlled = true;
+    window.__spaOrchestratorBound = true;
+    window.__spaOrchestratorBoundAt = Date.now();
 
     if (typeof window.hideAllSectionsOnInit === 'function') window.hideAllSectionsOnInit();
     if (typeof window.updateSectionVisibility === 'function') window.updateSectionVisibility();
@@ -259,10 +738,10 @@ window.spaInitSectionOrchestrator = function() {
         el.addEventListener('input', handler);
     });
 
-    regTypeEls.forEach(el => {
+    /* regTypeEls.forEach(el => {
         el.addEventListener('change', handler);
         el.addEventListener('input', handler);
-    });
+    }); */
 
     console.log('[SPA Orchestrator] Initialized and listening');
 };
@@ -276,3 +755,10 @@ if (window.jQuery) {
         setTimeout(() => window.spaInitSectionOrchestrator(), 50);
     });
 }
+
+// ========== SOURCE TAGS (must be AFTER all definitions) ==========
+window.updateSectionVisibility.__source = 'spa-infobox-orchestrator.js';
+window.spaInitSectionOrchestrator.__source = 'spa-infobox-orchestrator.js';
+window.hideAllSectionsOnInit.__source = 'spa-infobox-orchestrator.js';
+window.spaDebugDump.__source = 'spa-infobox-orchestrator.js';
+console.log('[SPA SRC] All orchestrator functions tagged with source');

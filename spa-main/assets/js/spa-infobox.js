@@ -52,15 +52,23 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
 
         // === SPA SCOPE RESOLUTION (SINGLE SOURCE OF TRUTH) ===
     const hasProgramSelected = !!(programData && window.wizardData?.program_name);
+    const citySelected = !!(window.wizardData?.city_name);
     const ageMin = parseFloat(programData?.age_min);
     let resolvedProgramType = null;
 
-    if (hasProgramSelected) {
+    if (hasProgramSelected && citySelected) {
+        // DEFAULT = ADULT (ak NIE je explicitne CHILD)
+        // CHILD iba ak: validný age_min A age_min < 18
         if (!isNaN(ageMin) && ageMin < 18) {
             resolvedProgramType = 'child';
         } else {
+            // Všetky ostatné prípady = ADULT (vrátane null/undefined/NaN age_min)
+            // Explicitný default pre adult programy
             resolvedProgramType = 'adult';
         }
+    } else {
+        // Ak nie je program/mesto vybrané -> null
+        resolvedProgramType = null;
     }
 
     console.log('[SPA SCOPE RESOLUTION]', {
@@ -69,12 +77,23 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
         resolvedType: resolvedProgramType
     });
 
-    window.spaSetProgramType(resolvedProgramType);
-
-    if (typeof window.updateSectionVisibility === 'function') {
-        window.updateSectionVisibility();
+    // === SINGLE SOURCE OF TRUTH ===
+    // Nastav scope pomocou settera (setter má vlastný auto-trigger s retry)
+    if (typeof window.spaSetProgramType === 'function') {
+        console.log('[SPA SCOPE] Calling spaSetProgramType with:', resolvedProgramType);
+        window.spaSetProgramType(resolvedProgramType);
+        // REMOVED: Direct updateSectionVisibility call - setter handles it with debounce/retry
     } else {
-        console.error('[SPA SCOPE] updateSectionVisibility() NOT FOUND');
+        // Fallback ak setter neexistuje (nemalo by sa stať)
+        console.error('[SPA SCOPE] spaSetProgramType NOT FOUND - using fallback');
+        window.wizardData = window.wizardData || {};
+        window.wizardData.program_type = resolvedProgramType;
+        window.spaCurrentProgramType = resolvedProgramType;
+        
+        // Fallback: direct call (no retry logic)
+        if (typeof window.updateSectionVisibility === 'function') {
+            window.updateSectionVisibility();
+        }
     }
     // === KONIEC SCOPE RESOLUTION ===
     
