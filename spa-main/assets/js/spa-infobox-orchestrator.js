@@ -1,3 +1,4 @@
+
 /**
  * SPA Infobox Wizard – sekcie
  * CENTRALIZOVANÉ RIADENIE VIDITEĽNOSTI
@@ -36,8 +37,6 @@
         console.warn('[SPA Registry] spaFieldsRegistry not found – using runtime fields only');
     }
 })();
-
-window.spaCurrentProgramType = null;
 
 /**
  * SPA FIELD SCOPE – JEDINÝ ZDROJ PRAVDY
