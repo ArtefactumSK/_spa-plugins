@@ -132,7 +132,9 @@ window.hideAllSectionsOnInit = function() {
         const el = document.querySelector(`[name="${fieldName}"]`);
         if (el) {
             const wrap = el.closest('.gfield');
-            if (wrap) wrap.style.display = 'none';
+            if (wrap && !wrap.classList.contains('spa-infobox-container')) {
+                wrap.style.display = 'none';
+            }
         }
     });
 
@@ -507,11 +509,13 @@ function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
     // Získaj program element pre RESET
     const programEl = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
     
-    // Helper: Je to infobox?
+    // Helper: Je to infobox? (NIKDY neskrývať)
     const isInfobox = (gf) => {
         return gf.classList.contains('spa-infobox-container') || 
                gf.querySelector('.spa-infobox-wrapper') !== null ||
-               gf.querySelector('.spa-infobox-content') !== null;
+               gf.querySelector('.spa-infobox-content') !== null ||
+               gf.id === 'gfield_spa_infobox' ||
+               (gf.querySelector && gf.querySelector('[id*="infobox"]') !== null);
     };
     
     if (caseNum === 0) {
@@ -521,18 +525,26 @@ function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
             programEl.selectedIndex = 0;
         }
         
+        // 1. Skry VŠETKO okrem infoboxov
         allGfields.forEach(gf => {
-            if (gf === cityGfield) {
-                showGfield(gf);
-            } else if (isInfobox(gf)) {
-                showGfield(gf);
-                console.log('[SPA CASE Gate] Infobox protected (CASE 0)');
-            } else {
+            if (!isInfobox(gf)) {
                 hideGfield(gf);
             }
         });
         if (submitBtn) hideGfield(submitBtn);
         pageBreaks.forEach(pb => hideGfield(pb));
+        
+        // 2. Explicitne zobraz city + infobox
+        if (cityGfield) showGfield(cityGfield);
+        
+        // Garantuj viditeľnosť všetkých infoboxov
+        document.querySelectorAll('.gfield.spa-infobox-container, .spa-infobox-wrapper, [id*="infobox"]').forEach(ib => {
+            const gf = ib.classList.contains('gfield') ? ib : ib.closest('.gfield');
+            if (gf) {
+                showGfield(gf);
+                console.log('[SPA CASE Gate] Infobox force-shown (CASE 0)');
+            }
+        });
         
     } else if (caseNum === 1) {
         if (!programGfield || programGfield.style.display === 'none') {
