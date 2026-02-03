@@ -449,6 +449,31 @@ window.watchFormChanges = function() {
                     frequencySelector.innerHTML = '';
                 }
                 
+                // ========== IMMEDIATE DOM CLEANUP (SYNCHRONOUS) ==========
+                const container = document.getElementById('spa-infobox-container');
+                if (container) {
+                    const programNodes = container.querySelectorAll('.spa-infobox-program');
+                    const beforeCount = programNodes.length;
+                    
+                    console.log('[SPA INFOBOX AUDIT] Program reset detected - cleaning DOM', {
+                        currentState: window.currentState,
+                        programNodesFound: beforeCount
+                    });
+                    
+                    programNodes.forEach(node => {
+                        console.log('[SPA INFOBOX AUDIT] Removing program node (sync cleanup)');
+                        node.remove();
+                    });
+                    
+                    const afterCount = container.querySelectorAll('.spa-infobox-program').length;
+                    console.log('[SPA INFOBOX AUDIT] Sync cleanup complete', {
+                        removedNodes: beforeCount,
+                        remainingNodes: afterCount,
+                        success: afterCount === 0 ? '✅' : '❌'
+                    });
+                }
+                // ========== END IMMEDIATE CLEANUP ==========
+                
                 window.filterProgramsByCity(selectedCityName);
             }
             
@@ -482,6 +507,33 @@ window.loadInfoboxContent = function(state) {
     }
     
     console.log('[SPA Infobox] Loading state:', state, window.wizardData);
+    
+    // ========== IMMEDIATE CLEANUP GATE (CASE0/1) ==========
+    const container = document.getElementById('spa-infobox-container');
+    const programNodesCount = container.querySelectorAll('.spa-infobox-program').length;
+    
+    console.log('[SPA INFOBOX AUDIT] Pre-cleanup state:', {
+        state: state,
+        currentState: window.currentState,
+        program_name: window.wizardData.program_name,
+        programNodesInDOM: programNodesCount
+    });
+    
+    if (state < 2 || !window.wizardData.program_name) {
+        const programNodes = container.querySelectorAll('.spa-infobox-program');
+        programNodes.forEach(node => {
+            console.log('[SPA INFOBOX AUDIT] Removing stale program node (CASE' + state + ')');
+            node.remove();
+        });
+        
+        const postCleanupCount = container.querySelectorAll('.spa-infobox-program').length;
+        console.log('[SPA INFOBOX AUDIT] Post-cleanup:', {
+            removedNodes: programNodesCount,
+            remainingNodes: postCleanupCount
+        });
+    }
+    // ========== END CLEANUP GATE ==========
+    
     window.showLoader();
     
     const formData = new FormData();

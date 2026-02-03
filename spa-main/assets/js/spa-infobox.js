@@ -125,7 +125,24 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
         window.hideLoader();
         return;
     }
-
+    // ===== HARD DOM CLEANUP FOR STATE < 2 =====
+    if (!window.wizardData?.program_name) {
+        const existingPrograms = container.querySelectorAll('.spa-infobox-program');
+        if (existingPrograms.length > 0) {
+            console.warn('[SPA INFOBOX AUDIT] Removing ' + existingPrograms.length + ' stale program DOM (no program selected)');
+            existingPrograms.forEach(p => p.remove());
+        }
+    }
+    
+    // ===== DEFENSIVE CHECK (should never happen after cleanup gate) =====
+    const finalProgramCount = container.querySelectorAll('.spa-infobox-program').length;
+    if (finalProgramCount > 0 && (window.currentState < 2 || !window.wizardData?.program_name)) {
+        console.error('[SPA INFOBOX AUDIT] CRITICAL: Program DOM still present in CASE' + window.currentState, {
+            program_name: window.wizardData?.program_name,
+            programNodesCount: finalProgramCount
+        });
+    }
+    
     // Vyčisti kontajner - OKREM loadera
     const existingLoader = document.getElementById('spa-infobox-loader');
     Array.from(container.children).forEach(child => {
@@ -135,21 +152,40 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
     });
 
    /* ==================================================
-    1. OBSAH – WP stránka (SPA Infobox Wizard)
+    1. OBSAH – WP stránka (SPA Infobox Wizard) CASE 0 / CASE 1 – DEFAULT + MESTO
     ================================================== */
-    if (!window.wizardData.program_name) {
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'spa-infobox-content';
-        contentDiv.innerHTML = content;
-        container.appendChild(contentDiv);
-        
-        // STATE 1: Zobraz mesto v SUMMARY
-        if (window.currentState === 1 && window.wizardData.city_name) {
+
+    if (window.currentState === 0 || window.currentState === 1) {
+
+        // ⬅️ HARD RESET programu (musí tu byť)
+        const oldProgram = container.querySelector('.spa-infobox-program');
+        if (oldProgram) {
+            oldProgram.remove();
+        }
+
+        // ⬅️ WP CONTENT – cache alebo fallback
+        let wpContent = container.querySelector('.spa-infobox-content');
+
+        if (!wpContent) {
+            wpContent = document.createElement('div');
+            wpContent.className = 'spa-infobox-content';
+            wpContent.innerHTML = data?.content || window.__SPA_WP_INFOBOX_CONTENT || '';
+            container.appendChild(wpContent);
+        }
+
+        // ⬅️ CACHE pre ďalšie návraty
+        if (data?.content && !window.__SPA_WP_INFOBOX_CONTENT) {
+            window.__SPA_WP_INFOBOX_CONTENT = data.content;
+        }
+
+        // ⬅️ CASE 1 – MESTO SUMMARY
+        if (window.currentState === 1 && window.wizardData?.city_name) {
+
             const summaryDiv = document.createElement('div');
             summaryDiv.className = 'spa-infobox-summary';
-            
-            const locationIcon = icons && icons.location ? icons.location : '';
-            
+
+            const locationIcon = icons?.location || '';
+
             summaryDiv.innerHTML = `
                 <hr>
                 <ul class="spa-summary-list">
@@ -159,13 +195,14 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
                     </li>
                 </ul>
             `;
-            
+
             container.appendChild(summaryDiv);
         }
-        
+
         window.hideLoader();
-        return; // Skončiť render pre state 0/1
+        return;
     }
+
     
     /* ==================================================
     1.3 ÚDAJE PROGRAMU (ikona, názov, obsah)
@@ -194,11 +231,7 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
         if (programData.content) {
             programMainHtml += programData.content;
         }
-        // ÚROVEŇ (za rozvrh)
-        /* if (programData.level_html) {
-            programMainHtml += programData.level_html;
-        }
-       */
+        
         // TRÉNINGOVÉ TERMÍNY
         if (programData.schedule) {
             programMainHtml += `
@@ -303,7 +336,7 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
     /* ==================================================
     1.5 DYNAMICKÝ SUMMARY (mesto, vek, kapacita)
     ================================================== */
-    if (window.wizardData.city_name || window.wizardData.program_age) {
+    if (window.currentState === 2 && window.wizardData.program_name && programData) {
 
         let summaryHtml = '<hr><ul class="spa-summary-list">';
 
