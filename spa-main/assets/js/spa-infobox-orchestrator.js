@@ -349,9 +349,14 @@ window.updateSectionVisibility = function() {
     const programGfield = programEl?.closest('.gfield');
     
     if (caseNum === 0 || caseNum === 1) {
+        // RESET: Scope fields (child_only + adult_only) PRED applyCaseGate
+        [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
+            window.spaSetFieldWrapperVisibility(fieldName, false);
+        });
+        
         applyCaseGate(caseNum, cityGfield, programGfield);
         
-        console.log('[SPA Section Control] CASE', caseNum, '– early return (gate applied)');
+        console.log('[SPA Section Control] CASE', caseNum, '— early return (gate applied)');
         
         // FINAL LOG
         const gfieldsVisible = document.querySelectorAll('.gfield:not([style*="display: none"]):not([style*="display:none"])').length;
@@ -519,10 +524,35 @@ function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
     };
     
     if (caseNum === 0) {
-        // RESET: Vyčisti program select
+        // RESET: Program select
         if (programEl) {
             programEl.value = '';
             programEl.selectedIndex = 0;
+        }
+        
+        // RESET: Frequency field
+        const freqEl = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
+        if (freqEl) {
+            if (freqEl.type === 'radio' || freqEl.type === 'checkbox') {
+                document.querySelectorAll(`[name="${spaConfig.fields.spa_frequency}"]`).forEach(r => r.checked = false);
+            } else {
+                freqEl.value = '';
+                freqEl.selectedIndex = 0;
+            }
+        }
+        
+        // RESET: Resolved type hidden field
+        const resolvedTypeEl = document.querySelector(`input[name="${spaConfig.fields.spa_resolved_type}"]`);
+        if (resolvedTypeEl) resolvedTypeEl.value = '';
+        
+        // RESET: Internal state
+        window.spaCurrentProgramType = null;
+        if (window.wizardData) {
+            window.wizardData.program_name = '';
+            window.wizardData.program_type = null;
+        }
+        if (window.infoboxData) {
+            window.infoboxData.program = null;
         }
         
         // 1. Skry VŠETKO okrem infoboxov
