@@ -349,10 +349,15 @@ window.updateSectionVisibility = function() {
     const programGfield = programEl?.closest('.gfield');
     
     if (caseNum === 0 || caseNum === 1) {
-        // RESET: Scope fields (child_only + adult_only) PRED applyCaseGate
-        [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
-            window.spaSetFieldWrapperVisibility(fieldName, false);
-        });
+        // RESET: Internal state PRED applyCaseGate
+        window.spaCurrentProgramType = null;
+        if (window.wizardData) {
+            window.wizardData.program_name = '';
+            window.wizardData.program_type = null;
+        }
+        if (window.infoboxData) {
+            window.infoboxData.program = null;
+        }
         
         applyCaseGate(caseNum, cityGfield, programGfield);
         
@@ -545,22 +550,36 @@ function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
         const resolvedTypeEl = document.querySelector(`input[name="${spaConfig.fields.spa_resolved_type}"]`);
         if (resolvedTypeEl) resolvedTypeEl.value = '';
         
-        // RESET: Internal state
-        window.spaCurrentProgramType = null;
-        if (window.wizardData) {
-            window.wizardData.program_name = '';
-            window.wizardData.program_type = null;
-        }
-        if (window.infoboxData) {
-            window.infoboxData.program = null;
+        // RESET: Scope fields (child_only + adult_only) - vyčisti hodnoty
+        if (window.spaFieldScopes) {
+            [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
+                const elements = document.querySelectorAll(`[name="${fieldName}"]`);
+                elements.forEach(el => {
+                    if (el.type === 'radio' || el.type === 'checkbox') {
+                        el.checked = false;
+                    } else {
+                        el.value = '';
+                        if (el.tagName === 'SELECT') el.selectedIndex = 0;
+                    }
+                });
+            });
         }
         
-        // 1. Skry VŠETKO okrem infoboxov
+        // 1. Skry VŠETKO okrem infoboxov + DISABLE GF conditional logic
         allGfields.forEach(gf => {
             if (!isInfobox(gf)) {
                 hideGfield(gf);
+                
+                // DISABLE Gravity Forms conditional logic pre toto pole
+                const inputs = gf.querySelectorAll('input, select, textarea');
+                inputs.forEach(input => {
+                    if (input.hasAttribute('data-conditional-logic')) {
+                        input.setAttribute('data-conditional-logic-disabled', '1');
+                    }
+                });
             }
         });
+
         if (submitBtn) hideGfield(submitBtn);
         pageBreaks.forEach(pb => hideGfield(pb));
         
@@ -575,6 +594,51 @@ function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
                 console.log('[SPA CASE Gate] Infobox force-shown (CASE 0)');
             }
         });
+        
+        // 3. RETRY: Stabilizuj stav po GF render (race condition guard)
+        const stabilizeCase0 = (attempt = 1) => {
+            if (attempt > 3) return;
+            
+            setTimeout(() => {
+                const currentCityValue = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`)?.value || '';
+                const currentProgramValue = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`)?.value || '';
+                
+                // Verify still CASE 0
+                if (currentCityValue.trim() === '' && currentProgramValue.trim() === '') {
+                    console.log('[SPA CASE Gate] Retry stabilization CASE 0, attempt:', attempt);
+                    
+                    // Force-hide scope fields
+                    if (window.spaFieldScopes) {
+                        [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
+                            const elements = document.querySelectorAll(`[name="${fieldName}"]`);
+                            elements.forEach(el => {
+                                const wrap = el.closest('.gfield');
+                                if (wrap && wrap.style.display !== 'none') {
+                                    wrap.style.display = 'none';
+                                    console.log('[SPA CASE Gate] Force-hidden scope field:', fieldName);
+                                }
+                            });
+                        });
+                    }
+                    
+                    document.querySelectorAll('.gfield').forEach(gf => {
+                        if (!isInfobox(gf) && gf !== cityGfield) {
+                            if (gf.style.display !== 'none') {
+                                hideGfield(gf);
+                                console.log('[SPA CASE Gate] Re-hidden field after GF render');
+                            }
+                        }
+                    });
+                    
+                    if (cityGfield) showGfield(cityGfield);
+                    document.querySelectorAll('.gfield.spa-infobox-container').forEach(ib => showGfield(ib));
+                    
+                    stabilizeCase0(attempt + 1);
+                }
+            }, 50);
+        };
+        
+        stabilizeCase0();
         
     } else if (caseNum === 1) {
         if (!programGfield || programGfield.style.display === 'none') {
@@ -712,3 +776,94 @@ window.spaInitSectionOrchestrator.__source = 'spa-infobox-orchestrator.js';
 window.hideAllSectionsOnInit.__source = 'spa-infobox-orchestrator.js';
 window.spaDebugDump.__source = 'spa-infobox-orchestrator.js';
 console.log('[SPA SRC] All orchestrator functions tagged with source');
+
+// ========== MUTATION OBSERVER - NUCLEAR OPTION ==========
+/**
+ * Force-hide scope fields if GF conditional logic tries to show them in CASE 0/1
+ */
+(function() {
+    let observerActive = false;
+    
+    const forceScopeFieldsHidden = () => {
+        // Only run in CASE 0 or CASE 1
+        const cityEl = document.querySelector(`[name="${spaConfig?.fields?.spa_city}"]`);
+        const programEl = document.querySelector(`[name="${spaConfig?.fields?.spa_program}"]`);
+        
+        if (!cityEl || !window.spaFieldScopes) return;
+        
+        const cityValue = cityEl.value || '';
+        const programValue = programEl?.value || '';
+        
+        const caseNum = !cityValue.trim() ? 0 : (!programValue.trim() ? 1 : 2);
+        
+        // Only enforce in CASE 0/1
+        if (caseNum === 2) return;
+        
+        [...window.spaFieldScopes.child_only, ...window.spaFieldScopes.adult_only].forEach(fieldName => {
+            const elements = document.querySelectorAll(`[name="${fieldName}"]`);
+            elements.forEach(el => {
+                const wrap = el.closest('.gfield');
+                if (wrap && wrap.style.display !== 'none') {
+                    wrap.style.display = 'none';
+                    wrap.style.visibility = 'hidden';
+                    console.log('[SPA Observer] Force-hidden:', fieldName);
+                }
+            });
+        });
+    };
+    
+    const startObserver = () => {
+        if (observerActive) return;
+        
+        const targetNode = document.querySelector('.gform_body') || document.body;
+        
+        const observer = new MutationObserver((mutations) => {
+            let needsCheck = false;
+            
+            for (const mutation of mutations) {
+                // Check if any .gfield was modified
+                if (mutation.type === 'attributes' && mutation.target.classList?.contains('gfield')) {
+                    needsCheck = true;
+                    break;
+                }
+                
+                // Check if any .gfield was added/removed
+                if (mutation.type === 'childList') {
+                    const hasGfield = Array.from(mutation.addedNodes).some(node => 
+                        node.classList?.contains('gfield') || node.querySelector?.('.gfield')
+                    );
+                    if (hasGfield) {
+                        needsCheck = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (needsCheck) {
+                forceScopeFieldsHidden();
+            }
+        });
+        
+        observer.observe(targetNode, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['style', 'class']
+        });
+        
+        observerActive = true;
+        console.log('[SPA Observer] Started watching DOM for GF conditional logic overrides');
+    };
+    
+    // Start observer after DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startObserver);
+    } else {
+        startObserver();
+    }
+    
+    // Also start on GF render
+    if (window.jQuery) {
+        jQuery(document).on('gform_post_render', startObserver);
+    }
+})();
