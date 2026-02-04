@@ -41,10 +41,45 @@ window.wizardData = {
     program_type: null  // 'child' | 'adult' | null
 };
 
+/**
+ * SETTER: Centralizovaný zápis window.currentState (SINGLE SOURCE OF TRUTH)
+ */
+window.setSpaState = function(newState, reason) {
+    const oldState = window.currentState;
+    
+    if (newState !== oldState) {
+        window.currentState = newState;
+        console.log('[SPA State] Transition:', {
+            from: oldState,
+            to: newState,
+            reason: reason || 'unknown',
+            wizardData: {
+                city: window.wizardData?.city_name,
+                program: window.wizardData?.program_name
+            }
+        });
+    }
+};
+
 window.spaErrorState = {
     invalidCity: false,
     invalidProgram: false,
     errorType: null  // 'state' | 'validation'
+};
+
+// V spa-infobox-state.js (HNEĎ PO INIT BLOKOV)
+window.setSpaState = function(newState, reason) {
+    const oldState = window.currentState;
+    
+    if (newState !== oldState) {
+        window.currentState = newState;
+        console.log('[SPA State] Transition:', {
+            from: oldState,
+            to: newState,
+            reason: reason || 'unknown',
+            callStack: new Error().stack.split('\n').slice(2, 4).join('\n')
+        });
+    }
 };
 
 /**
@@ -188,7 +223,7 @@ window.updateInfoboxState = function() {
         wizardData: window.wizardData
     });
     
-    window.currentState = newState;
+    window.setSpaState(newState, 'updateInfoboxState');
     window.updateErrorBox();
     window.loadInfoboxContent(window.currentState);
 };
@@ -246,7 +281,7 @@ window.restoreWizardData = function() {
                 if (selectedOption && selectedOption.value) {
                     window.wizardData.city_name = selectedOption.text;
                     window.spaFormState.city = true;
-                    window.currentState = 1;
+                    window.setSpaState(1, 'restoreWizardData:city');
                     
                     console.log('[SPA Restore] ✅ City RESTORED:', window.wizardData.city_name);
                 } else {
@@ -273,7 +308,7 @@ window.restoreWizardData = function() {
                         }
                     }
                     
-                    window.currentState = 2;
+                    window.setSpaState(2, 'restoreWizardData:program');
                     
                     console.log('[SPA Restore] ✅ Program RESTORED:', window.wizardData.program_name);
                 } else {
@@ -335,7 +370,7 @@ window.watchFormChanges = function() {
                         window.wizardData.city_slug = spa_remove_diacritics(selectedCityName);
                     }
                     window.spaFormState.city = true;
-                    window.currentState = 1;
+                    window.setSpaState(1, 'city:load-selected');
                 }
                 
                 if (selectedCityName && selectedCityName.trim() !== '') {
@@ -374,7 +409,7 @@ window.watchFormChanges = function() {
                 window.wizardData.city_name = selectedCityName;
                 window.wizardData.city_slug = spa_remove_diacritics(selectedCityName);
                 window.spaFormState.city = true;
-                window.currentState = 1;
+                window.setSpaState(1, 'city:user-select');
                 window.spaErrorState.invalidCity = false;
                 
                 if (window.spaErrorState.errorType === 'state') {
@@ -384,7 +419,7 @@ window.watchFormChanges = function() {
             } else {
                 window.wizardData.city_name = '';
                 window.spaFormState.city = false;
-                window.currentState = 0;
+                window.setSpaState(0, 'city:clear');
             }
             
             window.loadInfoboxContent(window.currentState);
@@ -433,7 +468,7 @@ window.watchFormChanges = function() {
                 }
                 
                 window.spaFormState.program = true;
-                window.currentState = 2;
+                window.setSpaState(2, 'program:user-select');
             } else {
                 // ⭐ RESET PROGRAMU
                 window.wizardData.program_name = '';
@@ -442,37 +477,12 @@ window.watchFormChanges = function() {
                 window.wizardData.program_type = null;  // ⭐ RESET SCOPE
                 window.spaFormState.program = false;
                 window.spaFormState.frequency = false;
-                window.currentState = window.wizardData.city_name ? 1 : 0;
+                window.setSpaState(window.wizardData.city_name ? 1 : 0, 'program:clear');
                 
                 const frequencySelector = document.querySelector('.spa-frequency-selector');
                 if (frequencySelector) {
                     frequencySelector.innerHTML = '';
-                }
-                
-                // ========== IMMEDIATE DOM CLEANUP (SYNCHRONOUS) ==========
-                const container = document.getElementById('spa-infobox-container');
-                if (container) {
-                    const programNodes = container.querySelectorAll('.spa-infobox-program');
-                    const beforeCount = programNodes.length;
-                    
-                    console.log('[SPA INFOBOX AUDIT] Program reset detected - cleaning DOM', {
-                        currentState: window.currentState,
-                        programNodesFound: beforeCount
-                    });
-                    
-                    programNodes.forEach(node => {
-                        console.log('[SPA INFOBOX AUDIT] Removing program node (sync cleanup)');
-                        node.remove();
-                    });
-                    
-                    const afterCount = container.querySelectorAll('.spa-infobox-program').length;
-                    console.log('[SPA INFOBOX AUDIT] Sync cleanup complete', {
-                        removedNodes: beforeCount,
-                        remainingNodes: afterCount,
-                        success: afterCount === 0 ? '✅' : '❌'
-                    });
-                }
-                // ========== END IMMEDIATE CLEANUP ==========
+                }                              
                 
                 window.filterProgramsByCity(selectedCityName);
             }
@@ -507,33 +517,7 @@ window.loadInfoboxContent = function(state) {
     }
     
     console.log('[SPA Infobox] Loading state:', state, window.wizardData);
-    
-    // ========== IMMEDIATE CLEANUP GATE (CASE0/1) ==========
-    const container = document.getElementById('spa-infobox-container');
-    const programNodesCount = container.querySelectorAll('.spa-infobox-program').length;
-    
-    console.log('[SPA INFOBOX AUDIT] Pre-cleanup state:', {
-        state: state,
-        currentState: window.currentState,
-        program_name: window.wizardData.program_name,
-        programNodesInDOM: programNodesCount
-    });
-    
-    if (state < 2 || !window.wizardData.program_name) {
-        const programNodes = container.querySelectorAll('.spa-infobox-program');
-        programNodes.forEach(node => {
-            console.log('[SPA INFOBOX AUDIT] Removing stale program node (CASE' + state + ')');
-            node.remove();
-        });
         
-        const postCleanupCount = container.querySelectorAll('.spa-infobox-program').length;
-        console.log('[SPA INFOBOX AUDIT] Post-cleanup:', {
-            removedNodes: programNodesCount,
-            remainingNodes: postCleanupCount
-        });
-    }
-    // ========== END CLEANUP GATE ==========
-    
     window.showLoader();
     
     const formData = new FormData();
@@ -730,7 +714,7 @@ window.applyGetParams = function() {
                         window.wizardData.city_name = matchedOption.text.trim();
                         window.wizardData.city_slug = spa_remove_diacritics(matchedOption.text.trim());
                         window.spaFormState.city = true;
-                        window.currentState = 1;
+                        window.setSpaState(1, 'GET:city');
                         stateChanged = true;
                         window.spaGFGetState.cityApplied = true;
                         console.log('[SPA GET] ✅ City applied:', matchedOption.text);
@@ -768,7 +752,7 @@ window.applyGetParams = function() {
                     } else {
                         console.warn('[SPA GET] City option not found:', cityParam);
                         window.spaErrorState.invalidCity = true;
-                        window.currentState = 0;
+                        window.setSpaState(0, 'GET:city-invalid');
                         window.updateErrorBox();
                     }
                 }
@@ -862,7 +846,7 @@ window.applyGetParams = function() {
                         }
                         
                         window.spaFormState.program = true;
-                        window.currentState = 2;
+                        window.setSpaState(2, 'GET:program');
                         window.spaGFGetState.programApplied = true;
                         
                         programSelect.dispatchEvent(new Event('change', { bubbles: true }));
@@ -898,7 +882,7 @@ window.applyGetParams = function() {
                     } else {
                         console.warn('[SPA GET] ⚠️ Program option not found:', programParam);
                         window.spaErrorState.invalidProgram = true;
-                        window.currentState = window.wizardData.city_name ? 1 : 0;
+                        window.setSpaState(window.wizardData.city_name ? 1 : 0, 'GET:program-invalid');
                         window.updateErrorBox();
                     }
                 }, 100);

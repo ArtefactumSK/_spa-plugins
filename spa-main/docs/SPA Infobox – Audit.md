@@ -17,7 +17,7 @@ Aktuálny stav systému je **funkčný, ale architektonicky nekonzistentný**. C
 Infobox trpí **race condition + ghost DOM efektom**, pretože:
 
 * `window.currentState` sa zapisuje na **viacerých miestach**
-* DOM cleanup (`.spa-infobox-program`) sa vykonáva **na viacerých miestach**
+* DOM cleanup (`.spa-infobox-program`) sa vykonáva **na viacerých miestach**+;
 * render logika nie je centralizovaná
 * cleanup je niekedy viazaný na AJAX callback (nie deterministický)
 

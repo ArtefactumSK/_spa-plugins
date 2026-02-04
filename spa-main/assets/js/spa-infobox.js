@@ -124,24 +124,7 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
     if (!container) {
         window.hideLoader();
         return;
-    }
-    // ===== HARD DOM CLEANUP FOR STATE < 2 =====
-    if (!window.wizardData?.program_name) {
-        const existingPrograms = container.querySelectorAll('.spa-infobox-program');
-        if (existingPrograms.length > 0) {
-            console.warn('[SPA INFOBOX AUDIT] Removing ' + existingPrograms.length + ' stale program DOM (no program selected)');
-            existingPrograms.forEach(p => p.remove());
-        }
-    }
-    
-    // ===== DEFENSIVE CHECK (should never happen after cleanup gate) =====
-    const finalProgramCount = container.querySelectorAll('.spa-infobox-program').length;
-    if (finalProgramCount > 0 && (window.currentState < 2 || !window.wizardData?.program_name)) {
-        console.error('[SPA INFOBOX AUDIT] CRITICAL: Program DOM still present in CASE' + window.currentState, {
-            program_name: window.wizardData?.program_name,
-            programNodesCount: finalProgramCount
-        });
-    }
+    }   
     
     // Vyčisti kontajner - OKREM loadera
     const existingLoader = document.getElementById('spa-infobox-loader');
