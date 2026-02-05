@@ -82,6 +82,30 @@ function spa_enqueue_scripts() {
     
     // 2. STATE (reads orchestrator functions)
     wp_enqueue_script(
+        'spa-infobox-core-state',
+        SPA_PLUGIN_URL . '/assets/js/spa-infobox-core-state.js',
+        [],
+        SPA_VERSION,
+        true
+    );
+
+    wp_enqueue_script(
+        'spa-infobox-restore',
+        SPA_PLUGIN_URL . '/assets/js/spa-infobox-restore.js',
+        [],
+        SPA_VERSION,
+        true
+    );
+    
+    wp_enqueue_script(
+        'spa-infobox-errorbox',
+        SPA_PLUGIN_URL . '/assets/js/spa-infobox-errorbox.js',
+        ['spa-infobox-core-state'],
+        SPA_VERSION,
+        true
+    );
+    
+    wp_enqueue_script(
         'spa-infobox-state',
         SPA_PLUGIN_URL . 'assets/js/spa-infobox-state.js',
         ['spa-infobox-orchestrator'],  // ← DEPENDS ON ORCHESTRATOR

@@ -538,9 +538,7 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
         hideLoader();
     }
 };
-
-    
-
+   
  /**
  * Zobraz loader
  */
@@ -562,7 +560,6 @@ window.hideLoader = function() {
             loader.classList.remove('active');
         }
     };    
-
 
 /**
  * Nájdi sekciu podľa CSS triedy
