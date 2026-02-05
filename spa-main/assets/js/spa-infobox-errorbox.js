@@ -10,6 +10,14 @@ window.updateErrorBox = function() {
     const state = window.currentState || 0;
     
     let errorBox = document.querySelector('.gform_validation_errors');
+    const gfErrorExists = errorBox && errorBox.innerHTML.trim() !== '';
+    
+    // ⭐ DETECTION: GF vykresil validation errors
+    if (gfErrorExists && !window.spaErrorState.invalidCity && !window.spaErrorState.invalidProgram) {
+        console.log('[SPA ErrorBox] GF validation detected, switching to SPA control');
+        window.spaErrorState.formInvalid = true;
+        window.spaErrorState.errorType = 'validation';
+    }
     
     // ─────────────────────────────────────────────
     // 1. Najprv vyriešme chyby z URL parametrov
@@ -53,21 +61,70 @@ window.updateErrorBox = function() {
     }
 
     // ─────────────────────────────────────────────
-    // 2. Ak nie sú žiadne chyby → VYČISTIŤ errorbox
+    // 2. Ak sú GF validation chyby → VLASTNÝ TEXT
     // ─────────────────────────────────────────────
-    if (errorBox) {
-        errorBox.innerHTML = '';
+    if (window.spaErrorState.formInvalid) {
+        const message = `<h2 class="gform_submission_error">⛔ Chyba vo formulári</h2>
+                         <p>Vznikol problém s vaším formulárom. Prezrite si zvýraznené polia nižšie.</p>`;
+        
+        if (!errorBox) {
+            const gformBody = document.querySelector('.gform_body');
+            if (gformBody) {
+                errorBox = document.createElement('div');
+                errorBox.className = 'gform_validation_errors';
+                gformBody.insertBefore(errorBox, gformBody.firstChild);
+            } else {
+                return;
+            }
+        }
+        
+        errorBox.innerHTML = message;
+        errorBox.style.display = 'block';
+        
+        if (typeof window.spaRequestVisibilityUpdate === 'function') {
+            window.spaRequestVisibilityUpdate('errorbox-show');
+        }
+        return;
     }
     
     // ─────────────────────────────────────────────
-    // 3. Skryť Gravity Forms anchor (ak existuje)
+    // 3. Žiadne chyby → VYČISTIŤ errorbox
     // ─────────────────────────────────────────────
-    const gformAnchor = document.querySelector('.gform_validation_errors');
-    if (gformAnchor) {
-        gformAnchor.style.display = 'none';
+    if (errorBox) {
+        errorBox.innerHTML = '';
+        errorBox.style.display = 'none';
     }
     
     if (typeof window.spaRequestVisibilityUpdate === 'function') {
         window.spaRequestVisibilityUpdate('errorbox-clear');
     }
 };
+
+/**
+ * HOOK: Po GF page load (submit/next/back) → check validation errors
+ */
+if (typeof jQuery !== 'undefined') {
+    jQuery(document).on('gform_post_render', function(event, form_id, current_page) {
+        console.log('[SPA ErrorBox] GF post_render, checking errors');
+        
+        setTimeout(() => {
+            const gfError = document.querySelector('.gform_validation_errors');
+            const hasError = gfError && gfError.innerHTML.trim() !== '';
+            
+            if (hasError) {
+                console.log('[SPA ErrorBox] GF errors found, triggering updateErrorBox');
+                
+                // ⭐ GUARD: Nevolaj updateErrorBox ak prebieha restore
+                if (!window.__spaRestoringState) {
+                    window.updateErrorBox();
+                } else {
+                    console.log('[SPA ErrorBox] SKIPPED - restore in progress');
+                }
+            } else if (window.spaErrorState.formInvalid) {
+                // Clear flag ak chyby zmizli
+                window.spaErrorState.formInvalid = false;
+                window.updateErrorBox();
+            }
+        }, 50);
+    });
+}

@@ -29,7 +29,8 @@ window.wizardData = {
 window.spaErrorState = {
     invalidCity: false,
     invalidProgram: false,
-    errorType: null  // 'state' | 'validation'
+    errorType: null,  // 'state' | 'validation'
+    formInvalid: false  // GF validation error flag
 };
 
 /**

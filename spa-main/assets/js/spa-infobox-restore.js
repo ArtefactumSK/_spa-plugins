@@ -4,6 +4,9 @@
 window.restoreWizardData = function() {
     console.log('[SPA Restore] ========== START ==========');
     
+    // ⭐ FLAG: Zabráň updateErrorBox() počas restore
+    window.__spaRestoringState = true;
+    
     const cityBackup = document.getElementById('spa_city_backup');
     const programBackup = document.getElementById('spa_program_backup');
     
@@ -45,34 +48,46 @@ window.restoreWizardData = function() {
             }
             
             if (cityBackup?.value && citySelect) {
-                citySelect.value = cityBackup.value;
+                // ⭐ IMMEDIATE READ pred možným GF resetom
+                const matchedCityOption = Array.from(citySelect.options).find(opt => opt.value === cityBackup.value);
                 
-                const selectedOption = citySelect.options[citySelect.selectedIndex];
-                if (selectedOption && selectedOption.value) {
-                    window.wizardData.city_name = selectedOption.text;
+                if (matchedCityOption) {
+                    citySelect.value = matchedCityOption.value;
+                    
+                    // ⭐ Prečítaj text IHNEĎ z matched option (nie z selectedIndex)
+                    window.wizardData.city_name = matchedCityOption.text.trim();
+                    window.wizardData.city_slug = spa_remove_diacritics(matchedCityOption.text.trim());
                     window.spaFormState.city = true;
                     window.setSpaState(1, 'restoreWizardData:city');
                     
-                    console.log('[SPA Restore] ✅ City RESTORED:', window.wizardData.city_name);
+                    console.log('[SPA Restore] ✅ City RESTORED:', {
+                        city_name: window.wizardData.city_name,
+                        city_slug: window.wizardData.city_slug,
+                        backup_value: cityBackup.value
+                    });
                 } else {
-                    console.error('[SPA Restore] ❌ City restore FAILED - no option found for value:', cityBackup.value);
+                    console.error('[SPA Restore] ❌ City option not found for backup value:', cityBackup.value);
                 }
             }
             
             if (programBackup?.value && programSelect) {
-                programSelect.value = programBackup.value;
+                // ⭐ IMMEDIATE READ pred možným GF resetom
+                const matchedProgramOption = Array.from(programSelect.options).find(opt => opt.value === programBackup.value);
                 
-                const selectedOption = programSelect.options[programSelect.selectedIndex];
-                if (selectedOption && selectedOption.value) {
-                    window.wizardData.program_name = selectedOption.text;
-                    window.wizardData.program_id = selectedOption.getAttribute('data-program-id') || selectedOption.value;
+                if (matchedProgramOption) {
+                    programSelect.value = matchedProgramOption.value;
+                    
+                    // ⭐ Prečítaj všetky dáta IHNEĎ z matched option
+                    window.wizardData.program_name = matchedProgramOption.text.trim();
+                    window.wizardData.program_id = matchedProgramOption.getAttribute('data-program-id') || matchedProgramOption.value;
                     window.spaFormState.program = true;
                     
-                    const ageMatch = selectedOption.text.match(/(\d+)[–-](\d+)/);
+                    // Parsuj vek
+                    const ageMatch = matchedProgramOption.text.match(/(\d+)[–-](\d+)/);
                     if (ageMatch) {
                         window.wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
                     } else {
-                        const agePlusMatch = selectedOption.text.match(/(\d+)\+/);
+                        const agePlusMatch = matchedProgramOption.text.match(/(\d+)\+/);
                         if (agePlusMatch) {
                             window.wizardData.program_age = agePlusMatch[1] + '+';
                         }
@@ -80,9 +95,14 @@ window.restoreWizardData = function() {
                     
                     window.setSpaState(2, 'restoreWizardData:program');
                     
-                    console.log('[SPA Restore] ✅ Program RESTORED:', window.wizardData.program_name);
+                    console.log('[SPA Restore] ✅ Program RESTORED:', {
+                        program_name: window.wizardData.program_name,
+                        program_id: window.wizardData.program_id,
+                        program_age: window.wizardData.program_age,
+                        backup_value: programBackup.value
+                    });
                 } else {
-                    console.error('[SPA Restore] ❌ Program restore FAILED - no option found for value:', programBackup.value);
+                    console.error('[SPA Restore] ❌ Program option not found for backup value:', programBackup.value);
                 }
             }
             
@@ -98,6 +118,12 @@ window.restoreWizardData = function() {
                 wizardData,
                 spaFormState: window.spaFormState
             });
+            
+            // ⭐ CLEAR FLAG: Restore complete, povoľ updateErrorBox()
+            setTimeout(() => {
+                window.__spaRestoringState = false;
+                console.log('[SPA Restore] Flag cleared, updateErrorBox enabled');
+            }, 200);
         }
     }, 100);
 };
