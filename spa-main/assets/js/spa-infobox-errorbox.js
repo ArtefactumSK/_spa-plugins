@@ -8,6 +8,10 @@
  */
 window.updateErrorBox = function() {
     const state = window.currentState || 0;
+        // GUARD: Bez user interakcie (GET init) sa errorbox NEZOBRAZUJE
+    // Výnimka: explicitné GET state chyby (invalidCity / invalidProgram)
+    const hasUserInteracted = (window.spaInputAuthority === 'select');
+
     
     // SPA errorbox (pre GET/state chyby)
     let spaErrorBox = document.querySelector('.spa-errorbox--state');
@@ -99,12 +103,16 @@ window.updateErrorBox = function() {
         return;
     } */
 
-    if (window.spaErrorState.formInvalid) {
-        // ⚠️ SPA NEPREPISUJE GF validation errors
-        // GF errorbox je plne pod kontrolou Gravity Forms
-        console.log('[SPA ErrorBox] GF validation detected, leaving GF errorbox intact');
-        return;
-    }    
+        if (window.spaErrorState.formInvalid) {
+
+            // GF validation chyba – iba zobraz informáciu
+            // ❌ NEROBIŤ: reset, hide sections, updateSectionVisibility
+            console.log('[SPA ErrorBox] GF validation detected – no CASE changes');
+        
+            return;
+        }
+        
+           
     
     // ─────────────────────────────────────────────
     // 3. Žiadne SPA state chyby → VYČISTIŤ SPA errorbox

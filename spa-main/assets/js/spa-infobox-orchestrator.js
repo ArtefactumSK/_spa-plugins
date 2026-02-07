@@ -43,7 +43,6 @@
  */
 window.spaCurrentProgramType = null;
 
-
 /**
  * SPA FIELD SCOPE – JEDINÝ ZDROJ PRAVDY
  * GUARD: Wait for spaConfig to be ready
@@ -314,6 +313,15 @@ window.spaSwitchToSelectAuthority = function(reason) {
  * Architektúra: CASE → BASE → SCOPE → DERIVED
  */
 window.updateSectionVisibility = function() {
+            // GF VALIDATION MODE:
+            // Pri GF validačnej chybe NESMIEME resetovať/gatovať (inak sa schová program select),
+            // ale MUSÍME odomknúť predchádzajúce gate (clearCaseGate) a nechať GF ukázať chyby.
+            const isGfValidation = (window.spaErrorState?.formInvalid === true);
+            if (isGfValidation) {
+                console.log('[SPA Orchestrator] GF validation mode – no resets, but clearing gates');
+            }
+
+    
     console.log('[SPA Section Control] ========== UPDATE START ==========');
     
     if (window.SPA_DEBUG === true) {
@@ -331,50 +339,48 @@ window.updateSectionVisibility = function() {
         return;
     }
 
-    // ========== CASE DETECTION (AUTHORITY-AWARE) ==========
+    // ========== CASE DETECTION (DOM-FIRST) ==========
     const cityEl = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
     const programEl = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
-    const cityBackup = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
-    const programBackup = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
-    
+
     const cityValueDOM = cityEl?.value || '';
     const programValueDOM = programEl?.value || '';
-    const cityBackupValue = cityBackup?.value?.trim() || '';
-    const programBackupValue = programBackup?.value?.trim() || '';
-    
-    // Authority-based detection
-    let citySelected, programSelected;
-    
-    if (window.spaInputAuthority === 'get') {
-        // GET authority: use backup values
-        citySelected = cityBackupValue !== '';
-        programSelected = programBackupValue !== '';
-    } else {
-        // SELECT authority: use DOM values
-        citySelected = cityValueDOM.trim() !== '';
-        programSelected = programValueDOM.trim() !== '';
-    }
-    
+
+    // DOM je zdroj pravdy pre CASE; fallback je wizardData (kvôli re-render/restore)
+    const citySelected = cityValueDOM.trim() !== ''
+    ? true
+    : !!(window.wizardData?.city_name && window.wizardData.city_name.trim() !== '');
+
+    const programSelected = programValueDOM.trim() !== ''
+    ? true
+    : !!(window.wizardData?.program_name && window.wizardData.program_name.trim() !== '');
+
     const caseNum = !citySelected ? 0 : (!programSelected ? 1 : 2);
-    
-    console.log('[SPA CASE Detection] AUTHORITY-AWARE', {
-        authority: window.spaInputAuthority,
-        case: caseNum,
-        citySelected,
-        programSelected,
-        backup: {
-            city: cityBackupValue,
-            program: programBackupValue
-        },
-        dom: { 
-            city: cityValueDOM, 
-            program: programValueDOM 
-        },
-        wizardData: { 
-            city: window.wizardData?.city_name, 
-            program: window.wizardData?.program_name 
-        }
+
+    console.log('[SPA CASE Detection] DOM-FIRST', {
+    case: caseNum,
+    citySelected,
+    programSelected,
+    dom: { cityValue: cityValueDOM, programValue: programValueDOM },
+    wizardData: { city: window.wizardData?.city_name, program: window.wizardData?.program_name },
+    authority: window.spaInputAuthority
     });
+
+        // ========== GF VALIDATION: UNLOCK GATES + FORCE CITY/PROGRAM VISIBLE ==========
+        if (isGfValidation) {
+            // Odomkni všetko, čo mohol CASE gate schovať (najmä program select)
+            clearCaseGate();
+    
+            // Force city + program gfield visible (ak existujú)
+            const cityGfield = cityEl?.closest('.gfield');
+            const programGfield = programEl?.closest('.gfield');
+            if (cityGfield) showGfield(cityGfield);
+            if (programGfield) showGfield(programGfield);
+    
+            console.log('[SPA Orchestrator] GF validation – gates cleared, city/program forced visible');
+            console.log('[SPA Section Control] ========== UPDATE END (GF VALIDATION) ==========');
+            return;
+        }
     
     // ========== STATE SANITIZATION (AUTHORITY-AWARE) ==========
     // Apply only when SELECT authority is active
@@ -385,12 +391,6 @@ window.updateSectionVisibility = function() {
             window.wizardData.program_name = '';
             window.wizardData.program_type = null;
             window.spaCurrentProgramType = null;
-            /**
-             * AUTORITA VSTUPU: GET vs SELECT
-             * Possible values: 'get' | 'select'
-             * Default: 'get' (until first user interaction)
-             */
-            window.spaInputAuthority = 'get';
 
             if (window.infoboxData) {
                 window.infoboxData.program = null;
@@ -759,28 +759,27 @@ window.spaInitSectionOrchestrator = function() {
         el.addEventListener('input', handler);
     });
 
-    // ========== AUTHORITY SWITCH: GET → SELECT ==========
-    const authorityHandler = (e) => {
-        // GUARD: Ignore programmatic changes
+    // ========== AUTHORITY SWITCH: undefined → 'select' (DELEGATED) ==========
+    document.addEventListener('change', function(e) {
+        const name = e.target?.name;
+    
+        // len mesto/program
+        if (name !== spaConfig.fields.spa_city && name !== spaConfig.fields.spa_program) return;
+    
+        // iba skutočná user akcia
         if (!e.isTrusted) return;
-        
-        // GUARD: Ignore GET application phase
+    
+        // ignorovať GET aplikáciu a restore
         if (window.isApplyingGetParams) return;
-        
-        // GUARD: Ignore restore phase
         if (window.__spaRestoringState) return;
-        
-        // Switch to SELECT authority (one-way, permanent)
-        window.spaSwitchToSelectAuthority(`user-change:${e.target.name}`);
-    };
     
-    if (cityEl) {
-        cityEl.addEventListener('change', authorityHandler);
-    }
+        // jednosmerne
+        if (window.spaInputAuthority === 'select') return;
     
-    if (programEl) {
-        programEl.addEventListener('change', authorityHandler);
-    }
+        window.spaInputAuthority = 'select';
+        console.log('[SPA Authority] Switched to SELECT (user interaction):', name);
+    });
+  
 
     console.log('[SPA Orchestrator] Initialized and listening');
 };
