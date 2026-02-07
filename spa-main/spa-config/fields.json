@@ -4,6 +4,8 @@
   
   "spa_frequency": "input_31",
   "spa_resolved_type": "input_34",
+  "spa_city_backup": "input_45",
+  "spa_program_backup": "input_46",
 
   "spa_member_name_first": "input_6.3",
   "spa_member_name_last": "input_6.6",

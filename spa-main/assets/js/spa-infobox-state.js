@@ -95,8 +95,7 @@ window.updateInfoboxState = function() {
         wizardData: window.wizardData
     });
     
-    window.setSpaState(newState, 'updateInfoboxState');
-    window.updateErrorBox();
+    window.setSpaState(newState, 'updateInfoboxState');    
     window.loadInfoboxContent(window.currentState);
 };
 
@@ -137,7 +136,7 @@ window.resetProgramSelection = function(reason) {
     }
     
     // Backup field cleanup
-    const programBackup = document.getElementById('spa_program_backup');
+    const programBackup = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
     if (programBackup) {
         programBackup.value = '';
     }
@@ -158,6 +157,8 @@ window.watchFormChanges = function() {
         return;
     }
     
+    // ✅ Backup polia sú STATICKÉ Gravity Forms Hidden fieldy (nie dynamicky vytvorené)
+    // Prístup cez spaConfig.fields.spa_city_backup / spa_program_backup
     document.addEventListener('change', function(e) {
         if (e.target.name === spaConfig.fields.spa_city) {
             console.log('[SPA GET DEBUG] Change event triggered on input_1');
@@ -167,18 +168,26 @@ window.watchFormChanges = function() {
         console.log('[SPA DEBUG] Change event:', e.target.name, e.target.value);
         
         if (e.target.name === spaConfig.fields.spa_city) {
-            // ⚠️ KRITICKÝ RESET PROGRAMU (PRED INOU LOGIKOU)
-            window.resetProgramSelection('city:user-change');
-            
-            // ⚠️ RESET ERROR FLAGS IMMEDIATELY (PRED AKOUKOĽVEK INOU LOGIKOU)
-            if (window.spaErrorState.invalidCity || window.spaErrorState.errorType === 'state') {
-                console.log('[SPA City Change] Resetting error state');
-                window.spaErrorState.invalidCity = false;
-                if (window.spaErrorState.errorType === 'state' && !window.spaErrorState.invalidProgram) {
-                    window.spaErrorState.errorType = null;
-                }
-                window.updateErrorBox();
+            // ✅ Reset programu ONLY pri USER zmene (NIE počas GET ani RESTORE)
+            if (!window.isApplyingGetParams && !window.__spaRestoringState && e.isTrusted) {
+                window.resetProgramSelection('city:user-change');
             }
+            
+            // ⚠️ RESET ERROR FLAGS + SPA ERRORBOX IMMEDIATELY
+            if (window.spaErrorState.invalidCity || window.spaErrorState.errorType === 'state') {  
+                console.log('[SPA City Change] Resetting error state + hiding SPA errorbox');  
+                window.spaErrorState.invalidCity = false;  
+                if (window.spaErrorState.errorType === 'state' && !window.spaErrorState.invalidProgram) {  
+                    window.spaErrorState.errorType = null;  
+                }
+                
+                // Okamžite skry SPA errorbox
+                const spaErrorBox = document.querySelector('.spa-errorbox--state');
+                if (spaErrorBox) {
+                    spaErrorBox.innerHTML = '';
+                    spaErrorBox.style.display = 'none';
+                }
+            }  
             
             console.log('[SPA DEBUG] City field detected!');
             const cityField = e.target;
@@ -214,8 +223,16 @@ window.watchFormChanges = function() {
                 window.spaFormState.city = true;
                 window.setSpaState(1, 'city:user-select');
                 
-                // Force update errorbox
-                window.updateErrorBox();
+                // ✅ WRITE-BACK: Aktualizuj backup field (ONLY pri USER interakcii)
+                if (e.isTrusted && !window.isApplyingGetParams && !window.__spaRestoringState) {
+                    const cityBackup = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
+                    if (cityBackup) {
+                        cityBackup.value = cityField.value;
+                        console.log('[SPA Backup] City backup updated:', cityField.value);
+                    } else {
+                        console.warn('[SPA Backup] City backup field NOT FOUND - check GF Hidden field mapping');
+                    }
+                }
                 
                 if (typeof window.spaRequestVisibilityUpdate === 'function') {
                     window.spaRequestVisibilityUpdate('city-valid');
@@ -224,6 +241,16 @@ window.watchFormChanges = function() {
                 window.wizardData.city_name = '';
                 window.spaFormState.city = false;
                 window.setSpaState(0, 'city:clear');
+                
+                // ✅ WRITE-BACK: Vyčisti backup field pri clear
+                if (e.isTrusted && !window.isApplyingGetParams && !window.__spaRestoringState) {
+                    const cityBackup = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`) || 
+                                      document.getElementById('spa_city_backup');
+                    if (cityBackup) {
+                        cityBackup.value = '';
+                        console.log('[SPA Backup] City backup cleared');
+                    }
+                }
             }
             
             window.loadInfoboxContent(window.currentState);
@@ -238,14 +265,20 @@ window.watchFormChanges = function() {
     
     if (programField) {
         programField.addEventListener('change', function() {
-            // ⚠️ RESET ERROR FLAGS IMMEDIATELY (PRED AKOUKOĽVEK INOU LOGIKOU)
+            // ⚠️ RESET ERROR FLAGS + SPA ERRORBOX IMMEDIATELY
             if (window.spaErrorState.invalidProgram || window.spaErrorState.errorType === 'state') {
-                console.log('[SPA Program Change] Resetting error state');
+                console.log('[SPA Program Change] Resetting error state + hiding SPA errorbox');
                 window.spaErrorState.invalidProgram = false;
                 if (window.spaErrorState.errorType === 'state' && !window.spaErrorState.invalidCity) {
                     window.spaErrorState.errorType = null;
                 }
-                window.updateErrorBox();
+                
+                // Okamžite skry SPA errorbox
+                const spaErrorBox = document.querySelector('.spa-errorbox--state');
+                if (spaErrorBox) {
+                    spaErrorBox.innerHTML = '';
+                    spaErrorBox.style.display = 'none';
+                }
             }
             
             const selectedOption = this.options[this.selectedIndex];
@@ -263,6 +296,18 @@ window.watchFormChanges = function() {
                 window.wizardData.program_name = selectedOption.text;
                 window.wizardData.program_id = selectedOption.getAttribute('data-program-id') || this.value;
                 
+                // ✅ WRITE-BACK: Aktualizuj backup field (ONLY pri USER interakcii)
+                // Detekcia USER vs SCRIPT: addEventListener('change') nemá e.isTrusted v arrow function scope
+                // Riešenie: Použijeme window flags ako proxy
+                if (!window.isApplyingGetParams && !window.__spaRestoringState) {
+                    const programBackup = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`) || 
+                                         document.getElementById('spa_program_backup');
+                    if (programBackup) {
+                        programBackup.value = this.value;
+                        console.log('[SPA Backup] Program backup updated:', this.value);
+                    }
+                }
+                
                 console.log('[SPA Infobox] Program ID:', window.wizardData.program_id);
                 
                 window.wizardData.program_age = '';
@@ -279,6 +324,12 @@ window.watchFormChanges = function() {
                 
                 window.spaFormState.program = true;
                 window.setSpaState(2, 'program:user-select');
+                
+                // ✅ FLAG: Wizard progressed beyond GET bootstrap phase
+                if (!window.__spaWizardProgressed) {
+                    window.__spaWizardProgressed = true;
+                    console.log('[SPA State] Wizard progressed to CASE 2 - GET logic now DISABLED');
+                }
             } else {
                 // ⭐ RESET PROGRAMU
                 window.wizardData.program_name = '';
@@ -288,6 +339,16 @@ window.watchFormChanges = function() {
                 window.spaFormState.program = false;
                 window.spaFormState.frequency = false;
                 window.setSpaState(window.wizardData.city_name ? 1 : 0, 'program:clear');
+                
+                // ✅ WRITE-BACK: Vyčisti backup field pri clear
+                if (!window.isApplyingGetParams && !window.__spaRestoringState) {
+                    const programBackup = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`) || 
+                                         document.getElementById('spa_program_backup');
+                    if (programBackup) {
+                        programBackup.value = '';
+                        console.log('[SPA Backup] Program backup cleared');
+                    }
+                }
                 
                 const frequencySelector = document.querySelector('.spa-frequency-selector');
                 if (frequencySelector) {
@@ -308,9 +369,55 @@ window.watchFormChanges = function() {
     
     if (typeof jQuery !== 'undefined') {
         jQuery(document).on('gform_page_loaded', function(event, form_id, current_page) {
-            console.log('[SPA] GF Page loaded:', current_page, 'form:', form_id);
+            console.log('[SPA Restore] page_loaded page=' + current_page);
             
             setTimeout(() => {
+                // ✅ REHYDRATION: Obnov stav z backup polí (po pagebreaku)
+                if (current_page > 1) {
+                    const cityBackup = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
+                    const programBackup = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
+                    
+                    const hasCityBackup = cityBackup && cityBackup.value && cityBackup.value.trim() !== '';
+                    const hasProgramBackup = programBackup && programBackup.value && programBackup.value.trim() !== '';
+                    
+                    console.log('[SPA Restore] Backup values:', {
+                        city: hasCityBackup ? cityBackup.value : 'none',
+                        program: hasProgramBackup ? programBackup.value : 'none'
+                    });
+                    
+                    if (hasCityBackup) {
+                        // Obnov city state
+                        window.wizardData.city_id = cityBackup.value;
+                        window.spaFormState.city = true;
+                        
+                        if (hasProgramBackup) {
+                            // Obnov program state
+                            window.wizardData.program_id = programBackup.value;
+                            window.spaFormState.program = true;
+                            window.currentState = 2;
+                            console.log('[SPA Restore] State rehydrated: CASE 2');
+                        } else {
+                            // Len city
+                            window.currentState = 1;
+                            console.log('[SPA Restore] State rehydrated: CASE 1');
+                        }
+                        
+                        // Spusti visibility + infobox
+                        if (typeof window.updateSectionVisibility === 'function') {
+                            window.updateSectionVisibility();
+                        }
+                        window.loadInfoboxContent(window.currentState);
+                        
+                        // FLAG: Restore dokončený
+                        window.__spaRestoreComplete = true;
+                    } else {
+                        // Žiadne backup hodnoty
+                        window.currentState = 0;
+                        window.__spaRestoreComplete = true;
+                        console.log('[SPA Restore] No backup values - CASE 0');
+                    }
+                }
+                
                 window.updatePriceSummary();
             }, 200);
         });
@@ -373,6 +480,12 @@ window.loadInfoboxContent = function(state) {
  * Aplikuj GET parametre do formulára
  */
 window.applyGetParams = function() {
+    // ✅ CRITICAL: GET logic DISABLED after wizard progresses to CASE 2
+    if (window.__spaWizardProgressed) {
+        console.log('[SPA GET] Wizard already progressed - GET logic DISABLED');
+        return;
+    }
+    
     const urlParams = new URLSearchParams(window.location.search);
     let cityParam = urlParams.get('city');
     const programParam = urlParams.get('program');
@@ -480,9 +593,9 @@ window.applyGetParams = function() {
                     if (matchedOption) {
                         citySelect.value = matchedOption.value;
                         
-                        const cityBackup = document.getElementById('spa_city_backup');
+                        const cityBackup = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
                         if (cityBackup) {
-                            cityBackup.value = matchedOption.value;
+                            cityBackup.value = matchedOption.value;                            
                             console.log('[SPA GET] Backed up city value:', matchedOption.value);
                         }
                         
@@ -588,31 +701,23 @@ window.applyGetParams = function() {
                         );
                         
                         if (matchedOption) {
-                            const observer = new MutationObserver((mutations) => {
-                                for (const mutation of mutations) {
-                                    if (mutation.type === 'childList' && mutation.target === programSelect) {
-                                        console.log('[SPA GET] Program <select> re-rendered, applying value');
-                                        
-                                        const freshOption = Array.from(programSelect.options).find(opt => opt.value == programParam);
-                                        if (freshOption) {
-                                            programSelect.value = freshOption.value;
-                                            
-                                            if (typeof jQuery !== 'undefined' && jQuery(programSelect).data('chosen')) {
-                                                jQuery(programSelect).trigger('chosen:updated');
-                                            }
-                                            
-                                            programSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                                            console.log('[SPA GET] ✅ Program value set via observer');
-                                            observer.disconnect();
-                                    }
+                            // ✅ Stabilný observer: ak sa program select znovu vyrenderuje (Chosen/AJAX), nastav hodnotu znova
+                        const observer = new MutationObserver(() => {
+                            const freshOption = Array.from(programSelect.options).find(opt => opt.value == programParam);
+                            if (freshOption) {
+                                programSelect.value = freshOption.value;
+
+                                if (typeof jQuery !== 'undefined' && jQuery(programSelect).data('chosen')) {
+                                    jQuery(programSelect).trigger('chosen:updated');
                                 }
+
+                                programSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                                console.log('[SPA GET] ✅ Program value set via observer');
+                                observer.disconnect();
                             }
                         });
-			
-                        observer.observe(programSelect, {
-                            childList: true,
-                            subtree: false
-                        });
+
+                        observer.observe(programSelect, { childList: true, subtree: false });
                         
                         setTimeout(() => {
                             observer.disconnect();
@@ -626,7 +731,7 @@ window.applyGetParams = function() {
                             }
                         }, 3000);
                         
-                        const programBackup = document.getElementById('spa_program_backup');
+                        const programBackup = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
                         if (programBackup) {
                             programBackup.value = programParam;
                             console.log('[SPA GET] Backed up program value:', programParam);

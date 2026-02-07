@@ -4,21 +4,30 @@
 window.restoreWizardData = function() {
     console.log('[SPA Restore] ========== START ==========');
     
-    // ⭐ FLAG: Zabráň updateErrorBox() počas restore
+    // ⭐ FLAG: Zabrán updateErrorBox() + resetProgramSelection() počas restore
     window.__spaRestoringState = true;
     
-    const cityBackup = document.getElementById('spa_city_backup');
-    const programBackup = document.getElementById('spa_program_backup');
+    // ⭐ CRITICAL: Disable applyGetParams počas restore
+    window.__spaRestoreInProgress = true;
+    
+    // ⭐ Získaj backup polia podľa GF name mapovania (nie podľa DOM id)
+	const cityBackup = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
+	const programBackup = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
+
     
     console.log('[SPA Restore] Backup fields:', {
-        cityBackupValue: cityBackup?.value,
-        programBackupValue: programBackup?.value
-    });
-    
-    if (!cityBackup?.value && !programBackup?.value) {
-        console.log('[SPA Restore] No backup values, skipping');
-        return;
-    }
+  	cityBackupExists: !!cityBackup,
+  	programBackupExists: !!programBackup,
+  	cityBackupValue: cityBackup?.value,
+  	programBackupValue: programBackup?.value
+	});
+
+if (!cityBackup?.value && !programBackup?.value) {
+  console.log('[SPA Restore] No backup values, skipping');
+  window.__spaRestoringState = false;
+  window.__spaRestoreInProgress = false;
+  return;
+}
     
     let attempts = 0;
     const maxAttempts = 20;
@@ -119,11 +128,24 @@ window.restoreWizardData = function() {
                 spaFormState: window.spaFormState
             });
             
-            // ⭐ CLEAR FLAG: Restore complete, povoľ updateErrorBox()
+            // ⭐ CLEAR FLAGS: Restore complete, povoľ normálnu logiku
             setTimeout(() => {
                 window.__spaRestoringState = false;
-                console.log('[SPA Restore] Flag cleared, updateErrorBox enabled');
-            }, 200);
+                window.__spaRestoreInProgress = false;
+                console.log('[SPA Restore] Flags cleared, normal flow restored');
+            }, 250);
         }
     }, 100);
 };
+
+/**
+ * AUTO-TRIGGER: Spusti restore po GF page load
+ */
+if (typeof jQuery !== 'undefined') {
+    // Hook na gform_post_render (spúšťa sa aj po pagebreaku)
+    jQuery(document).on('gform_page_loaded', function(event, form_id, current_page) {
+    if (current_page > 1) {
+        setTimeout(() => window.restoreWizardData(), 150);
+    }
+    });
+}

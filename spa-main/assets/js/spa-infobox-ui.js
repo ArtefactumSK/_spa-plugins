@@ -287,13 +287,3 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 800);
 });
-
-// ────────────────────────────────────────────────
-// 6. Prechod na summary stránku – sem patrí render
-//    (musí byť zavolané z iného súboru / inline scriptu po pagebreak)
-//    Príklad volania (vložiť do inline JS alebo iného súboru):
-//    document.querySelector('.gform_next_button').addEventListener('click', () => {
-//        window.spaFormPhase = 'summary';
-//        window.renderSummary();
-//    });
-// ────────────────────────────────────────────────

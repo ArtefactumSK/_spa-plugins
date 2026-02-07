@@ -71,11 +71,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Gravity Forms AJAX callback
 if (typeof jQuery !== 'undefined') {
-    jQuery(document).on('gform_post_render', function() {
+    jQuery(document).on('gform_post_render', function(event, form_id, current_page) {
         window.initInfobox();
         window.watchFormChanges();
         // window.hideAllSectionsOnInit() - riadené orchestrátorom
-        window.applyGetParams(); 
+        
+        // ✅ OCHRANA: applyGetParams sa NESMIE spustiť počas restore
+        if (!window.__spaRestoreInProgress) {
+            window.applyGetParams();
+        } else {
+            console.log('[SPA Events] applyGetParams SKIPPED - restore in progress');
+        }
     });
 }
 

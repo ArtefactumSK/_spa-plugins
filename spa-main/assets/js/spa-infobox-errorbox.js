@@ -9,8 +9,12 @@
 window.updateErrorBox = function() {
     const state = window.currentState || 0;
     
-    let errorBox = document.querySelector('.gform_validation_errors');
-    const gfErrorExists = errorBox && errorBox.innerHTML.trim() !== '';
+    // SPA errorbox (pre GET/state chyby)
+    let spaErrorBox = document.querySelector('.spa-errorbox--state');
+    
+    // GF errorbox (len na detekciu validačných chýb)
+    const gfErrorBox = document.querySelector('.gform_validation_errors');
+    const gfErrorExists = gfErrorBox && gfErrorBox.innerHTML.trim() !== '';
     
     // ⭐ DETECTION: GF vykresil validation errors
     if (gfErrorExists && !window.spaErrorState.invalidCity && !window.spaErrorState.invalidProgram) {
@@ -20,8 +24,7 @@ window.updateErrorBox = function() {
     }
     
     // ─────────────────────────────────────────────
-    // 1. Najprv vyriešme chyby z URL parametrov
-    //    → tieto musia zmiznúť hneď po oprave
+    // 1. Najprv vyriešme chyby z URL parametrov → zmiznú hneď po oprave
     // ─────────────────────────────────────────────
     if (window.spaErrorState.invalidCity || window.spaErrorState.invalidProgram) {
         let message = '';
@@ -42,30 +45,40 @@ window.updateErrorBox = function() {
         }
 
         if (message) {
-            if (!errorBox) {
+            // Vytvor/aktualizuj SPA errorbox (NIE GF errorbox)
+            if (!spaErrorBox) {
                 const gformBody = document.querySelector('.gform_body');
                 if (gformBody) {
-                    errorBox = document.createElement('div');
-                    errorBox.className = 'gform_validation_errors';
-                    gformBody.insertBefore(errorBox, gformBody.firstChild);
+                    spaErrorBox = document.createElement('div');
+                    spaErrorBox.className = 'spa-errorbox--state gform_validation_errors';
+                    gformBody.insertBefore(spaErrorBox, gformBody.firstChild);
                 } else {
                     return;
                 }
             }
-            errorBox.innerHTML = message;
-            if (typeof window.spaRequestVisibilityUpdate === 'function') {
-                window.spaRequestVisibilityUpdate('errorbox-show');
-            }
-            return; // ── important: ak je chyba z URL, ďalej nepokračujeme
+            spaErrorBox.innerHTML = message;
+            spaErrorBox.style.display = 'block';
+            console.log('[SPA ErrorBox] SPA state error displayed');
+            return;
         }
     }
 
     // ─────────────────────────────────────────────
-    // 2. Ak sú GF validation chyby → VLASTNÝ TEXT
+    // 2. Ak sú GF validation chyby → VLASTNÝ TEXT + KONTEXT
     // ─────────────────────────────────────────────
-    if (window.spaErrorState.formInvalid) {
+    /* if (window.spaErrorState.formInvalid) {
+        // ⭐ KONTEXT: Pridaj info o zvolenom meste/programe
+        let contextInfo = '';
+        if (window.wizardData.city_name) {
+            contextInfo += `<p><strong>Mesto:</strong> ${window.wizardData.city_name}</p>`;
+        }
+        if (window.wizardData.program_name) {
+            contextInfo += `<p><strong>Program:</strong> ${window.wizardData.program_name}</p>`;
+        }
+        
         const message = `<h2 class="gform_submission_error">⛔ Chyba vo formulári</h2>
-                         <p>Vznikol problém s vaším formulárom. Prezrite si zvýraznené polia nižšie.</p>`;
+                        <p>Vznikol problém s vaším formulárom. Prezrite si zvýraznené polia nižšie.</p>
+                        ${contextInfo}`;
         
         if (!errorBox) {
             const gformBody = document.querySelector('.gform_body');
@@ -81,22 +94,25 @@ window.updateErrorBox = function() {
         errorBox.innerHTML = message;
         errorBox.style.display = 'block';
         
-        if (typeof window.spaRequestVisibilityUpdate === 'function') {
-            window.spaRequestVisibilityUpdate('errorbox-show');
-        }
+        // ❌ REMOVED: side-effect call
+        
         return;
-    }
+    } */
+
+    if (window.spaErrorState.formInvalid) {
+        // ⚠️ SPA NEPREPISUJE GF validation errors
+        // GF errorbox je plne pod kontrolou Gravity Forms
+        console.log('[SPA ErrorBox] GF validation detected, leaving GF errorbox intact');
+        return;
+    }    
     
     // ─────────────────────────────────────────────
-    // 3. Žiadne chyby → VYČISTIŤ errorbox
+    // 3. Žiadne SPA state chyby → VYČISTIŤ SPA errorbox
     // ─────────────────────────────────────────────
-    if (errorBox) {
-        errorBox.innerHTML = '';
-        errorBox.style.display = 'none';
-    }
-    
-    if (typeof window.spaRequestVisibilityUpdate === 'function') {
-        window.spaRequestVisibilityUpdate('errorbox-clear');
+    if (spaErrorBox) {
+        spaErrorBox.innerHTML = '';
+        spaErrorBox.style.display = 'none';
+        console.log('[SPA ErrorBox] SPA errorbox cleared');
     }
 };
 
@@ -106,25 +122,86 @@ window.updateErrorBox = function() {
 if (typeof jQuery !== 'undefined') {
     jQuery(document).on('gform_post_render', function(event, form_id, current_page) {
         console.log('[SPA ErrorBox] GF post_render, checking errors');
-        
+
         setTimeout(() => {
             const gfError = document.querySelector('.gform_validation_errors');
             const hasError = gfError && gfError.innerHTML.trim() !== '';
-            
+
             if (hasError) {
-                console.log('[SPA ErrorBox] GF errors found, triggering updateErrorBox');
-                
-                // ⭐ GUARD: Nevolaj updateErrorBox ak prebieha restore
+                console.log('[SPA ErrorBox] GF errors found');
+
+                // označ typ chyby (validation)
+                window.spaErrorState.formInvalid = true;
+                window.spaErrorState.errorType = 'validation';
+
+                // ⭐ dôležité: updateErrorBox v "silent" režime (bez side-effectov)
+                window.__spaErrorboxSilent = true;
+
                 if (!window.__spaRestoringState) {
                     window.updateErrorBox();
                 } else {
                     console.log('[SPA ErrorBox] SKIPPED - restore in progress');
                 }
+
+                window.__spaErrorboxSilent = false;
+
             } else if (window.spaErrorState.formInvalid) {
-                // Clear flag ak chyby zmizli
+                // clear flag, ak chyby zmizli
                 window.spaErrorState.formInvalid = false;
+                window.spaErrorState.errorType = null;
+
+                window.__spaErrorboxSilent = true;
                 window.updateErrorBox();
+                window.__spaErrorboxSilent = false;
             }
         }, 50);
+    });
+}
+
+
+/**
+ * SYNCHRONIZÁCIA: Required ↔ Visibility
+ * Skryté pole NESMIE byť required
+ */
+window.syncRequiredWithVisibility = function() {
+    console.log('[SPA Required] Syncing required attributes with visibility');
+    
+    // Nájdi všetky polia v sekcii s .gfield_visibility_hidden
+    const allFields = document.querySelectorAll('.gfield');
+    
+    allFields.forEach(field => {
+        const isHidden = field.style.display === 'none' || 
+                        field.classList.contains('gfield_visibility_hidden');
+        
+        const input = field.querySelector('input, select, textarea');
+        
+        if (input && isHidden) {
+            // Skryté pole → odober required
+            if (input.hasAttribute('aria-required')) {
+                input.setAttribute('data-original-required', 'true');
+                input.removeAttribute('aria-required');
+                input.removeAttribute('required');
+                console.log('[SPA Required] Removed required from hidden field:', input.name);
+            }
+        } else if (input && !isHidden) {
+            // Viditeľné pole → obnov required ak bolo
+            if (input.getAttribute('data-original-required') === 'true') {
+                input.setAttribute('aria-required', 'true');
+                input.setAttribute('required', 'required');
+                input.removeAttribute('data-original-required');
+                console.log('[SPA Required] Restored required to visible field:', input.name);
+            }
+        }
+    });
+};
+
+// ❌ REMOVED: wrapper ktorý volal updateSectionVisibility (side-effect)
+
+// Trigger aj po GF render
+if (typeof jQuery !== 'undefined') {
+    jQuery(document).on('gform_post_render', function() {
+        setTimeout(() => {
+            window.syncRequiredWithVisibility();
+        }, 100);
     });
 }

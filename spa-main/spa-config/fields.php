@@ -15,6 +15,8 @@ return [
     /* 'spa_registration_type' => 'input_4', */
     'spa_frequency' => 'input_31',
     'spa_resolved_type' => 'input_34',
+    'spa_city_backup' => 'input_45',
+    'spa_program_backup' => 'input_46',
 
     /* ==========================
        ÚČASTNÍK (MEMBER/CHILD) – IDENTIFIKÁCIA
