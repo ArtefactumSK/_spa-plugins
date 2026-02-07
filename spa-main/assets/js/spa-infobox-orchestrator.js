@@ -342,10 +342,10 @@ window.updateSectionVisibility = function() {
         }
     });
     // ========== STATE SANITIZATION (DOM IS TRUTH) ==========
-    // Ak používateľ niečo zrušil v selecte, NESMIE ostať starý fallback vo wizardData.
+    // Ak používateľ niečo zruší v selecte, NESMIE ostať starý fallback vo wizardData.
     // Inak case detection padne do CASE2 a clearCaseGate znovu odhalí polia.
 
-    if (window.wizardData && window.__spaRestoreComplete !== false) {
+    if (window.wizardData) {
         // 1) Ak je mesto v DOM prázdne => vynúť city/program reset v state
         if (cityValueDOM.trim() === '') {
             window.wizardData.city_name = '';
@@ -557,12 +557,6 @@ function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
     
     if (caseNum === 0) {
 
-        // ⚠️ OCHRANA: NIKDY neresetuj polia počas restore
-        if (window.__spaRestoringState) {
-            console.log('[SPA CASE Gate] CASE 0 skipped - restore in progress');
-            return;
-        }
-
         // 1️⃣ RESET HODNÔT (deterministicky, raz)
         allGfields.forEach(gf => {
             if (isInfobox(gf) || gf === cityGfield) return;
@@ -614,13 +608,7 @@ function applyCaseGate(caseNum, cityGfield, programGfield, retryCount = 0) {
     
         return;
     }
-    else if (caseNum === 1) {
-        // ⚠️ OCHRANA: NIKDY neresetuj polia počas restore
-        if (window.__spaRestoringState) {
-            console.log('[SPA CASE Gate] CASE 1 skipped - restore in progress');
-            return;
-        }
-        
+     else if (caseNum === 1) {
         if (!programGfield || programGfield.style.display === 'none') {
             if (retryCount < MAX_RETRIES) {
                 console.warn('[SPA CASE Gate] Program field not ready, retrying...', retryCount + 1);
@@ -708,14 +696,6 @@ window.spaInitSectionOrchestrator = function() {
     // ⚠️ GUARD: spaConfig.fields MUSÍ existovať
     if (!window.spaConfig || !spaConfig.fields) {
         console.warn('[SPA Orchestrator] spaConfig.fields not ready – skipping');
-        return;
-    }
-
-    // ✅ GUARD: Po pagebreaku počkaj na restore pred inicializáciou
-    const cityBackup = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
-    const programBackup = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
-    if ((cityBackup?.value || programBackup?.value) && !window.__spaRestoreComplete) {
-        console.log('[SPA Orchestrator] Backup values present - delaying init until restore completes');
         return;
     }
 
