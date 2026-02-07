@@ -43,6 +43,7 @@
  */
 window.spaCurrentProgramType = null;
 
+
 /**
  * SPA FIELD SCOPE – JEDINÝ ZDROJ PRAVDY
  * GUARD: Wait for spaConfig to be ready
@@ -292,6 +293,22 @@ window.spaDebugDump = function() {
     console.log('[SPA DUMP] ========================================');
 };
 
+
+/**
+ * Prepni autoritu z GET → SELECT (JEDNOSMERNÁ OPERÁCIA)
+ */
+window.spaSwitchToSelectAuthority = function(reason) {
+    if (window.spaInputAuthority === 'select') {
+        console.log('[SPA Authority] Already using SELECT authority');
+        return;
+    }
+    
+    window.spaInputAuthority = 'select';
+    console.log('[SPA Authority] ✅ Switched to SELECT authority:', reason);
+};
+
+
+
 /**
  * RIADENIE VIDITEĽNOSTI SEKCIÍ + POLÍ
  * Architektúra: CASE → BASE → SCOPE → DERIVED
@@ -314,44 +331,66 @@ window.updateSectionVisibility = function() {
         return;
     }
 
-    // ========== CASE DETECTION (DOM-FIRST) ==========
+    // ========== CASE DETECTION (AUTHORITY-AWARE) ==========
     const cityEl = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
     const programEl = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
+    const cityBackup = document.querySelector(`[name="${spaConfig.fields.spa_city_backup}"]`);
+    const programBackup = document.querySelector(`[name="${spaConfig.fields.spa_program_backup}"]`);
     
     const cityValueDOM = cityEl?.value || '';
     const programValueDOM = programEl?.value || '';
+    const cityBackupValue = cityBackup?.value?.trim() || '';
+    const programBackupValue = programBackup?.value?.trim() || '';
     
-    const citySelected = cityValueDOM.trim() !== '' 
-        ? true 
-        : !!(window.wizardData?.city_name && window.wizardData.city_name.trim() !== '');
+    // Authority-based detection
+    let citySelected, programSelected;
     
-    const programSelected = programValueDOM.trim() !== '' 
-        ? true 
-        : !!(window.wizardData?.program_name && window.wizardData.program_name.trim() !== '');
+    if (window.spaInputAuthority === 'get') {
+        // GET authority: use backup values
+        citySelected = cityBackupValue !== '';
+        programSelected = programBackupValue !== '';
+    } else {
+        // SELECT authority: use DOM values
+        citySelected = cityValueDOM.trim() !== '';
+        programSelected = programValueDOM.trim() !== '';
+    }
     
     const caseNum = !citySelected ? 0 : (!programSelected ? 1 : 2);
     
-    console.log('[SPA CASE Detection]', {
+    console.log('[SPA CASE Detection] AUTHORITY-AWARE', {
+        authority: window.spaInputAuthority,
         case: caseNum,
         citySelected,
         programSelected,
-        dom: { cityValue: cityValueDOM, programValue: programValueDOM },
+        backup: {
+            city: cityBackupValue,
+            program: programBackupValue
+        },
+        dom: { 
+            city: cityValueDOM, 
+            program: programValueDOM 
+        },
         wizardData: { 
             city: window.wizardData?.city_name, 
             program: window.wizardData?.program_name 
         }
     });
-    // ========== STATE SANITIZATION (DOM IS TRUTH) ==========
-    // Ak používateľ niečo zruší v selecte, NESMIE ostať starý fallback vo wizardData.
-    // Inak case detection padne do CASE2 a clearCaseGate znovu odhalí polia.
-
-    if (window.wizardData) {
+    
+    // ========== STATE SANITIZATION (AUTHORITY-AWARE) ==========
+    // Apply only when SELECT authority is active
+    if (window.wizardData && window.spaInputAuthority === 'select') {
         // 1) Ak je mesto v DOM prázdne => vynúť city/program reset v state
         if (cityValueDOM.trim() === '') {
             window.wizardData.city_name = '';
             window.wizardData.program_name = '';
             window.wizardData.program_type = null;
             window.spaCurrentProgramType = null;
+            /**
+             * AUTORITA VSTUPU: GET vs SELECT
+             * Possible values: 'get' | 'select'
+             * Default: 'get' (until first user interaction)
+             */
+            window.spaInputAuthority = 'get';
 
             if (window.infoboxData) {
                 window.infoboxData.program = null;
@@ -720,10 +759,28 @@ window.spaInitSectionOrchestrator = function() {
         el.addEventListener('input', handler);
     });
 
-    /* regTypeEls.forEach(el => {
-        el.addEventListener('change', handler);
-        el.addEventListener('input', handler);
-    }); */
+    // ========== AUTHORITY SWITCH: GET → SELECT ==========
+    const authorityHandler = (e) => {
+        // GUARD: Ignore programmatic changes
+        if (!e.isTrusted) return;
+        
+        // GUARD: Ignore GET application phase
+        if (window.isApplyingGetParams) return;
+        
+        // GUARD: Ignore restore phase
+        if (window.__spaRestoringState) return;
+        
+        // Switch to SELECT authority (one-way, permanent)
+        window.spaSwitchToSelectAuthority(`user-change:${e.target.name}`);
+    };
+    
+    if (cityEl) {
+        cityEl.addEventListener('change', authorityHandler);
+    }
+    
+    if (programEl) {
+        programEl.addEventListener('change', authorityHandler);
+    }
 
     console.log('[SPA Orchestrator] Initialized and listening');
 };
