@@ -67,42 +67,6 @@ window.updateErrorBox = function() {
         }
     }
 
-    // ─────────────────────────────────────────────
-    // 2. Ak sú GF validation chyby → VLASTNÝ TEXT + KONTEXT
-    // ─────────────────────────────────────────────
-    /* if (window.spaErrorState.formInvalid) {
-        // ⭐ KONTEXT: Pridaj info o zvolenom meste/programe
-        let contextInfo = '';
-        if (window.wizardData.city_name) {
-            contextInfo += `<p><strong>Mesto:</strong> ${window.wizardData.city_name}</p>`;
-        }
-        if (window.wizardData.program_name) {
-            contextInfo += `<p><strong>Program:</strong> ${window.wizardData.program_name}</p>`;
-        }
-        
-        const message = `<h2 class="gform_submission_error">⛔ Chyba vo formulári</h2>
-                        <p>Vznikol problém s vaším formulárom. Prezrite si zvýraznené polia nižšie.</p>
-                        ${contextInfo}`;
-        
-        if (!errorBox) {
-            const gformBody = document.querySelector('.gform_body');
-            if (gformBody) {
-                errorBox = document.createElement('div');
-                errorBox.className = 'gform_validation_errors';
-                gformBody.insertBefore(errorBox, gformBody.firstChild);
-            } else {
-                return;
-            }
-        }
-        
-        errorBox.innerHTML = message;
-        errorBox.style.display = 'block';
-        
-        // ❌ REMOVED: side-effect call
-        
-        return;
-    } */
-
         if (window.spaErrorState.formInvalid) {
 
             // GF validation chyba – iba zobraz informáciu
