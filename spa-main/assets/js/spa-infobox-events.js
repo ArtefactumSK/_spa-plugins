@@ -82,6 +82,20 @@ if (typeof jQuery !== 'undefined') {
         } else {
             console.log('[SPA Events] applyGetParams SKIPPED - restore in progress');
         }
+
+        // 🔁 CASE2 restore – znovu aplikuj scope pre frekvenciu (GF ju po pagebreaku skryl)
+        if (window.currentState === 2) {
+            const freqInput = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
+            if (freqInput) {
+                const wrap = freqInput.closest('.gfield');
+                if (wrap) {
+                    wrap.style.display = '';
+                    wrap.dataset.conditionalLogic = 'visible';
+                    console.log('[SPA Restore] frequency scope re-applied');
+                }
+            }
+        }
+
     });
 }
 

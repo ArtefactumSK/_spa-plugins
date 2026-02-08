@@ -380,6 +380,7 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
         }
 
         if (window.currentState === 2 && programData) {
+            console.log('[SPA CASE2] primary frequency render');
             window.renderFrequencySelector(programData);
         } else {
             window.renderFrequencySelector(null);
