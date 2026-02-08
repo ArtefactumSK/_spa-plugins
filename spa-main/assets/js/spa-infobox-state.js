@@ -354,6 +354,17 @@ window.watchFormChanges = function() {
                 if (frequencySelector) {
                     frequencySelector.innerHTML = '';
                 }                              
+                // ✅ CLEAR BACKUP: Vyčisti backup field pri resete programu
+                const freqBackup = document.querySelector(`[name="${spaConfig.fields.spa_frequency_value}"]`);
+                if (freqBackup) {
+                    freqBackup.value = '';
+                    
+                    // Trigger change pre GF tracking
+                    const backupChangeEvent = new Event('change', { bubbles: true });
+                    freqBackup.dispatchEvent(backupChangeEvent);
+                    
+                    console.log('[SPA Frequency] spa_frequency_value cleared (program reset)');
+                }
                 
                 window.filterProgramsByCity(selectedCityName);
             }

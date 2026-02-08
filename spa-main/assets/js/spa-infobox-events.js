@@ -83,18 +83,53 @@ if (typeof jQuery !== 'undefined') {
             console.log('[SPA Events] applyGetParams SKIPPED - restore in progress');
         }
 
-        // 🔁 CASE2 restore – znovu aplikuj scope pre frekvenciu (GF ju po pagebreaku skryl)
-        if (window.currentState === 2) {
-            const freqInput = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
-            if (freqInput) {
-                const wrap = freqInput.closest('.gfield');
-                if (wrap) {
-                    wrap.style.display = '';
-                    wrap.dataset.conditionalLogic = 'visible';
-                    console.log('[SPA Restore] frequency scope re-applied');
-                }
+        // 🔍 CASE2 restore – znovu aplikuj scope pre frekvenciu (GF ju po pagebreaku skryl)
+    if (window.currentState === 2) {
+        const freqInput = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);
+        if (freqInput) {
+            const wrap = freqInput.closest('.gfield');
+            if (wrap) {
+                wrap.style.display = '';
+                wrap.dataset.conditionalLogic = 'visible';
+                console.log('[SPA Restore] frequency scope re-applied');
             }
         }
+        
+        // ✅ FREQUENCY RESTORE (po GF rerender)
+        /* const freqBackup = document.querySelector(`[name="${spaConfig.fields.spa_frequency_value}"]`);
+        const hasFreqBackup = freqBackup && freqBackup.value && freqBackup.value.trim() !== '';
+        
+        if (hasFreqBackup) {
+            console.log('[SPA Restore] frequency value detected:', freqBackup.value);
+            
+            window.__spaRestoringFrequency = true;
+            
+            const freqWrapper = document.querySelector('.gfield.spa-frequency-selector');
+            
+            if (!freqWrapper) {
+                console.log('[SPA Restore] frequency restore skipped: no wrapper');
+                window.__spaRestoringFrequency = false;
+            } else {
+                const targetRadio = freqWrapper.querySelector(`input[type="radio"][value="${freqBackup.value}"]`);
+                
+                if (!targetRadio) {
+                    console.log('[SPA Restore] frequency restore skipped: no radio for value ' + freqBackup.value);
+                    window.__spaRestoringFrequency = false;
+                } else if (!targetRadio.checked) {
+                    targetRadio.checked = true;
+                    window.spaFormState.frequency = true;
+                    
+                    const changeEvent = new Event('change', { bubbles: true });
+                    targetRadio.dispatchEvent(changeEvent);
+                    
+                    console.log('[SPA Restore] frequency radio restored:', freqBackup.value);
+                    window.__spaRestoringFrequency = false;
+                } else {
+                    window.__spaRestoringFrequency = false;
+                }
+            }
+        } */
+    }
 
     });
 }
@@ -109,7 +144,10 @@ window.renderFrequencySelector = function(programData) {
     console.log('[SPA Frequency] renderFrequencySelector called with:', !!programData);
     
     const gfieldWrapper = document.querySelector('.gfield.spa-frequency-selector');
-    
+    // ✅ FORCE VISIBILITY – Gravity Forms po pagebreaku nechá pole skryté
+    gfieldWrapper.style.display = '';
+    gfieldWrapper.dataset.conditionalLogic = 'visible';
+
     if (!gfieldWrapper) {
         console.error('[SPA Frequency] GF wrapper .gfield.spa-frequency-selector not found');
         return;
@@ -214,15 +252,36 @@ window.renderFrequencySelector = function(programData) {
             input.dispatchEvent(changeEvent);
         });
 
-        // Náš pôvodný change listener – ostáva nedotknutý
-        input.addEventListener('change', function() {
-            if (this.checked) {
-                window.spaFormState.frequency = true;
-                window.updateSectionVisibility();
-                window.updatePriceSummary();
-                console.log('[SPA Frequency] Selected:', this.value);
+        // Change listener pre výber frekvencie (autoritatívny zápis)
+        input.addEventListener('change', function () {
+            if (!this.checked) return;
+
+            // 1. Stav formulára
+            window.spaFormState.frequency = true;
+
+            // 2. Autoritatívny zápis do GF hidden poľa
+            const freqBackup = document.querySelector(
+                `[name="${spaConfig.fields.spa_frequency_value}"]`
+            );
+
+            if (freqBackup) {
+                freqBackup.value = this.value;
+
+                // Gravity Forms musí zmenu vedieť
+                freqBackup.dispatchEvent(
+                    new Event('change', { bubbles: true })
+                );
+
+                console.log('[SPA Frequency] spa_frequency_value set to:', this.value);
             }
+
+            // 3. Aktualizácia UI / sekcií / ceny
+            window.updateSectionVisibility();
+            window.updatePriceSummary();
+
+            console.log('[SPA Frequency] Selected:', this.value);
         });
+
 
         const span = document.createElement('span');
         span.textContent = `${freq.label} – ${freq.price.toFixed(2).replace('.', ',')} €`;
@@ -239,6 +298,18 @@ window.renderFrequencySelector = function(programData) {
             singleInput.checked = true;
             window.spaFormState.frequency = true;
             
+            // ✅ AUTO-CHECK BACKUP: Pri auto-check ulož aj do backup fieldu (pred dispatch)
+            const freqBackup = document.querySelector(`[name="${spaConfig.fields.spa_frequency_value}"]`);
+            if (freqBackup) {
+                freqBackup.value = singleInput.value;
+                
+                // Trigger change pre GF tracking
+                const backupChangeEvent = new Event('change', { bubbles: true });
+                freqBackup.dispatchEvent(backupChangeEvent);
+                
+                console.log('[SPA Frequency] stored to spa_frequency_value:', singleInput.value);
+            }
+            
             // Spustíme change event aj pri auto-check (dôležité pre konzistenciu)
             const changeEvent = new Event('change', { bubbles: true });
             singleInput.dispatchEvent(changeEvent);
@@ -254,7 +325,22 @@ window.renderFrequencySelector = function(programData) {
             }, 120);
         }
     }
-    
+    // ✅ RESTORE: Obnov označenie z spa_frequency_value (ak existuje)
+    if (activeFrequencies.length > 1) {
+        const freqBackup = document.querySelector(`[name="${spaConfig.fields.spa_frequency_value}"]`);
+        
+        if (freqBackup && freqBackup.value) {
+            console.log('[SPA Frequency Restore] Detected backup value:', freqBackup.value);
+            
+            const targetRadio = gfieldWrapper.querySelector(`input[type="radio"][value="${freqBackup.value}"]`);
+            
+            if (targetRadio) {
+                targetRadio.checked = true;
+                window.spaFormState.frequency = true;
+                console.log('[SPA Frequency Restore] Radio restored (no event)');
+            }
+        }
+    }
     console.log('[SPA Frequency] Rendered:', activeFrequencies.length, 'options');
 };
 
