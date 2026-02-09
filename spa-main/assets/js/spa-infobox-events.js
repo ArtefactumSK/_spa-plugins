@@ -342,6 +342,20 @@ window.renderFrequencySelector = function(programData) {
         }
     }
     console.log('[SPA Frequency] Rendered:', activeFrequencies.length, 'options');
+
+    // ✅ NOVÉ: Frequency hint logic
+    const hintContainer = document.getElementById('spa-frequency-hint');
+    const hintText = hintContainer ? hintContainer.querySelector('.spa-frequency-hint-text') : null;
+
+    if (hintContainer && hintText) {
+        if (activeFrequencies.length > 1) {
+            hintText.textContent = 'Frekvenciu si vyberiete v ďalšom kroku.';
+            hintContainer.style.display = '';
+        } else {
+            hintContainer.style.display = 'none';
+            hintText.textContent = '';
+        }
+    }
 };
 
  // Trigger pri blur (pre meno a adresu)

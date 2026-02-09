@@ -27,6 +27,27 @@
         return `#input_${formId}_${fieldNum}`;
     }
 
+    // ✅ Robustné nájdenie správneho GF formu (po pagebreaku môže byť DOM prerender)
+    function getGfFormByFieldName(fieldName) {
+        const forms = Array.from(document.querySelectorAll('.gform_wrapper form'));
+        for (const f of forms) {
+            if (f.querySelector(`[name="${fieldName}"]`)) {
+                return f;
+            }
+        }
+        return null;
+    }
+
+    function getFieldElByInputId(inputId) {
+        if (!inputId) return null;
+        const fieldNum = String(inputId).replace('input_', '');
+        const fieldName = `input_${fieldNum}`;
+        const form = getGfFormByFieldName(fieldName);
+        if (!form) return null;
+        return form.querySelector(`[name="${fieldName}"]`);
+    }
+
+
     document.addEventListener('DOMContentLoaded', function() {
         initDynamicSelects();
     });
@@ -38,21 +59,19 @@
     }
 
     function initDynamicSelects() {
-        const citySelector = getFieldSelector(cityInputId);
-        const programSelector = getFieldSelector(programInputId);
-
-        if (!citySelector || !programSelector) {
-            console.warn('[SPA] Nemožno vytvoriť selektory pre GF polia.');
-            return;
-        }
-
-        const cityField = document.querySelector(citySelector);
-        const programField = document.querySelector(programSelector);
+        // ▶ Robustný výber GF polí podľa name="input_X" (odolné voči pagebreak re-renderu)
+        const cityField = getFieldElByInputId(cityInputId);
+        const programField = getFieldElByInputId(programInputId);
 
         if (!cityField || !programField) {
-            console.warn('[SPA] GF select polia neboli nájdené v DOM.');
+            console.warn('[SPA] GF select polia neboli nájdené v DOM (name-based lookup zlyhal).');
             return;
         }
+
+
+        // ▶ DETECT: je toto pagebreak (re-render) alebo first load?
+        const isPagebreak = (window.__spaFormRendered === true);
+        window.__spaFormRendered = true;
 
         // Načítaj mestá pri inicializácii
         loadCities(cityField);
@@ -60,26 +79,73 @@
         // Event listener na zmenu mesta
         cityField.addEventListener('change', function() {
             const cityId = this.value;
-            
+        
             if (!cityId) {
                 resetProgramField(programField);
                 return;
             }
-
+        
             loadPrograms(cityId, programField);
         });
+        
 
         // Event listener na zmenu programu
         programField.addEventListener('change', function() {
+            const programId = this.value;
+        
+            // ▶ STORE program to BACKUP
+            const programBackupId = spaRegistrationConfig.fields.spa_program_backup;
+            if (programBackupId) {
+                const selector = getFieldSelector(programBackupId);
+                const backupField = selector ? document.querySelector(selector) : null;
+                if (backupField) {
+                    backupField.value = programId;
+                    console.log('[SPA] Program backup stored:', programId);
+                }
+            }
+        
             const selectedOption = this.options[this.selectedIndex];
-            
             if (!selectedOption || !selectedOption.value) {
                 return;
             }
-            
-            // Nastav listenery pre auto-fill emailu
+        
             setupNameFieldListeners();
-        });
+        });        
+        // ▶ RESTORE: ONLY after pagebreak (not on first load)
+        if (isPagebreak) {
+            const programBackupId = spaRegistrationConfig.fields.spa_program_backup;
+            if (programBackupId) {
+                const backupSelector = getFieldSelector(programBackupId);
+                const backupField = backupSelector ? document.querySelector(backupSelector) : null;
+
+                if (backupField && backupField.value) {
+                    const programId = String(backupField.value);
+                    console.log('[SPA Restore] Pagebreak detected, restoring program:', programId);
+
+                    // derive city from program
+                    const programCities = spaRegistrationConfig.programCities || {};
+                    let derivedCityId = null;
+
+                    Object.entries(programCities).some(([cityId, programIds]) => {
+                        if (Array.isArray(programIds) && programIds.map(String).includes(programId)) {
+                            derivedCityId = cityId;
+                            return true;
+                        }
+                        return false;
+                    });
+
+                    // load programs + restore (city sa automaticky nastaví v populateCityField)
+                    if (derivedCityId) {
+                        // 1️⃣ nastav mesto
+                        cityField.value = derivedCityId;
+                        cityField.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                        // 2️⃣ loadPrograms sa spustí z change handlera mesta
+                    }
+                    
+                }
+            }
+        }
 
         console.log('[SPA] Dynamické selecty inicializované.');
     }
@@ -146,44 +212,56 @@
      */
     function populateCityField(selectElement, cities) {
         selectElement.innerHTML = '<option value="">Vyberte mesto</option>';
+
         cities.forEach(city => {
             const option = document.createElement('option');
             option.value = city.id;
             option.textContent = city.name;
             selectElement.appendChild(option);
         });
-        selectElement.disabled = false;
+
+        selectElement.disabled = false;        
     }
 
     /**
      * Naplnenie program fieldu
+     * Program je jediný zdroj pravdy – mesto je odvodené
      */
     function populateProgramField(selectElement, programs) {
         selectElement.innerHTML = '<option value="">Vyberte program</option>';
+    
         programs.forEach(program => {
             const option = document.createElement('option');
-            option.value = program.id;
+            option.value = String(program.id);
             option.textContent = program.label;
-            
-            // Pridaj data atribúty pre JS logiku
-            option.setAttribute('data-target', program.target);
+    
+            if (program.target) option.setAttribute('data-target', program.target);
             if (program.age_min) option.setAttribute('data-age-min', program.age_min);
             if (program.age_max) option.setAttribute('data-age-max', program.age_max);
-            
+    
             selectElement.appendChild(option);
         });
+    
         selectElement.disabled = false;
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const programId = urlParams.get('spa_program');
-        if (programId && selectElement.querySelector(`option[value="${programId}"]`)) {
-            selectElement.value = programId;
-            selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+    
+        // ▶ Restore program z BACKUPU
+        const backupId = spaRegistrationConfig.fields.spa_program_backup;
+        if (backupId) {
+            const sel = getFieldSelector(backupId);
+            const backupField = sel ? document.querySelector(sel) : null;
+    
+            if (
+                backupField &&
+                backupField.value &&
+                selectElement.querySelector(`option[value="${backupField.value}"]`)
+            ) {
+                selectElement.value = String(backupField.value);
+                selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+            }
         }
-        
-        // Nastav listenery pre meno/priezvisko (blur)
-        setupNameFieldListeners();
     }
+    
+
 
     /**
      * Nastavenie listenerov na blur meno/priezvisko

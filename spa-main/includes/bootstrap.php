@@ -176,6 +176,8 @@ function spa_enqueue_scripts() {
             'spa_city' => $merged_fields['spa_city'] ?? 'input_1',
             'spa_program' => $merged_fields['spa_program'] ?? 'input_2',
             'spa_frequency' => $merged_fields['spa_frequency'] ?? 'input_31',
+            'spa_city_backup' => $merged_fields['spa_city_backup'] ?? 'input_45',
+            'spa_program_backup' => $merged_fields['spa_program_backup'] ?? 'input_46',
             'spa_frequency_value' => $merged_fields['spa_frequency_value'] ?? 'input_48',
         ],
         'programCities' => spa_generate_program_cities_map(),
