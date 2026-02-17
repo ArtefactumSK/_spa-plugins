@@ -1,0 +1,30 @@
+{
+  "payment_method": "input_47",
+
+  "spa_member_name_first": "input_6.3",
+  "spa_member_name_last": "input_6.6",
+  "spa_member_birthdate": "input_7",
+  "spa_member_birthnumber": "input_8",
+
+  "spa_client_address_street": "input_17.1",
+  "spa_client_address_city": "input_17.3",
+  "spa_client_address_postcode": "input_17.5",
+
+  "spa_client_email": "input_15",
+  "spa_client_email_required": "input_16",
+  "spa_client_phone": "input_19",
+
+  "spa_member_health_restrictions": "input_9",
+
+  "spa_guardian_name_first": "input_18.3",
+  "spa_guardian_name_last": "input_18.6",
+  "spa_parent_email": "input_12",
+  "spa_parent_phone": "input_13",
+
+  "spa_consent_gdpr": "input_35.1",
+  "spa_consent_health": "input_35.2",
+  "spa_consent_statutes": "input_35.3",
+  "spa_consent_terms": "input_35.4",
+  "spa_consent_guardian": "input_42.1",
+  "spa_consent_marketing": "input_37.1"
+}
