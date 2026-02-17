@@ -85,22 +85,33 @@ if (!cityBackup?.value && !programBackup?.value) {
                 
                 if (matchedProgramOption) {
                     programSelect.value = matchedProgramOption.value;
-                    
-                    // ⭐ Prečítaj všetky dáta IHNEĎ z matched option
-                    window.wizardData.program_name = matchedProgramOption.text.trim();
-                    window.wizardData.program_id = matchedProgramOption.getAttribute('data-program-id') || matchedProgramOption.value;
-                    window.spaFormState.program = true;
-                    
-                    // Parsuj vek
-                    const ageMatch = matchedProgramOption.text.match(/(\d+)[–-](\d+)/);
-                    if (ageMatch) {
-                        window.wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
-                    } else {
-                        const agePlusMatch = matchedProgramOption.text.match(/(\d+)\+/);
-                        if (agePlusMatch) {
-                            window.wizardData.program_age = agePlusMatch[1] + '+';
-                        }
+    
+                // ✅ Prečítaj všetky dáta IHNEĎ z matched option
+                window.wizardData.program_name = matchedProgramOption.text.trim();
+                window.wizardData.program_id = matchedProgramOption.getAttribute('data-program-id') || matchedProgramOption.value;
+                window.spaFormState.program = true;
+                
+                // Parsuj vek
+                const ageMatch = matchedProgramOption.text.match(/(\d+)[–-](\d+)/);
+                if (ageMatch) {
+                    window.wizardData.program_age = ageMatch[1] + '–' + ageMatch[2];
+                } else {
+                    const agePlusMatch = matchedProgramOption.text.match(/(\d+)\+/);
+                    if (agePlusMatch) {
+                        window.wizardData.program_age = agePlusMatch[1] + '+';
                     }
+                }
+                // ✅ RESTORE program_type (PRED volaním updateSectionVisibility)
+            const ageMinAttr = matchedProgramOption.getAttribute('data-age-min');
+            const ageMin = parseFloat(ageMinAttr);
+            
+            if (!isNaN(ageMin)) {
+                window.wizardData.program_type = ageMin < 18 ? 'child' : 'adult';
+                window.spaCurrentProgramType = window.wizardData.program_type;
+                console.log('[SPA Restore] program_type restored:', window.wizardData.program_type, 'from age_min:', ageMin);
+            } else {
+                console.warn('[SPA Restore] age_min NOT FOUND - program_type remains null');
+            }
                     
                     window.setSpaState(2, 'restoreWizardData:program');
                     
@@ -127,6 +138,11 @@ if (!cityBackup?.value && !programBackup?.value) {
                 wizardData,
                 spaFormState: window.spaFormState
             });
+            // ✅ Restore dokončený → aplikuj scope TERAZ (DOM + wizardData sú zosúladené)
+            if (typeof window.spaApplyScopeState === 'function') {
+                window.spaApplyScopeState(true);
+            }
+
             
             // ⭐ CLEAR FLAGS: Restore complete, povoľ normálnu logiku
             setTimeout(() => {

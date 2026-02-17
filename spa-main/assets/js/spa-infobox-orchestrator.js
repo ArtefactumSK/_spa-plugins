@@ -313,6 +313,11 @@ window.spaSwitchToSelectAuthority = function(reason) {
  * Architektúra: CASE → BASE → SCOPE → DERIVED
  */
 window.updateSectionVisibility = function() {
+    // ⛔ GUARD: počas restore NESMIEME aplikovať CASE ani STATE reset
+    if (window.__spaRestoringState === true) {
+        console.log('[SPA Section Control] Restore in progress – skipping CASE/STATE logic');
+        return;
+    }
             // GF VALIDATION MODE:
             // Pri GF validačnej chybe NESMIEME resetovať/gatovať (inak sa schová program select),
             // ale MUSÍME odomknúť predchádzajúce gate (clearCaseGate) a nechať GF ukázať chyby.
@@ -723,18 +728,43 @@ function clearCaseGate() {
 /**
  * INIT + EVENT BINDING
  */
+/**
+ * RE-APPLY scope (callable multiple times, safe)
+ */
+window.spaApplyScopeState = function(force) {
+    console.log('[SPA Scope] Applying scope state', force ? '(FORCED)' : '');
+    
+    if (!window.spaConfig || !spaConfig.fields) {
+        console.warn('[SPA Scope] spaConfig.fields not ready — skipping');
+        return;
+    }
+    
+    if (typeof window.updateSectionVisibility === 'function') {
+        if (force) {
+            window.__spaForceVisibilityUpdate = true;
+        }
+        window.updateSectionVisibility();
+        if (force) {
+            window.__spaForceVisibilityUpdate = false;
+        }
+    }
+};
+/**
+ * INIT orchestrator (bind listeners once)
+ */
 window.spaInitSectionOrchestrator = function() {
     console.log('[SPA SRC] spaInitSectionOrchestrator called');
     
     // GUARD: Already initialized
     if (window.__spaOrchestratorBound) {
-        console.log('[SPA Orchestrator] Already initialized at:', new Date(window.__spaOrchestratorBoundAt).toISOString(), '- skipping');
+        console.log('[SPA Orchestrator] Already bound at:', new Date(window.__spaOrchestratorBoundAt).toISOString(), '— skipping bind');
+        // ✅ NOVÉ: Re-apply scope (safe, idempotent, FORCED after pagebreak)
+        window.spaApplyScopeState(true);
         return;
     }
     
-    // ⚠️ GUARD: spaConfig.fields MUSÍ existovať
     if (!window.spaConfig || !spaConfig.fields) {
-        console.warn('[SPA Orchestrator] spaConfig.fields not ready – skipping');
+        console.warn('[SPA Orchestrator] spaConfig.fields not ready — skipping');
         return;
     }
 
@@ -742,15 +772,21 @@ window.spaInitSectionOrchestrator = function() {
     window.__spaOrchestratorBound = true;
     window.__spaOrchestratorBoundAt = Date.now();
 
-    if (typeof window.hideAllSectionsOnInit === 'function') window.hideAllSectionsOnInit();
-    if (typeof window.updateSectionVisibility === 'function') window.updateSectionVisibility();
+    // ✅ Initial scope apply
+    if (typeof window.hideAllSectionsOnInit === 'function') {
+        window.hideAllSectionsOnInit();
+    }
+    window.spaApplyScopeState();
 
+    // ✅ Bind event listeners (only once)
     const cityEl = document.querySelector(`[name="${spaConfig.fields.spa_city}"]`);
     const programEl = document.querySelector(`[name="${spaConfig.fields.spa_program}"]`);
     const freqEl = document.querySelector(`[name="${spaConfig.fields.spa_frequency}"]`);   
 
     const handler = () => {
-        if (typeof window.updateSectionVisibility === 'function') window.updateSectionVisibility();
+        if (typeof window.updateSectionVisibility === 'function') {
+            window.updateSectionVisibility();
+        }
     };
 
     [cityEl, programEl, freqEl].forEach(el => {
@@ -759,28 +795,19 @@ window.spaInitSectionOrchestrator = function() {
         el.addEventListener('input', handler);
     });
 
-    // ========== AUTHORITY SWITCH: undefined → 'select' (DELEGATED) ==========
+    // Authority switch listener
     document.addEventListener('change', function(e) {
         const name = e.target?.name;
-    
-        // len mesto/program
         if (name !== spaConfig.fields.spa_city && name !== spaConfig.fields.spa_program) return;
-    
-        // iba skutočná user akcia
         if (!e.isTrusted) return;
-    
-        // ignorovať GET aplikáciu a restore
         if (window.isApplyingGetParams) return;
         if (window.__spaRestoringState) return;
-    
-        // jednosmerne
         if (window.spaInputAuthority === 'select') return;
     
         window.spaInputAuthority = 'select';
         console.log('[SPA Authority] Switched to SELECT (user interaction):', name);
     });
   
-
     console.log('[SPA Orchestrator] Initialized and listening');
 };
 

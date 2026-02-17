@@ -48,18 +48,18 @@ if (typeof spaConfig === 'undefined') {
 window.renderInfobox = function(data, icons, capacityFree, price) {
     
     const content = data.content;
-    const programData = data.program;
+const programData = data.program;
 
         // === SPA SCOPE RESOLUTION (SINGLE SOURCE OF TRUTH) ===
     const hasProgramSelected = !!(programData && window.wizardData?.program_name);
     const citySelected = !!(window.wizardData?.city_name);
-    const ageMin = parseFloat(programData?.age_min);
+const ageMin = parseFloat(programData?.age_min);
     let resolvedProgramType = null;
 
     if (hasProgramSelected && citySelected) {
         // DEFAULT = ADULT (ak NIE je explicitne CHILD)
         // CHILD iba ak: validný age_min A age_min < 18
-        if (!isNaN(ageMin) && ageMin < 18) {
+if (!isNaN(ageMin) && ageMin < 18) {
             resolvedProgramType = 'child';
         } else {
             // Všetky ostatné prípady = ADULT (vrátane null/undefined/NaN age_min)
@@ -69,7 +69,7 @@ window.renderInfobox = function(data, icons, capacityFree, price) {
     } else {
         // Ak nie je program/mesto vybrané -> null
         resolvedProgramType = null;
-    }
+}
 
     console.log('[SPA SCOPE RESOLUTION]', {
         hasProgramSelected,
