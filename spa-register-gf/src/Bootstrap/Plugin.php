@@ -127,7 +127,7 @@ class Plugin {
          * Session init – ale cez ensureSession() s podmienkami vyššie.
          * Dáme to veľmi skoro.
          */
-        add_action( 'init', [ self::class, 'ensureSession' ], 1 );
+        add_action( 'init', [ self::class, 'ensureSession' ], 0 );
 
         /**
          * DEBUG endpointy: len keď WP_DEBUG a len pre admina.

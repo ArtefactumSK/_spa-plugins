@@ -97,9 +97,15 @@ class SessionService {
         }
 
         try {
-            $created = new \DateTime( $createdAt );
-            $now     = new \DateTime();
-            $diff    = $now->getTimestamp() - $created->getTimestamp();
+            $createdTimestamp = is_numeric( $createdAt )
+                ? (int) $createdAt
+                : strtotime( $createdAt );
+
+            if ( $createdTimestamp === false || $createdTimestamp <= 0 ) {
+                return true;
+            }
+
+            return ( time() - $createdTimestamp ) > SPA_REG_GF_SESSION_TTL;
             return $diff > SPA_REG_GF_SESSION_TTL;
         } catch ( \Exception $e ) {
             return true;
