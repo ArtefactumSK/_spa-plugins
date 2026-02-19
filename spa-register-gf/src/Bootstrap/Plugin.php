@@ -139,9 +139,12 @@ class Plugin {
         }
 
         // GF hooky (bez form ID – guard má byť v Hooks triedach cez cssClass spa-register-gf)
-        $preRender  = new \SpaRegisterGf\Hooks\PreRenderHooks();
-        $validation = new \SpaRegisterGf\Hooks\ValidationHooks();
-        $submission = new \SpaRegisterGf\Hooks\SubmissionHooks();
+        $enqueue     = new \SpaRegisterGf\Hooks\EnqueueHooks();
+        $preRender   = new \SpaRegisterGf\Hooks\PreRenderHooks();
+        $validation  = new \SpaRegisterGf\Hooks\ValidationHooks();
+        $submission  = new \SpaRegisterGf\Hooks\SubmissionHooks();
+
+        $enqueue->register();
 
         add_filter( 'gform_pre_render',       [ $preRender,  'handle' ],               10, 1 );
         add_filter( 'gform_pre_validation',   [ $validation, 'handlePreValidation' ],  10, 1 );

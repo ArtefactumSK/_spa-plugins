@@ -7,7 +7,7 @@
  * Logika:
  *   1. Ak scope chýba → všetko zostane viditeľné (server nerozhodol)
  *   2. Ak scope existuje → JS riadi sekcie + scope polia
- *   3. FIELD MODE fallback – ak sekcie neexistujú, prepína jednotlivé wrappery podľa fields.json
+ *   3. FIELD LEVEL CONTROL – vždy prebehne, bez ohľadu na existenciu sekcií
  *
  * Server NESMIE nastavovať isHidden. Iba tento súbor rozhoduje o viditeľnosti.
  */
@@ -140,7 +140,7 @@
     console.log('[SPA Scope] section wrappers =', sectionWrappersExist);
 
     if (!hasScopeWrappers) {
-        console.warn('[SPA Scope] ⚠️ SECTION WRAPPERS MISSING – using FIELD MODE');
+        console.warn('[SPA Scope] ⚠️ SECTION WRAPPERS MISSING – field-level control will handle visibility');
     }
 
     // ========== SECTIONS VISIBILITY ==========
@@ -181,47 +181,24 @@
         console.log('[SPA Scope] ✅ ADULT sections shown');
     }
 
-    // ========== FIELD MODE FALLBACK ==========
-    // Ak polia nie sú obalené scope sekciou, prepínaj ich priamo
+    // ========== FIELD LEVEL CONTROL (always applied) ==========
+    // Prebehne vždy – sekcie sú iba nadstavba.
+    // Polia mimo sekcií sú riadené priamo; polia vnútri sekcií sú riadené redundantne (no side-effect).
 
-    if (!hasScopeWrappers) {
-        // Skry všetky scope polia, potom zobraz správne
-        [...fieldScopes.child_only, ...fieldScopes.adult_only].forEach(fieldName => {
-            const fieldScopeValue = getFieldScope(fieldName);
-            let visible = false;
+    [...fieldScopes.child_only, ...fieldScopes.adult_only].forEach(fieldName => {
+        const fieldScopeValue = getFieldScope(fieldName);
+        let visible = false;
+        if (fieldScopeValue === 'child') visible = (scope === 'child');
+        if (fieldScopeValue === 'adult') visible = (scope === 'adult');
+        setFieldWrapperVisibility(fieldName, visible);
+    });
 
-            if (fieldScopeValue === 'child') visible = (scope === 'child');
-            if (fieldScopeValue === 'adult') visible = (scope === 'adult');
+    // Common polia vždy viditeľné
+    fieldScopes.common.forEach(fieldName => {
+        setFieldWrapperVisibility(fieldName, true);
+    });
 
-            setFieldWrapperVisibility(fieldName, visible);
-        });
-
-        // Common polia vždy viditeľné
-        fieldScopes.common.forEach(fieldName => {
-            setFieldWrapperVisibility(fieldName, true);
-        });
-
-        console.log('[SPA Scope] ✅ FIELD MODE applied for scope:', scope);
-    } else {
-        // Sekcie existujú – iba skontroluj polia mimo sekcií (hybrid)
-        [...fieldScopes.child_only, ...fieldScopes.adult_only].forEach(fieldName => {
-            const wrapper = findFieldWrapper(fieldName);
-            if (!wrapper) return;
-
-            // Ak wrapper nie je vnútri scope sekcie, riaď ho priamo
-            const inScopeSection =
-                wrapper.closest('.spa-section-child') ||
-                wrapper.closest('.spa-section-adult');
-
-            if (!inScopeSection) {
-                const fieldScopeValue = getFieldScope(fieldName);
-                let visible = false;
-                if (fieldScopeValue === 'child') visible = (scope === 'child');
-                if (fieldScopeValue === 'adult') visible = (scope === 'adult');
-                setFieldWrapperVisibility(fieldName, visible);
-            }
-        });
-    }
+    console.log('[SPA Scope] ✅ FIELD LEVEL CONTROL applied for scope:', scope);
 
     // ========== EXPOSE GLOBALS (pre prípadné rozšírenie z iných modulov) ==========
     window.spaGetFieldScope             = getFieldScope;
