@@ -19,6 +19,23 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class PreRenderHooks {
 
+    // ── Frequency key → label (zhodné so spa-selection-pricing.js) ──────────
+    private const FREQUENCY_LABELS = [
+        'spa_price_1x_weekly' => '1× týždenne',
+        'spa_price_2x_weekly' => '2× týždenne',
+        'spa_price_monthly'   => 'Mesačný paušál',
+        'spa_price_semester'  => 'Cena za semester',
+    ];
+
+    private const FREQUENCY_PERIOD = [
+        'spa_price_1x_weekly' => 'za tréningový týždeň',
+        'spa_price_2x_weekly' => 'za tréningový týždeň',
+        'spa_price_monthly'   => 'za kalendárny mesiac',
+        'spa_price_semester'  => 'za semester',
+    ];
+
+    // ────────────────────────────────────────────────────────────────────────
+
     public function handle( array $form ): array {
         if ( ! GFFormFinder::guard( $form ) ) {
             return $form;
@@ -26,20 +43,16 @@ class PreRenderHooks {
 
         $session = SessionService::tryCreate();
 
-        // Predvyplnenie spa_city: SESSION nie je zdrojom (city nie je v session)
-        // Fallback z GET (len UI, neovplyvňuje amount/scope/frequency)
         $cityFieldId    = FieldMapService::tryResolve( 'spa_city' );
         $programFieldId = FieldMapService::tryResolve( 'spa_program' );
 
         if ( $session ) {
-            // session.program_id predvyplní spa_program
             if ( $programFieldId && $session->getProgramId() > 0 ) {
                 add_filter( 'gform_field_value_' . $programFieldId, function () use ( $session ) {
                     return $session->getProgramId();
                 } );
             }
 
-            // spa_resolved_type predvyplníme zo session.scope
             $resolvedTypeFieldId = FieldMapService::tryResolve( 'spa_resolved_type' );
             if ( $resolvedTypeFieldId ) {
                 try {
@@ -48,11 +61,10 @@ class PreRenderHooks {
                         return $scope;
                     } );
                 } catch ( \RuntimeException $e ) {
-                    // scope chýba – formulár sa zobrazí bez predvyplnenia
+                    // scope chýba
                 }
             }
 
-            // spa_frequency zo session.frequency_key
             $freqFieldId = FieldMapService::tryResolve( 'spa_frequency' );
             if ( $freqFieldId && ! empty( $session->getFrequencyKey() ) ) {
                 add_filter( 'gform_field_value_' . $freqFieldId, function () use ( $session ) {
@@ -60,7 +72,7 @@ class PreRenderHooks {
                 } );
             }
 
-            // Inject price summary do HTML field s cssClass 'info_price_summary'
+            // ── Price summary inject ─────────────────────────────────────────
             $summaryHtml = $this->buildPriceSummary( $session );
             if ( $summaryHtml !== '' ) {
                 foreach ( $form['fields'] as &$field ) {
@@ -76,7 +88,7 @@ class PreRenderHooks {
             }
         }
 
-        // GET fallback – iba spa_city a spa_program, ak session neexistuje alebo program_id je 0
+        // GET fallback
         if ( $cityFieldId && isset( $_GET['city'] ) ) {
             $cityVal = sanitize_text_field( $_GET['city'] );
             add_filter( 'gform_field_value_' . $cityFieldId, function () use ( $cityVal ) {
@@ -94,13 +106,15 @@ class PreRenderHooks {
         return $form;
     }
 
-    // ── Price Summary ────────────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════════════
+    // PRICE SUMMARY BUILDER
+    // ════════════════════════════════════════════════════════════════════════
 
     private function buildPriceSummary( SessionService $session ): string {
         $programId    = $session->getProgramId();
         $frequencyKey = $session->getFrequencyKey();
-        $amount       = method_exists( $session, 'getAmount' )          ? $session->getAmount()          : null;
-        $external     = method_exists( $session, 'getExternalSurcharge' ) ? $session->getExternalSurcharge() : null;
+        $baseAmount   = method_exists( $session, 'getAmount' )             ? (float) $session->getAmount()             : 0.0;
+        $surchargeRaw = method_exists( $session, 'getExternalSurcharge' )  ? (string) $session->getExternalSurcharge() : '';
 
         try {
             $scope = $session->getScope();
@@ -120,34 +134,47 @@ class PreRenderHooks {
 
         $programName = esc_html( $post->post_title );
 
-        // Mesto z post meta (kľúče overené v projekte)
-        $city = '';
-        foreach ( [ 'spa_city', 'city', 'spa_program_city' ] as $metaKey ) {
-            $val = get_post_meta( $programId, $metaKey, true );
-            if ( ! empty( $val ) ) {
-                $city = esc_html( $val );
-                break;
-            }
+        // Vek z postmeta (spa_age_from / spa_age_to – rovnaké kľúče ako v spa-selection.php)
+        $ageFrom = get_post_meta( $programId, 'spa_age_from', true );
+        $ageTo   = get_post_meta( $programId, 'spa_age_to',   true );
+        $ageMin  = ( $ageFrom !== '' && $ageFrom !== null ) ? (float) $ageFrom : null;
+        $ageMax  = ( $ageTo   !== '' && $ageTo   !== null ) ? (float) $ageTo   : null;
+
+        // Cena z DB (autoritatívny zdroj, nie session pre display)
+        $dbAmount = 0.0;
+        if ( $frequencyKey && isset( self::FREQUENCY_LABELS[ $frequencyKey ] ) ) {
+            $metaVal  = get_post_meta( $programId, $frequencyKey, true );
+            $dbAmount = ( $metaVal !== '' ) ? (float) $metaVal : $baseAmount;
+        } else {
+            $dbAmount = $baseAmount;
         }
 
-        // ── Finálna cena ─────────────────────────────────────────────────────
-        $priceHtml = '';
-        if ( $amount !== null && $amount > 0 ) {
-            $finalPrice = (float) $amount;
+        // ── Surcharge výpočet (logika zhodná so spa-selection-pricing.js) ───
+        $finalAmount    = $dbAmount;
+        $surchargeLabel = '';
 
-            if ( $external !== null && $external !== '' ) {
-                $ext = (string) $external;
-                if ( strpos( $ext, '%' ) !== false ) {
-                    $pct        = (float) str_replace( '%', '', $ext );
-                    $finalPrice = $finalPrice * ( 1 + $pct / 100 );
+        if ( $surchargeRaw !== '' && $surchargeRaw !== '0' && $surchargeRaw !== null ) {
+            $isPercent = str_ends_with( $surchargeRaw, '%' );
+            $numVal    = (float) str_replace( '%', '', $surchargeRaw );
+
+            if ( $numVal !== 0.0 ) {
+                if ( $isPercent ) {
+                    $finalAmount = $dbAmount * ( 1 + $numVal / 100 );
+                    $absVal      = abs( $numVal );
+                    $surchargeLabel = $numVal > 0
+                        ? sprintf( 'vrátane príplatku +%s%%', $absVal )
+                        : sprintf( 'po zľave -%s%%', $absVal );
                 } else {
-                    $finalPrice = $finalPrice + (float) $ext;
+                    $finalAmount = $dbAmount + $numVal;
+                    $absVal      = abs( $numVal );
+                    $surchargeLabel = $numVal > 0
+                        ? sprintf( 'vrátane príplatku +%s €', number_format( $absVal, 2, ',', ' ' ) )
+                        : sprintf( 'po zľave -%s €', number_format( $absVal, 2, ',', ' ' ) );
                 }
             }
-
-            $finalPrice = round( $finalPrice, 2 );
-            $priceHtml  = number_format( $finalPrice, 2, ',', ' ' ) . ' €';
         }
+
+        $finalAmount = round( $finalAmount, 2 );
 
         // ── Scope label ──────────────────────────────────────────────────────
         $scopeLabel = match ( $scope ) {
@@ -156,41 +183,132 @@ class PreRenderHooks {
             default => '',
         };
 
-        // ── Frequency label ──────────────────────────────────────────────────
-        $freqLabel = ! empty( $frequencyKey ) ? esc_html( $frequencyKey ) : '';
+        // ── Vekový rozsah – text ─────────────────────────────────────────────
+        $ageText = '';
+        if ( $ageMin !== null ) {
+            $ageText = str_replace( '.', ',', $ageMin );
+            if ( $ageMax !== null ) {
+                $ageText .= '–' . str_replace( '.', ',', $ageMax );
+            } else {
+                $ageText .= '+';
+            }
+            // skloňovanie
+            $upper   = $ageMax ?? $ageMin;
+            $base    = (int) floor( $upper );
+            $ageUnit = match ( true ) {
+                $base === 1                 => 'rok',
+                $base >= 2 && $base <= 4   => 'roky',
+                default                    => 'rokov',
+            };
+            $ageText .= ' ' . $ageUnit;
+        }
 
-        // ── HTML ─────────────────────────────────────────────────────────────
+        // ── Frequency labels ─────────────────────────────────────────────────
+        $freqLabel   = self::FREQUENCY_LABELS[ $frequencyKey ]  ?? esc_html( $frequencyKey );
+        $periodLabel = self::FREQUENCY_PERIOD[ $frequencyKey ]  ?? '';
+
+        // ── SVG ikony – načítaj z wp-content/uploads/spa-icons/ ─────────────
+        $spaLogoSvg = $this->loadIcon( 'spa-icon' );
+        $ageSvg     = $this->loadIcon( 'age' );
+        $priceSvg   = $this->loadIcon( 'price-weekly' );
+        $freqSvg    = $this->loadIcon( 'frequency' );
+
+        // ════════════════════════════════════════════════════════════════════
+        // HTML render
+        // ════════════════════════════════════════════════════════════════════
         $html  = '<div class="spa-price-summary">';
 
-        $html .= '<div class="spa-summary-program">';
+        // ── 1. Program ───────────────────────────────────────────────────────
+        $html .= '<div class="spa-summary-row spa-summary-program">';
+        $html .= '<span class="spa-summary-icon spa-logo-small">' . $spaLogoSvg . '</span>';
+        $html .= '<div class="spa-summary-content">';
         $html .= '<strong>Vybraný program:</strong> ' . $programName;
-        if ( $city ) {
-            $html .= ' &ndash; ' . $city;
+        if ( $scopeLabel ) {
+            $html .= ' <span class="spa-summary-scope-badge">/ ' . esc_html( $scopeLabel ) . '</span>';
         }
-        // JS doplní meno účastníka do tohto placeholderu
+        // JS placeholder pre meno účastníka (doplní spa-register-gf-scope.js)
         $html .= '<span class="spa-summary-participant-name"></span>';
         $html .= '</div>';
+        $html .= '</div>';
 
-        if ( $freqLabel ) {
-            $html .= '<div class="spa-summary-frequency">';
-            $html .= '<strong>Vybrané predplatné:</strong> ' . $freqLabel;
+        // ── 2. Vekový rozsah ────────────────────────────────────────────────
+        if ( $ageText ) {
+            $html .= '<div class="spa-summary-row spa-summary-age">';
+            $html .= '<span class="spa-summary-icon">' . $ageSvg . '</span>';
+            $html .= '<div class="spa-summary-content">';
+            $html .= '<strong>' . esc_html( $ageText ) . '</strong>';
+            $html .= '</div>';
+            $html .= '</div>';
+
+            // JS vloží varovanie o veku sem, ak birthdate je mimo rozsahu
+            if ( $ageMin !== null ) {
+                $html .= '<div class="spa-summary-age-warning" '
+                    . 'data-age-min="' . esc_attr( $ageMin ) . '" '
+                    . ( $ageMax !== null ? 'data-age-max="' . esc_attr( $ageMax ) . '"' : '' )
+                    . ' style="display:none;">'
+                    . '<span class="spa-form-warning">⚠️ Vek účastníka nezodpovedá vybranému programu!</span>'
+                    . '</div>';
+            }
+        }
+
+        // ── 3. Predplatné ────────────────────────────────────────────────────
+        if ( $dbAmount > 0 ) {
+            $html .= '<div class="spa-summary-row spa-summary-frequency">';
+            $html .= '<span class="spa-summary-icon">' . $priceSvg . '</span>';
+            $html .= '<div class="spa-summary-content">';
+            $html .= '<strong>' . esc_html( $this->formatPrice( $dbAmount ) )
+                . ( $periodLabel ? ' ' . esc_html( $periodLabel ) : '' ) . '</strong>';
+            $html .= '<br><span class="spa-summary-freq-label">';
+            $html .= '<span class="spa-summary-icon-inline">' . $freqSvg . '</span> ';
+            $html .= esc_html( 'Tréning ' . $freqLabel );
+            $html .= '</span>';
+            $html .= '</div>';
             $html .= '</div>';
         }
 
-        if ( $scopeLabel ) {
-            $html .= '<div class="spa-summary-scope">';
-            $html .= '<strong>Typ účastníka:</strong> ' . $scopeLabel;
+        // ── 4. Cena k úhrade ─────────────────────────────────────────────────
+        if ( $finalAmount > 0 ) {
+            $html .= '<div class="spa-summary-row spa-summary-price">';
+            $html .= '<span class="spa-summary-icon">' . $priceSvg . '</span>';
+            $html .= '<div class="spa-summary-content">';
+            $html .= '<strong>Cena k úhrade: '
+                . esc_html( $this->formatPrice( $finalAmount ) ) . '</strong>';
+            if ( $surchargeLabel ) {
+                $html .= ' <span class="spa-summary-surcharge">(' . esc_html( $surchargeLabel ) . ')</span>';
+            }
             $html .= '</div>';
-        }
-
-        if ( $priceHtml ) {
-            $html .= '<div class="spa-summary-price">';
-            $html .= '<strong>Cena:</strong> ' . $priceHtml;
             $html .= '</div>';
         }
 
         $html .= '</div>'; // .spa-price-summary
 
         return $html;
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Formátovanie ceny – dynamické desatinné miesta (zhodné s formatPriceForCard v JS)
+     */
+    private function formatPrice( float $amount ): string {
+        if ( $amount <= 0 ) {
+            return '0 €';
+        }
+        if ( fmod( $amount, 1.0 ) === 0.0 ) {
+            return number_format( $amount, 0, ',', ' ' ) . ' €';
+        }
+        return number_format( $amount, 2, ',', ' ' ) . ' €';
+    }
+
+    /**
+     * Načítaj SVG ikonu z uploads/spa-icons/ (rovnaký zdroj ako spa-selection.php)
+     * Fallback: prázdny string (nikdy nespôsobí chybu)
+     */
+    private function loadIcon( string $name ): string {
+        $path = WP_CONTENT_DIR . '/uploads/spa-icons/' . $name . '.svg';
+        if ( file_exists( $path ) ) {
+            return (string) file_get_contents( $path );
+        }
+        return '';
     }
 }

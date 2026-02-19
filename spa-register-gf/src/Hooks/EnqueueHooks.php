@@ -19,6 +19,7 @@ class EnqueueHooks {
             return;
         }
 
+        // Scope control
         wp_enqueue_script(
             'spa-register-gf-js',
             SPA_REG_GF_URL . 'assets/js/spa-register-gf-scope.js',
@@ -31,6 +32,15 @@ class EnqueueHooks {
             'spa-register-gf-js',
             'spaRegisterFields',
             FieldMapService::getAll()
+        );
+
+        // Age warning (závisí na spaRegisterFields z scope scriptu)
+        wp_enqueue_script(
+            'spa-register-gf-age',
+            SPA_REG_GF_URL . 'assets/js/spa-register-gf-age.js',
+            [ 'spa-register-gf-js' ],
+            SPA_REG_GF_VERSION,
+            true
         );
     }
 }
