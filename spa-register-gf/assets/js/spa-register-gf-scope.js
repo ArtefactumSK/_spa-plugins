@@ -28,32 +28,32 @@
     // Rozšíriteľné – pridaj sem iba polia, ktoré sú VÝLUČNE pre daný scope.
     const fieldScopes = {
         child_only: [
-            'spa_member_birthdate',
             'spa_member_birthnumber',
-            'spa_member_health_restrictions',
             'spa_guardian_name_first',
             'spa_guardian_name_last',
             'spa_parent_email',
             'spa_parent_phone',
-            'spa_consent_guardian'
+            'spa_consent_guardian',
+            'spa_client_email'
         ],
         adult_only: [
             'spa_client_address_street',
             'spa_client_address_city',
             'spa_client_address_postcode',
-            'spa_client_email',
-            'spa_client_email_required',
-            'spa_client_phone',
-            'spa_consent_marketing'
+            'spa_client_email_required'
         ],
         common: [
             'spa_member_name_first',
             'spa_member_name_last',
+            'spa_member_birthdate',
+            'spa_member_health_restrictions',
+            'spa_client_phone',
             'spa_consent_gdpr',
             'spa_consent_health',
             'spa_consent_statutes',
             'spa_consent_terms',
-            'payment_method'
+            'payment_method',
+            'spa_consent_marketing'
         ]
     };
 
@@ -73,9 +73,8 @@
 
     /**
      * Prevedie logický názov poľa na GF input ID cez window.spaRegisterFields
-     * Fallback: použije fields.json mapu ak je dostupná.
      * @param {string} fieldName
-     * @returns {string|null} napr. "input_7"
+     * @returns {string|null} napr. "input_6.3" alebo "input_15"
      */
     function resolveInputId(fieldName) {
         const fields = window.spaRegisterFields || {};
@@ -83,8 +82,9 @@
     }
 
     /**
-     * Nájde wrapper .gfield pre dané pole podľa input ID zo fields.json.
-     * GF wrapper má triedu gfield a obsahuje input s daným id.
+     * Nájde wrapper .gfield pre dané pole podľa name atribútu (stabilný GF identifikátor).
+     * Primárne: querySelector('[name="input_6.3"]')
+     * Fallback: querySelector('[id^="field_"][id$="_6"]')
      * @param {string} fieldName
      * @returns {Element|null}
      */
@@ -95,22 +95,24 @@
             return null;
         }
 
-        // inputId môže byť napr. "input_7" alebo "input_6.3" (sub-field)
-        // Normalizuj – zoberie prvú časť pred bodkou
-        const baseId = inputId.replace('.', '_').split('_').slice(0, 2).join('_'); // "input_7"
-
-        // Hľadáme wrapper cez data-field-id alebo id atribút
-        // GF wrapper má id="field_FORMID_FIELDID" – ale FORMID nepoznáme staticky
-        // Preto hľadáme cez input element priamo
-        const fullInputId = inputId.replace('.', '_'); // "input_6_3"
-        const inputEl = document.getElementById(fullInputId) || document.getElementById(baseId);
-
+        // PRIMARY: hľadaj cez name atribút – stabilný identifikátor nezávislý od form_id
+        const inputEl = document.querySelector('[name="' + CSS.escape(inputId) + '"]');
         if (inputEl) {
             return inputEl.closest('.gfield');
         }
 
-        // Fallback – hľadaj cez triedu obsahujúcu fieldName (napr. ak má GF CSS triedu)
-        console.warn('[SPA Scope] Could not find wrapper for field:', fieldName, '(inputId:', inputId, ')');
+        // FALLBACK: vyparsuj fieldId z inputId (napr. "input_6.3" → 6, "input_15" → 15)
+        const fieldIdMatch = inputId.match(/^input_(\d+)/);
+        const fieldId = fieldIdMatch ? fieldIdMatch[1] : null;
+
+        if (fieldId) {
+            const wrapper = document.querySelector('[id^="field_"][id$="_' + fieldId + '"]');
+            if (wrapper) {
+                return wrapper;
+            }
+        }
+
+        console.warn('[SPA Scope] Could not find wrapper for field:', fieldName, '(inputId:', inputId, ', fieldId:', fieldId, ')');
         return null;
     }
 
