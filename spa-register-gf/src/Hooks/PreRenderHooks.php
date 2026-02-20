@@ -57,16 +57,35 @@ class PreRenderHooks {
                 } );
             }
 
+            // spa_resolved_type predvyplníme zo session.scope
             $resolvedTypeFieldId = FieldMapService::tryResolve( 'spa_resolved_type' );
-            $scope = null;
-            if ( $resolvedTypeFieldId ) {
-                try {
-                    $scope = $session->getScope();
+            try {
+                $scope = $session->getScope();
+
+                if ( $resolvedTypeFieldId ) {
                     add_filter( 'gform_field_value_' . $resolvedTypeFieldId, function () use ( $scope ) {
                         return $scope;
                     } );
-                } catch ( \RuntimeException $e ) {
-                    // scope chýba – formulár sa zobrazí bez predvyplnenia
+                }
+
+                wp_add_inline_script(
+                    'spa-register-gf-js',
+                    'window.spaRegisterScope = "' . esc_js( $scope ) . '";',
+                    'before'
+                );
+
+            } catch ( \RuntimeException $e ) {
+                // scope chýba – formulár sa zobrazí bez predvyplnenia
+            }
+
+            if ( in_array( $scope, [ 'adult', 'child' ], true ) ) {
+                wp_add_inline_script(
+                    'spa-register-gf-js',
+                    'window.spaRegisterScope = "' . esc_js( $scope ) . '";',
+                    'before'
+                );
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( '[spa-register-gf] scope=' . $scope );
                 }
             }
 
