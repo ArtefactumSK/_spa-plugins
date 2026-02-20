@@ -212,23 +212,25 @@ class PreRenderHooks {
         // ── Surcharge ────────────────────────────────────────────────────────
         $finalAmount    = $dbAmount;
         $surchargeLabel = '';
+        $hasSurcharge   = false;
 
         if ( $surchargeRaw !== '' && $surchargeRaw !== '0' ) {
             $isPercent = str_ends_with( $surchargeRaw, '%' );
             $numVal    = (float) str_replace( '%', '', $surchargeRaw );
             if ( $numVal !== 0.0 ) {
+                $hasSurcharge = true;
                 if ( $isPercent ) {
                     $finalAmount    = $dbAmount * ( 1 + $numVal / 100 );
                     $absVal         = abs( $numVal );
                     $surchargeLabel = $numVal > 0
-                        ? 'vrátane príplatku +' . $absVal . '%'
-                        : 'po zľave -' . $absVal . '%';
+                        ? 'Registračný príplatok +' . $absVal . '%'
+                        : 'Registračná zľava -' . $absVal . '%';
                 } else {
                     $finalAmount    = $dbAmount + $numVal;
                     $absVal         = abs( $numVal );
                     $surchargeLabel = $numVal > 0
-                        ? 'vrátane príplatku +' . number_format( $absVal, 2, ',', ' ' ) . ' €'
-                        : 'po zľave -' . number_format( $absVal, 2, ',', ' ' ) . ' €';
+                        ? 'Registračný príplatok +' . number_format( $absVal, 2, ',', ' ' ) . ' €'
+                        : 'Registračná zľava -' . number_format( $absVal, 2, ',', ' ' ) . ' €';
                 }
             }
         }
@@ -236,8 +238,8 @@ class PreRenderHooks {
 
         // ── Scope label ──────────────────────────────────────────────────────
         $scopeLabel = match ( $scope ) {
-            'child' => 'Vybraný program pre deti vyžaduje údaje o zákonom zástupcom dieťaťa',
-            'adult' => 'Váš vybraný program',
+            'child' => 'Vybraný program je pre deti a vyžaduje vyplnenie registrácie zákonom zástupcom dieťaťa.',
+            'adult' => 'Vyplňte vaše údaje pre registráciu pre váš vybraný program.',
             default => '',
         };
 
@@ -279,13 +281,10 @@ class PreRenderHooks {
         $html  = '<div class="spa-price-summary spa-infobox-summary">';
         $html .= '<ul class="spa-summary-list">';
 
-        // 1. Program + scope  (ikona: spa_logo – rovnaká ako v renderFullInfobox)
+        // 1. Program  
         $html .= '<li class="spa-summary-item spa-summary-program">';
         $html .= '<span class="spa-summary-icon">' . $iconLogo . '</span>';
         $html .= '<span><strong>' . $programName . '</strong>';
-        if ( $scopeLabel ) {
-            $html .= '<br>' . esc_html( $scopeLabel );
-        }
         $html .= '<span class="spa-summary-participant-name"></span>';
         $html .= '</span>';
         $html .= '</li>';
@@ -327,30 +326,52 @@ class PreRenderHooks {
             $html .= '<li class="spa-summary-item spa-summary-price-weekly">';
             $html .= '<span class="spa-summary-icon">' . $iconPriceW . '</span>';
             $html .= '<strong>' . esc_html( $this->formatPrice( $dbAmount ) );
+            $html .= '</strong>';
             if ( $periodLabel ) {
                 $html .= ' ' . esc_html( $periodLabel );
-            }
-            $html .= '</strong>';
+            }            
             $html .= '</li>';
 
             $html .= '<li class="spa-summary-item spa-summary-frequency">';
             $html .= '<span class="spa-summary-icon">' . $iconFreq . '</span>';
-            $html .= 'Tréning ' . esc_html( $freqLabel );
+            $html .= '<strong>Tréning</strong> ' . esc_html( $freqLabel );
             $html .= '</li>';
         }
 
-        // 6. Cena k úhrade
+        // 6. Cena k úhrade – zobrazí sa VŽDY (surcharge aj bez)
         if ( $finalAmount > 0 ) {
             $html .= '<li class="spa-summary-item spa-summary-price">';
             $html .= '<span class="spa-summary-icon">' . $iconPrice . '</span>';
-            $html .= '<strong>Cena k úhrade: ' . esc_html( $this->formatPrice( $finalAmount ) ) . '</strong>';
-            if ( $surchargeLabel ) {
-                $html .= ' <span class="spa-summary-surcharge">(' . esc_html( $surchargeLabel ) . ')</span>';
+            if ( $hasSurcharge && $surchargeLabel ) {
+                $parts          = explode( ' ', $surchargeLabel );
+                $surchargeValue = array_pop( $parts );
+                $surchargeText  = implode( ' ', $parts );
+                $html .= esc_html( $surchargeText ) . ' <strong>' . esc_html( $surchargeValue ) . '</strong>';
+            } else {
             }
             $html .= '</li>';
         }
-
+        // 7. Scope  
+        if ( $scopeLabel ) {
+            $html .= '<li class="spa-summary-item spa-scope-warning">';
+            $html .= '<span>' . esc_html( $scopeLabel ) . '</span>';
+            $html .= '</li>';
+        }
         $html .= '</ul>';
+
+        // Výška prvej úhrady – iba ak existuje external_surcharge
+        if ( $hasSurcharge && $finalAmount > 0 ) {
+            $formattedFinal = $this->formatPrice( $finalAmount );
+            // Oddeľ číslo od symbolu €: "46,50 €" → "46,50" + "€"
+            $priceParts  = explode( ' ', $formattedFinal );
+            $euroSymbol  = array_pop( $priceParts );
+            $priceNumber = implode( ' ', $priceParts );
+            $html .= '<div class="spa-summary-amount-final-price">';
+            $html .= '<span>Výška prvej úhrady</span>';
+            $html .= '<div class="final-price">' . esc_html( $priceNumber ) . '</span> <span class="final-price-symbol">' . esc_html( $euroSymbol ) . '</div>';
+            $html .= '</div>';
+        }
+
         $html .= '</div>';
 
         return $html;
