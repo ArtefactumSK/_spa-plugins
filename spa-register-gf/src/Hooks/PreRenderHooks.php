@@ -238,7 +238,7 @@ class PreRenderHooks {
 
         // ── Scope label ──────────────────────────────────────────────────────
         $scopeLabel = match ( $scope ) {
-            'child' => 'Vybraný program je pre deti a vyžaduje vyplnenie registrácie zákonom zástupcom dieťaťa.',
+            'child' => 'Vybraný program je pre deti a vyžaduje vyplnenie registrácie zákonným zástupcom dieťaťa.',
             'adult' => 'Vyplňte vaše údaje pre registráciu pre váš vybraný program.',
             default => '',
         };
@@ -339,7 +339,7 @@ class PreRenderHooks {
         }
 
         // 6. Cena k úhrade – zobrazí sa VŽDY (surcharge aj bez)
-        if ( $finalAmount > 0 ) {
+        if ( $hasSurcharge && $surchargeLabel && $finalAmount > 0) {
             $html .= '<li class="spa-summary-item spa-summary-price">';
             $html .= '<span class="spa-summary-icon">' . $iconPrice . '</span>';
             if ( $hasSurcharge && $surchargeLabel ) {
@@ -360,7 +360,7 @@ class PreRenderHooks {
         $html .= '</ul>';
 
         // Výška prvej úhrady – iba ak existuje external_surcharge
-        if ( $hasSurcharge && $finalAmount > 0 ) {
+        if ( $finalAmount > 0 ) {
             $formattedFinal = $this->formatPrice( $finalAmount );
             // Oddeľ číslo od symbolu €: "46,50 €" → "46,50" + "€"
             $priceParts  = explode( ' ', $formattedFinal );
