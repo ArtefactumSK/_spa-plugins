@@ -37,12 +37,13 @@
             'spa_client_email'
         ],
         adult_only: [
-            'spa_client_address_street',
-            'spa_client_address_city',
-            'spa_client_address_postcode',
+            
             'spa_client_email_required'
         ],
         common: [
+            'spa_client_address_street',
+            'spa_client_address_city',
+            'spa_client_address_postcode',
             'spa_member_name_first',
             'spa_member_name_last',
             'spa_member_birthdate',

@@ -78,26 +78,82 @@ class PreRenderHooks {
                 // scope chýba – formulár sa zobrazí bez predvyplnenia
             }
 
-            if ( in_array( $scope, [ 'adult', 'child' ], true ) ) {
-                wp_add_inline_script(
-                    'spa-register-gf-js',
-                    'window.spaRegisterScope = "' . esc_js( $scope ) . '";',
-                    'before'
-                );
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( '[spa-register-gf] scope=' . $scope );
-                }
-            }
+            // Vek validácia – zobrazí warning ak vek nezodpovedá rozsahu programu
+            $ageMin = get_post_meta( $session->getProgramId(), 'spa_age_from', true );
+            $ageMax = get_post_meta( $session->getProgramId(), 'spa_age_to',   true );
 
-            if ( in_array( $scope, [ 'adult', 'child' ], true ) ) {
+            if ( $ageMin !== '' || $ageMax !== '' ) {
+                $ageMinJs = $ageMin !== '' ? (float) $ageMin : 'null';
+                $ageMaxJs = $ageMax !== '' ? (float) $ageMax : 'null';
+
                 wp_add_inline_script(
                     'spa-register-gf-js',
-                    'window.spaRegisterScope = "' . esc_js( $scope ) . '";',
-                    'before'
+                    '(function(){
+                        var ageMin = ' . $ageMinJs . ';
+                        var ageMax = ' . $ageMaxJs . ';
+
+                        function calcAge(val){
+                            // Formát: dd.mm.rrrr
+                            var parts = val.split(".");
+                            if(parts.length !== 3) return null;
+                            var d = parseInt(parts[0],10);
+                            var m = parseInt(parts[1],10) - 1;
+                            var y = parseInt(parts[2],10);
+                            if(isNaN(d)||isNaN(m)||isNaN(y)||y < 1900) return null;
+                            var today = new Date();
+                            var birth = new Date(y, m, d);
+                            if(birth > today) return null;
+                            var age = today.getFullYear() - birth.getFullYear();
+                            var mDiff = today.getMonth() - birth.getMonth();
+                            if(mDiff < 0 || (mDiff === 0 && today.getDate() < birth.getDate())) age--;
+                            return age;
+                        }
+
+                        function ageUnit(age){
+                            if(age === 1) return "rok";
+                            if(age >= 2 && age <= 4) return "roky";
+                            return "rokov";
+                        }
+
+                        function checkAgeWarning(val){
+                            var warning = document.querySelector(".spa-age-warning");
+                            if(!warning) return;
+                            var age = calcAge(val);
+                            if(age === null){ warning.style.display = "none"; return; }
+                            var outOfRange = false;
+                            if(ageMin !== null && age < ageMin) outOfRange = true;
+                            if(ageMax !== null && age > ageMax) outOfRange = true;
+                            if(outOfRange){
+                                warning.innerHTML = " Vek účastníka <span class=\"age-alert\">" + age + "</span> " + ageUnit(age) + " nezodpovedá vybranému programu!";
+                                warning.style.display = "";
+                            } else {
+                                warning.style.display = "none";
+                            }
+                        } 
+
+
+
+                        function bindBirthdate(){
+                            // GF date field – hľadáme input s dd.mm.rrrr placeholder
+                            var input = document.querySelector(".gfield input[placeholder=\"dd.mm.rrrr\"]");
+                            if(!input) return;
+                            input.addEventListener("change", function(){ checkAgeWarning(this.value); });
+                            input.addEventListener("blur",   function(){ checkAgeWarning(this.value); });
+                            // Ak je predvyplnené
+                            if(input.value) checkAgeWarning(input.value);
+                        }
+
+                        if(document.readyState === "loading"){
+                            document.addEventListener("DOMContentLoaded", bindBirthdate);
+                        } else {
+                            bindBirthdate();
+                        }
+
+                        // GF AJAX re-render (pagebreak späť/vpred)
+                        document.addEventListener("gform_post_render", bindBirthdate);
+                    })();',
+                    'after'
                 );
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( '[spa-register-gf] scope=' . $scope );
-                }
             }
 
             $freqFieldId = FieldMapService::tryResolve( 'spa_frequency' );
@@ -108,17 +164,50 @@ class PreRenderHooks {
             }
 
             $summaryHtml = $this->buildPriceSummary( $session );
-            if ( $summaryHtml !== '' ) {
-                foreach ( $form['fields'] as &$field ) {
-                    if (
-                        $field->type === 'html' &&
-                        strpos( $field->cssClass ?? '', 'info_price_summary' ) !== false
-                    ) {
-                        $field->content = $summaryHtml;
-                        break;
-                    }
+            foreach ( $form['fields'] as &$field ) {
+                if (
+                    $field->type === 'html' &&
+                    strpos( $field->cssClass ?? '', 'info_price_summary' ) !== false
+                ) {
+                    $field->content = $summaryHtml !== ''
+                        ? $summaryHtml
+                        : $this->buildSummaryFallback();
+                    break;
                 }
             }
+        }
+
+            // Fallback ak session úplne chýba – skry všetky polia, zobraz chybovú správu
+        if ( ! $session ) {
+            foreach ( $form['fields'] as &$field ) {
+                if (
+                    $field->type === 'html' &&
+                    strpos( $field->cssClass ?? '', 'info_price_summary' ) !== false
+                ) {
+                    $field->content = $this->buildSummaryFallback();
+                    break;
+                }
+            }
+
+            wp_add_inline_script(
+                'spa-register-gf-js',
+                '(function(){
+                    function spaMaskForm(){
+                        var form = document.querySelector("form.spa-register-gf");
+                        if(!form) return;
+                        var fields = form.querySelectorAll(".gfield:not(.gfield--type-html)");
+                        fields.forEach(function(f){ f.style.display="none"; });
+                        var buttons = form.querySelectorAll(".gform_footer, .gform_page_footer");
+                        buttons.forEach(function(b){ b.style.display="none"; });
+                    }
+                    if(document.readyState === "loading"){
+                        document.addEventListener("DOMContentLoaded", spaMaskForm);
+                    } else {
+                        spaMaskForm();
+                    }
+                })();',
+                'after'
+            );
         }
 
         if ( $cityFieldId && isset( $_GET['city'] ) ) {
@@ -238,7 +327,7 @@ class PreRenderHooks {
 
         // ── Scope label ──────────────────────────────────────────────────────
         $scopeLabel = match ( $scope ) {
-            'child' => 'Vybraný program je pre deti a vyžaduje vyplnenie registrácie zákonným zástupcom dieťaťa.',
+            'child' => 'Vybraný program je pre deti a vyžaduje údaje o zákonnom zástupcovi dieťaťa.',
             'adult' => 'Vyplňte vaše údaje pre registráciu pre váš vybraný program.',
             default => '',
         };
@@ -303,10 +392,10 @@ class PreRenderHooks {
             $html .= '<span class="spa-summary-icon">' . $iconAge . '</span>';
             $html .= '<strong>' . esc_html( $ageText ) . '</strong>';
             if ( $ageMin !== null ) {
-                $html .= '<span class="spa-form-warning"'
+                $html .= '<span class="spa-age-warning"'
                     . ' data-age-min="' . esc_attr( (string) $ageMin ) . '"'
                     . ( $ageMax !== null ? ' data-age-max="' . esc_attr( (string) $ageMax ) . '"' : '' )
-                    . ' style="display:none;">⚠️ Vek účastníka nezodpovedá vybranému programu!</span>';
+                    . ' style="display:none;">Vek účastníka nezodpovedá vybranému programu!</span>';
             }
             $html .= '</li>';
 
@@ -449,6 +538,17 @@ class PreRenderHooks {
         }
 
         return implode( ', ', $parts );
+    }
+
+    /**
+     * Fallback HTML ak session chýba alebo je neplatná.
+     */
+    private function buildSummaryFallback(): string {
+        return '<div class="spa-alert-error">'
+            . '<strong>Tréningový program nie je načítaný.</strong><br>'
+            . 'Registrácia nemôže pokračovať bez výberu programu.<br>'
+            . 'Prosím, vyberte program a pokračujte v registrácii!'
+            . '</div>';
     }
 
     /**
