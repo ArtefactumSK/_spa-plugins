@@ -13,6 +13,21 @@ return [
        ========================== */
 
     'payment_method' => 'input_47',
+    'invoice_tocompany' => 'input_48.1',
+    'spa_first_payment_amount' => 'input_55',
+
+    /* ==========================
+       FAKTURAČNÉ ÚDAJE
+       ========================== */
+
+    'company_name'             => 'input_50',   // Názov firmy
+    'company_ico'              => 'input_52',   // IČO
+    'company_dic'              => 'input_57',   // DIČ
+    'company_icdph'            => 'input_58',   // IČDPH
+    'company_address'          => 'input_53',   // Celé fakturačné adresné pole
+    'company_address_street'   => 'input_53.1',
+    'company_address_city'     => 'input_53.3',
+    'company_address_postcode' => 'input_53.5',
 
     /* ==========================
        ÚČASTNÍK (MEMBER/CHILD) – IDENTIFIKÁCIA

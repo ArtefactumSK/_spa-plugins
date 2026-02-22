@@ -456,7 +456,7 @@ class PreRenderHooks {
             $euroSymbol  = array_pop( $priceParts );
             $priceNumber = implode( ' ', $priceParts );
             $html .= '<div class="spa-summary-amount-final-price">';
-            $html .= '<span>Výška prvej úhrady</span>';
+            $html .= '<span>Výška prvej platby</span>';
             $html .= '<div class="final-price">' . esc_html( $priceNumber ) . '</span> <span class="final-price-symbol">' . esc_html( $euroSymbol ) . '</div>';
             $html .= '</div>';
         }
