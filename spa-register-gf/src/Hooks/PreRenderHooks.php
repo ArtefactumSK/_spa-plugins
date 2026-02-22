@@ -163,7 +163,13 @@ class PreRenderHooks {
                 } );
             }
 
-            $summaryHtml = $this->buildPriceSummary( $session );
+            $summaryResult  = $this->buildPriceSummary( $session );
+            $summaryHtml    = $summaryResult['html'];
+            $finalAmount    = $summaryResult['finalAmount'];
+
+            $targetInput = FieldMapService::tryResolve( 'spa_first_payment_amount' );
+            $targetId    = $targetInput ? (int) str_replace( 'input_', '', $targetInput ) : 0;
+
             foreach ( $form['fields'] as &$field ) {
                 if (
                     $field->type === 'html' &&
@@ -172,7 +178,13 @@ class PreRenderHooks {
                     $field->content = $summaryHtml !== ''
                         ? $summaryHtml
                         : $this->buildSummaryFallback();
-                    break;
+                }
+                if ( $targetId > 0 && (int) $field->id === $targetId ) {
+                    $field->defaultValue = $finalAmount;
+                    $field->value        = $finalAmount;
+                    if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                        error_log( '[spa-register-gf] hidden set via mapping id=' . $targetId . ' value=' . $finalAmount );
+                    }
                 }
             }
         }
@@ -231,7 +243,10 @@ class PreRenderHooks {
     // PRICE SUMMARY BUILDER
     // ════════════════════════════════════════════════════════════════════════
 
-    private function buildPriceSummary( SessionService $session ): string {
+    /**
+     * @return array{html: string, finalAmount: float}
+     */
+    private function buildPriceSummary( SessionService $session ): array {
         $programId    = $session->getProgramId();
         $frequencyKey = $session->getFrequencyKey();
         $baseAmount   = method_exists( $session, 'getAmount' )            ? (float)  $session->getAmount()            : 0.0;
@@ -244,12 +259,12 @@ class PreRenderHooks {
         }
 
         if ( $programId <= 0 ) {
-            return '';
+            return [ 'html' => '', 'finalAmount' => 0.0 ];
         }
 
         $post = get_post( $programId );
         if ( ! $post || $post->post_status !== 'publish' ) {
-            return '';
+            return [ 'html' => '', 'finalAmount' => 0.0 ];
         }
 
         $programName = esc_html( $post->post_title );
@@ -323,7 +338,7 @@ class PreRenderHooks {
                 }
             }
         }
-        $finalAmount = round( $finalAmount, 2 );
+        $finalAmount = round( $finalAmount * 10 ) / 10;
 
         // ── Scope label ──────────────────────────────────────────────────────
         $scopeLabel = match ( $scope ) {
@@ -463,7 +478,7 @@ class PreRenderHooks {
 
         $html .= '</div>';
 
-        return $html;
+        return [ 'html' => $html, 'finalAmount' => $finalAmount ];
     }
 
     // ════════════════════════════════════════════════════════════════════════
