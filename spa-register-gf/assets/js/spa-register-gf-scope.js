@@ -74,10 +74,36 @@
     // ========== HELPERS ==========
 
     /**
-     * Vráti scope pre dané pole ('child' | 'adult' | 'common' | null)
-     * @param {string} fieldName
-     * @returns {string|null}
+     * Vráti true ak je wrapper poľa hidden cez GF conditional logic.
+     * Scope engine NESMIE meniť stav takéhoto poľa.
+     * @param {Element} wrapperEl – .gfield element
+     * @returns {boolean}
      */
+    function isGFHidden(wrapperEl) {
+        if (!wrapperEl) return false;
+        if (wrapperEl.dataset.conditionalLogic === 'hidden') return true;
+        if (wrapperEl.classList.contains('gf_hidden')) return true;
+        if (wrapperEl.classList.contains('gf_invisible')) return true;
+        if (wrapperEl.offsetParent === null && wrapperEl.style.display === 'none') return true;
+        return false;
+    }
+
+    function isGFHidden(input) {
+        if (!input) return false;
+        const wrapper = input.closest('.gfield');
+        if (!wrapper) return false;
+        if (wrapper.classList.contains('gform_hidden')) return true;
+        if (wrapper.classList.contains('gf_hidden')) return true;
+        if (wrapper.classList.contains('gf_invisible')) return true;
+        if (getComputedStyle(wrapper).display === 'none') return true;
+        let parent = wrapper.parentElement;
+        while (parent) {
+            if (getComputedStyle(parent).display === 'none') return true;
+            parent = parent.parentElement;
+        }
+        return false;
+    }
+
     function getFieldScope(fieldName) {
         if (fieldScopes.child_only.includes(fieldName)) return 'child';
         if (fieldScopes.adult_only.includes(fieldName)) return 'adult';
@@ -135,12 +161,34 @@
      * @param {string} fieldName
      * @param {boolean} visible
      */
-    function setFieldWrapperVisibility(fieldName, visible) {
-        const wrapper = findFieldWrapper(fieldName);
-        if (!wrapper) return;
-        wrapper.style.display = visible ? '' : 'none';
-        wrapper.setAttribute('aria-hidden', visible ? 'false' : 'true');
-    }
+        function setFieldWrapperVisibility(fieldName, visible) {
+            const wrapper = findFieldWrapper(fieldName);
+            if (!wrapper) return;
+            // Guard: ak GF conditional logic skryl wrapper, scope ho nesmie odhaliť
+            if (isGFHidden(wrapper.querySelector('input, select, textarea')) && visible) return;
+            wrapper.style.display = visible ? '' : 'none';
+            wrapper.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        }
+
+        /**
+         * Disabled všetky inputy vo GF-hidden wrapperoch.
+         * Zabraňuje ghost validácii pri skrytých poliach.
+         */
+        function disableHiddenGFFields() {
+            document.querySelectorAll('.gfield').forEach(wrapper => {
+                const isHidden =
+                    wrapper.classList.contains('gform_hidden') ||
+                    wrapper.classList.contains('gf_hidden') ||
+                    wrapper.classList.contains('gf_invisible') ||
+                    getComputedStyle(wrapper).display === 'none';
+
+                if (isHidden) {
+                    wrapper.querySelectorAll('input, select, textarea').forEach(input => {
+                        input.disabled = true;
+                    });
+                }
+            });
+        }
 
     // ========== SECTION DETECTION ==========
 
@@ -216,9 +264,94 @@
 
     console.log('[SPA Scope] ✅ FIELD LEVEL CONTROL applied for scope:', scope);
 
+    // ========== GF POST RENDER – reapply scope po GF conditional logic ==========
+    // GF conditional logic sa aplikuje asynchrónne – scope musí počkať
+
+    function reapplyScopeAfterGFRender() {
+        setTimeout(function () {
+            if (!hasScopeWrappers) {
+                [...fieldScopes.child_only, ...fieldScopes.adult_only].forEach(fieldName => {
+                    const fieldScopeValue = getFieldScope(fieldName);
+                    let visible = false;
+                    if (fieldScopeValue === 'child') visible = (scope === 'child');
+                    if (fieldScopeValue === 'adult') visible = (scope === 'adult');
+                    setFieldWrapperVisibility(fieldName, visible);
+                });
+                fieldScopes.common.forEach(fieldName => {
+                    setFieldWrapperVisibility(fieldName, true);
+                });
+            } else {
+                [...fieldScopes.child_only, ...fieldScopes.adult_only].forEach(fieldName => {
+                    const wrapper = findFieldWrapper(fieldName);
+                    if (!wrapper) return;
+                    const inScopeSection =
+                        wrapper.closest('.spa-section-child') ||
+                        wrapper.closest('.spa-section-adult');
+                    if (!inScopeSection) {
+                        const fieldScopeValue = getFieldScope(fieldName);
+                        let visible = false;
+                        if (fieldScopeValue === 'child') visible = (scope === 'child');
+                        if (fieldScopeValue === 'adult') visible = (scope === 'adult');
+                        setFieldWrapperVisibility(fieldName, visible);
+                    }
+                });
+            }
+            console.log('[SPA Scope] ✅ scope reapplied after gform_post_render');
+        }, 50);
+    }
+
+    if (window.jQuery) {
+        jQuery(document).on('gform_post_render', function () {
+            reapplyScopeAfterGFRender();
+        });
+    }
+
+    // Disable hidden GF fields ihneď po scope aplikácii
+    disableHiddenGFFields();
+
+    // ========== GF POST RENDER — reapply po GF conditional logic ==========
+    if (window.jQuery) {
+        jQuery(document).on('gform_post_render', function () {
+            setTimeout(function () {
+                // Reapply scope viditeľnosť
+                if (!hasScopeWrappers) {
+                    [...fieldScopes.child_only, ...fieldScopes.adult_only].forEach(fieldName => {
+                        const fieldScopeValue = getFieldScope(fieldName);
+                        let visible = false;
+                        if (fieldScopeValue === 'child') visible = (scope === 'child');
+                        if (fieldScopeValue === 'adult') visible = (scope === 'adult');
+                        setFieldWrapperVisibility(fieldName, visible);
+                    });
+                    fieldScopes.common.forEach(fieldName => {
+                        setFieldWrapperVisibility(fieldName, true);
+                    });
+                } else {
+                    [...fieldScopes.child_only, ...fieldScopes.adult_only].forEach(fieldName => {
+                        const wrapper = findFieldWrapper(fieldName);
+                        if (!wrapper) return;
+                        const inScopeSection =
+                            wrapper.closest('.spa-section-child') ||
+                            wrapper.closest('.spa-section-adult');
+                        if (!inScopeSection) {
+                            const fieldScopeValue = getFieldScope(fieldName);
+                            let visible = false;
+                            if (fieldScopeValue === 'child') visible = (scope === 'child');
+                            if (fieldScopeValue === 'adult') visible = (scope === 'adult');
+                            setFieldWrapperVisibility(fieldName, visible);
+                        }
+                    });
+                }
+                // Vždy disabled hidden GF fields po re-renderi
+                disableHiddenGFFields();
+                console.log('[SPA Scope] ✅ reapplied after gform_post_render');
+            }, 50);
+        });
+    }
+
     // ========== EXPOSE GLOBALS (pre prípadné rozšírenie z iných modulov) ==========
     window.spaGetFieldScope             = getFieldScope;
     window.spaSetFieldWrapperVisibility = setFieldWrapperVisibility;
     window.spaFieldScopes               = fieldScopes;
+    window.spaDisableHiddenGFFields     = disableHiddenGFFields;
 
 })();
