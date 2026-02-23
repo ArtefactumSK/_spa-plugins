@@ -52,7 +52,6 @@
             'company_ico',
             'company_dic',
             'company_icdph',
-            'company_address',
             'company_address_street',
             'company_address_city',
             'company_address_postcode',
@@ -161,8 +160,15 @@
      */
     function disableConditionalHiddenGFFields() {
         document.querySelectorAll('.gfield').forEach(wrapper => {
-            if (!isGFConditionalHidden(wrapper)) return;
+            // Preskočiť systémové hidden polia
             if (wrapper.classList.contains('gfield--type-hidden')) return;
+
+            // Disabled ak: GF conditional hidden ALEBO scope sekcia je skrytá
+            const gfHidden = isGFConditionalHidden(wrapper);
+            const scopeHidden = getComputedStyle(wrapper).display === 'none';
+
+            if (!gfHidden && !scopeHidden) return;
+
             wrapper.querySelectorAll('input, select, textarea').forEach(input => {
                 if (input.type === 'hidden') return;
                 input.disabled = true;
@@ -251,7 +257,7 @@
 
     // ========== GF POST RENDER — jediný listener ==========
     if (window.jQuery) {
-        jQuery(document).on('gform_post_render', function () {
+        jQuery(document).on('gform_post_render gform_post_conditional_logic', function () {
             setTimeout(function () {
                 [...fieldScopes.child_only, ...fieldScopes.adult_only].forEach(fieldName => {
                     const fieldScopeValue = getFieldScope(fieldName);
