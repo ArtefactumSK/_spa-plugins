@@ -151,8 +151,101 @@ class Plugin {
         add_filter( 'gform_validation',       [ $validation, 'handleValidation' ],     10, 1 );
         add_action( 'gform_after_submission', [ $submission, 'handle' ],               10, 2 );
 
+        /**
+         * PIN pre dieťa – server-side po vytvorení WP používateľa.
+         * Používame spa_after_child_created (nie user_register), pretože user_register
+         * sa volá pred nastavením roly spa_child. spa_after_child_created garantuje,
+         * že používateľ má rolu spa_child.
+         */
+        add_action( 'spa_after_child_created', [ self::class, 'assignChildPin' ], 5, 1 );
+
+        /**
+         * Záloha pre používateľov vytvorených mimo spa-register-gf (napr. import).
+         * user_register sa volá po wp_insert_user – vtedy už má user rolu (ak bola
+         * nastavená v rámci toho istého volania). Pre istotu kontrolujeme rolu.
+         */
+        add_action( 'user_register', [ self::class, 'assignChildPinOnRegister' ], 20, 1 );
+
         if ( defined('WP_DEBUG') && WP_DEBUG ) {
             error_log( 'SPA-REGISTER-GF: Hooks wired successfully' );
+        }
+    }
+
+    /**
+     * Priradí 4-miestny PIN používateľovi s rolou spa_child.
+     * Volané z spa_after_child_created (priorita 5 – pred spa_auto_assign_vs_and_pin).
+     */
+    public static function assignChildPin( int $user_id ): void {
+        $user = get_userdata( $user_id );
+        if ( ! $user || ! is_array( $user->roles ) ) {
+            return;
+        }
+
+        // PIN iba pre spa_child (nie spa_client/adult)
+        if ( ! in_array( 'spa_child', $user->roles, true ) ) {
+            return;
+        }
+
+        self::doAssignPin( $user_id );
+    }
+
+    /**
+     * Záloha: priradí PIN pri user_register, ak user má spa_child rolu.
+     * (Niektoré flow nastavujú rolu pri vytvorení.)
+     */
+    public static function assignChildPinOnRegister( int $user_id ): void {
+        $user = get_userdata( $user_id );
+        if ( ! $user || ! is_array( $user->roles ) ) {
+            return;
+        }
+
+        if ( ! in_array( 'spa_child', $user->roles, true ) ) {
+            return;
+        }
+
+        // Ak už má PIN (napr. z spa_after_child_created), netreba
+        if ( get_user_meta( $user_id, 'spa_pin', true ) ) {
+            return;
+        }
+
+        self::doAssignPin( $user_id );
+    }
+
+    /**
+     * Vygeneruje unikátny PIN a uloží do usermeta.
+     * spa_pin_plain (4-miestny), spa_pin (hash).
+     */
+    private static function doAssignPin( int $user_id ): void {
+        global $wpdb;
+
+        $pin_plain = null;
+        $max_attempts = 20;
+
+        for ( $i = 0; $i < $max_attempts; $i++ ) {
+            $candidate = str_pad( (string) wp_rand( 0, 9999 ), 4, '0', STR_PAD_LEFT );
+
+            $exists = $wpdb->get_var( $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->usermeta} 
+                 WHERE meta_key = 'spa_pin_plain' AND meta_value = %s AND user_id != %d",
+                $candidate,
+                $user_id
+            ) );
+
+            if ( (int) $exists === 0 ) {
+                $pin_plain = $candidate;
+                break;
+            }
+        }
+
+        if ( $pin_plain === null ) {
+            $pin_plain = str_pad( (string) wp_rand( 0, 999999 ), 6, '0', STR_PAD_LEFT );
+        }
+
+        update_user_meta( $user_id, 'spa_pin_plain', $pin_plain );
+        update_user_meta( $user_id, 'spa_pin', wp_hash_password( $pin_plain ) );
+
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( '[spa-register-gf] PIN assigned user=' . $user_id . ' pin=' . $pin_plain );
         }
     }
 

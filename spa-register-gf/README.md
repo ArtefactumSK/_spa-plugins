@@ -1,39 +1,37 @@
-# Nazvy GF polí
+# Názvy GF polí
 
-spa_city
-spa_program
+spa_payment_method
+spa_fakturovat_na_firmu
+spa_vyska_prvej_platby
 
-spa_resolved_type
-spa_frequency
-spa_member_name (Úplné)
-spa_member_name (Predpona)
-spa_member_name (Meno)
-spa_member_name (Stred)
-spa_member_name (Priezvisko)
-spa_member_name (Prípona)
+spa_company_name
+spa_company_ico
+spa_company_dic
+spa_company_icdph
+spa_fakturacna_adresa
+spa_company_address
+spa_company_address_street
+spa_company_address_city
+spa_company_address_postcode
+
+spa_member_name_first
+spa_member_name_last
 spa_member_birthdate
-spa_member_birthdate
-spa_client_address (Úplné)
-spa_client_address (Ulica)
-spa_client_address (2. riadok adresy)
-spa_client_address (Mesto)
-spa_client_address (Štát / kraj)
-spa_client_address (PSČ / Poštové smerovacie číslo)
-spa_client_address (Krajina)
+spa_member_birthnumber
+
+spa_client_address
+spa_client_address_street
+spa_client_address_city
+spa_client_address_postcode
 spa_client_email
 spa_client_email_required
 spa_client_phone
 spa_member_health_restrictions
-spa_guardian_name (Úplné)
-spa_guardian_name (Predpona)
-spa_guardian_name (Meno)
-spa_guardian_name (Stred)
-spa_guardian_name (Priezvisko)
-spa_guardian_name (Prípona)
+
+spa_guardian_name_first
+spa_guardian_name_last
 spa_parent_email
 spa_parent_phone
-
-
 
 spa_consent_gdpr
 spa_consent_health
