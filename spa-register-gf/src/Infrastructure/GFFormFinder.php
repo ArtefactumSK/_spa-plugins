@@ -25,6 +25,10 @@ class GFFormFinder {
      * a volajúci hook sa ukončí (return $arg bez zmeny).
      */
     public static function guard( array $form ): bool {
-        return self::isSpaForm( $form );
+        $result = self::isSpaForm( $form );
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            error_log( '[spa-register-gf] GFFormFinder::guard | cssClass="' . ( $form['cssClass'] ?? '' ) . '" | const="' . ( defined('SPA_REG_GF_CSS_CLASS') ? SPA_REG_GF_CSS_CLASS : 'NOT_DEFINED' ) . '" | result=' . ( $result ? 'true' : 'false' ) );
+        }
+        return $result;
     }
 }

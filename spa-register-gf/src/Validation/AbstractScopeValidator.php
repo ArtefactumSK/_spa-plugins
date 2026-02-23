@@ -42,8 +42,12 @@ abstract class AbstractScopeValidator {
             $this->result->addError( $logicalKey, "$label je povinné pole." );
             return;
         }
-        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $value ) ) {
-            $this->result->addError( $logicalKey, "$label musí byť vo formáte RRRR-MM-DD." );
+        // Akceptuj DD.MM.RRRR (GF datepicker SK formát) aj RRRR-MM-DD
+        $isValid =
+            preg_match( '/^\d{4}-\d{2}-\d{2}$/', $value ) ||
+            preg_match( '/^\d{2}\.\d{2}\.\d{4}$/', $value );
+        if ( ! $isValid ) {
+            $this->result->addError( $logicalKey, "$label musí byť platný dátum." );
         }
     }
 

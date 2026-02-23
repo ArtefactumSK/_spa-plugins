@@ -31,10 +31,18 @@ class AmountVerificationService {
      * @return bool  true = suma súhlasí, false = mismatch (blokujúce)
      */
     public function verify( SessionService $session ): bool {
+        $debug = defined( 'SPA_REGISTER_DEBUG' ) && SPA_REGISTER_DEBUG;
+
         $programId    = $session->getProgramId();
         $frequencyKey = $session->getFrequencyKey();
-        $sessionAmount = $session->getAmount();
         $surcharge    = $session->getExternalSurcharge();
+        
+        $postedRaw = rgpost( 'input_55' );
+        if ( $postedRaw === null || $postedRaw === '' ) {
+            Logger::warning( 'amount_verify_missing_post', [ 'input_55' => $postedRaw ] );
+            return false;
+        }
+        $postedAmount = (float) $postedRaw;
 
         if ( $programId <= 0 || empty( $frequencyKey ) ) {
             Logger::error( 'amount_verify_missing_params', [
@@ -55,24 +63,40 @@ class AmountVerificationService {
             return false;
         }
 
-        // Pripočítaj surcharge ak existuje
-        $recalculated = $this->applySurcharge( $basePrice, $surcharge );
+        // Vypočítaj očakávanú prvú platbu: base * (1 + surchargePercent)
+        $expected = $this->applySurcharge( $basePrice, $surcharge );
 
-        // Porovnaj (tolerance 0.01 EUR kvôli float zaokrúhľovaniu)
-        $matches = abs( $recalculated - $sessionAmount ) < 0.01;
+        // Tolerancia 0.05 EUR kvôli zaokrúhľovaniu UI
+        $diff    = abs( $postedAmount - $expected );
+        $matches = $diff <= 0.05;
 
         if ( ! $matches ) {
+            $debugMsg = $debug
+                ? sprintf(
+                    'DEBUG: base=%.2f surcharge=%s expected=%.2f posted=%.2f diff=%.2f',
+                    $basePrice,
+                    (string) $surcharge,
+                    $expected,
+                    $postedAmount,
+                    $diff
+                )
+                : '';
+
             Logger::warning( 'amount_verify_mismatch', [
-                'session_amount'  => $sessionAmount,
-                'recalculated'    => $recalculated,
-                'base_price'      => $basePrice,
-                'surcharge'       => $surcharge,
-                'program_id'      => $programId,
-                'frequency_key'   => $frequencyKey,
+                'expected'      => $expected,
+                'posted'        => $postedAmount,
+                'diff'          => $diff,
+                'base_price'    => $basePrice,
+                'surcharge'     => $surcharge,
+                'program_id'    => $programId,
+                'frequency_key' => $frequencyKey,
+                'debug_msg'     => $debugMsg,
             ] );
+
+            return false;
         }
 
-        return $matches;
+        return true;
     }
 
     // ── Interné metódy ───────────────────────────────────────────────────────

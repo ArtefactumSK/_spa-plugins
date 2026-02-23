@@ -50,7 +50,10 @@ class ValidationHooks {
     public function handleValidation( array $validationResult ): array {
         $form = $validationResult['form'] ?? [];
 
+        error_log( '[spa-register-gf] handleValidation called | is_valid=' . ( $validationResult['is_valid'] ? 'true' : 'false' ) . ' | cssClass="' . ( $form['cssClass'] ?? '' ) . '"' );
+
         if ( ! GFFormFinder::guard( $form ) ) {
+            error_log( '[spa-register-gf] handleValidation guard=false → skip' );
             return $validationResult;
         }
 
@@ -61,7 +64,19 @@ class ValidationHooks {
 
         $session = SessionService::tryCreate();
 
-        if ( ! $session || $session->isExpired() ) {
+        if ( ! $session ) {
+            Logger::warning( 'validation_block_session_null' );
+            return $this->blockWithMessage(
+                $validationResult,
+                'Platnosť výberu vypršala. Vráťte sa na výber programu a začnite odznova.'
+            );
+        }
+
+        if ( $session->isExpired() ) {
+            Logger::warning( 'validation_block_session_expired', [
+                'created_at' => $session->getCreatedAt(),
+                'now'        => time(),
+            ] );
             return $this->blockWithMessage(
                 $validationResult,
                 'Platnosť výberu vypršala. Vráťte sa na výber programu a začnite odznova.'
@@ -99,24 +114,29 @@ class ValidationHooks {
             $result = $validator->validate( $payload );
 
             if ( ! $result->isValid() ) {
+                error_log( '[spa-register-gf] ScopeValidator FAILED | errors=' . json_encode( $result->getErrors() ) );
                 foreach ( $result->getErrors() as $logicalKey => $message ) {
                     $validationResult = $this->addFieldError( $validationResult, $logicalKey, $message );
                 }
                 $validationResult['is_valid'] = false;
+            } else {
+                error_log( '[spa-register-gf] ScopeValidator OK' );
             }
         }
 
         // Blokujúca kontrola sumy
         if ( $validationResult['is_valid'] ) {
             $amountService = new AmountVerificationService();
-            if ( ! $amountService->verify( $session ) ) {
+            $amountOk = $amountService->verify( $session );
+            error_log( '[spa-register-gf] AmountVerification result=' . ( $amountOk ? 'true' : 'false' ) );
+            if ( ! $amountOk ) {
                 $validationResult = $this->blockWithMessage(
                     $validationResult,
                     'Cena programu sa zmenila. Vráťte sa na výber programu a pokračujte znovu.'
                 );
             }
         }
-
+        error_log( '[spa-register-gf] handleValidation END | is_valid=' . ( $validationResult['is_valid'] ? 'true' : 'false' ) );
         return $validationResult;
     }
 
@@ -174,10 +194,23 @@ class ValidationHooks {
      */
     private function buildEntryFromPost( array $form ): array {
         $entry = [];
+
         foreach ( $form['fields'] ?? [] as $field ) {
             $fieldId = (string) $field->id;
-            $entry[ $fieldId ] = rgpost( 'input_' . str_replace( '.', '_', $fieldId ) );
+
+            // Subpolia (name, address atď.) – GF ich má v $field->inputs
+            if ( ! empty( $field->inputs ) && is_array( $field->inputs ) ) {
+                foreach ( $field->inputs as $input ) {
+                    $inputId  = (string) $input['id']; // napr. "6.3"
+                    $postKey  = 'input_' . str_replace( '.', '_', $inputId ); // "input_6_3"
+                    $entry[ $inputId ] = rgpost( $postKey );
+                }
+            } else {
+                // Jednoduché pole
+                $entry[ $fieldId ] = rgpost( 'input_' . str_replace( '.', '_', $fieldId ) );
+            }
         }
+
         return $entry;
     }
 }

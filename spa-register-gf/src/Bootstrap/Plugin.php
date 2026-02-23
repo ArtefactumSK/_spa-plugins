@@ -13,10 +13,6 @@ class Plugin {
      * Boot pluginu – bezpečne len raz.
      */
     public static function boot(): void {
-        if ( session_status() === PHP_SESSION_NONE && ! headers_sent() ) {
-            session_start();
-        }
-    
         if ( self::$booted ) {
             return;
         }
@@ -91,32 +87,34 @@ class Plugin {
      * ani na cudzích admin-ajax requestoch.
      */
     public static function ensureSession(): void {
+        // Guard — session spúšťame len ak je to relevantné
+        $is_register_page = isset( $_SERVER['REQUEST_URI'] )
+            && str_contains( $_SERVER['REQUEST_URI'], 'register' );
+        $is_gf_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX
+            && isset( $_POST['gform_submit'] );
+        $is_spa_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX
+            && isset( $_REQUEST['action'] )
+            && str_starts_with( (string) $_REQUEST['action'], 'spa_' );
+
+        if ( ! $is_register_page && ! $is_gf_ajax && ! $is_spa_ajax ) {
+            return;
+        }
+
         if ( session_status() !== PHP_SESSION_NONE ) {
             return;
         }
 
-        if ( headers_sent() ) {
+        if ( headers_sent( $file, $line ) ) {
+            Logger::warning( 'session_headers_already_sent', [
+                'file' => $file,
+                'line' => $line,
+            ] );
             return;
         }
 
-        // Ak je to admin-ajax, session spustíme len pre naše debug akcie
-        if ( defined('DOING_AJAX') && DOING_AJAX ) {
-            $action = isset($_REQUEST['action']) ? (string) $_REQUEST['action'] : '';
-            $allowed = [
-                'spa_debug_constants',
-                'spa_check_session',
-                // 'spa_test_session', // ÚMYSELNE VYPNUTÉ – nebudeme vytvárať test session
-            ];
-
-            if ( ! in_array( $action, $allowed, true ) ) {
-                return;
-            }
-        }
-
-        // Inak (bežný FE request) session povolíme – plugin ju potrebuje na /register
         session_start();
 
-        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
             error_log( 'SPA-REGISTER-GF: Session started | ID: ' . session_id() );
         }
     }
@@ -127,7 +125,8 @@ class Plugin {
          * Session init – ale cez ensureSession() s podmienkami vyššie.
          * Dáme to veľmi skoro.
          */
-        add_action( 'init', [ self::class, 'ensureSession' ], 0 );
+        add_action( 'plugins_loaded', [ self::class, 'ensureSession' ], 1 );
+        add_action( 'init',           [ self::class, 'ensureSession' ], 1 );
 
         /**
          * DEBUG endpointy: len keď WP_DEBUG a len pre admina.
