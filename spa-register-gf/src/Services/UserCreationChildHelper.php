@@ -1,6 +1,7 @@
 <?php
 namespace SpaRegisterGf\Services;
 
+use SpaRegisterGf\Config\SpaConfig;
 use SpaRegisterGf\Domain\RegistrationPayload;
 use SpaRegisterGf\Infrastructure\Logger;
 
@@ -58,6 +59,14 @@ class UserCreationChildHelper {
             throw new \RuntimeException( 'Nepodarilo sa vytvoriť dieťa.' );
         }
 
+        if ( ! empty( $p->memberHealthRestrictions ) ) {
+            update_user_meta(
+                $childId,
+                'spa_health_restrictions',
+                sanitize_textarea_field( $p->memberHealthRestrictions )
+            );
+        }
+
         return [
             'parent_user_id' => (int) $parentId,
             'child_user_id'  => (int) $childId,
@@ -97,9 +106,17 @@ class UserCreationChildHelper {
     private function createChild( RegistrationPayload $p, int $parentId ): int {
         $username = $this->resolveUsername( $p->memberFirstName, $p->memberLastName );
         $password = wp_generate_password( 12, true );
-        // Child nemá email – použijeme placeholder
-        $email    = $username . '@spa.local';
-        $userId   = wp_create_user( $username, $password, $email );
+        $child_domain = SpaConfig::CHILD_EMAIL_DOMAIN;
+        $first        = sanitize_title( $p->memberFirstName );
+        $last         = sanitize_title( $p->memberLastName );
+        $base         = strtolower( $first . '.' . $last );
+        $email        = $base . '@' . $child_domain;
+        $i            = 1;
+        while ( email_exists( $email ) ) {
+            $email = $base . $i . '@' . $child_domain;
+            $i++;
+        }
+        $userId = wp_create_user( $username, $password, $email );
 
         if ( is_wp_error( $userId ) ) {
             return 0;
@@ -114,7 +131,11 @@ class UserCreationChildHelper {
         update_user_meta( $userId, 'parent_id',  $parentId );
 
         if ( ! empty( $p->memberHealthRestrictions ) ) {
-            update_user_meta( $userId, 'health_notes', $p->memberHealthRestrictions );
+            update_user_meta(
+                $userId,
+                'spa_health_restrictions',
+                sanitize_textarea_field( $p->memberHealthRestrictions )
+            );
         }
 
         if ( ! empty( $p->memberBirthnumber ) ) {

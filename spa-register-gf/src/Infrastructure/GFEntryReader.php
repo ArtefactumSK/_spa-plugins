@@ -21,40 +21,48 @@ class GFEntryReader {
         $this->entry = $entry;
     }
 
+    /**
+     * Vráti hodnotu z entry – preferuje logical key (buildEntryFromPost),
+     * inak fallback na field ID (reálny GF entry).
+     */
+    private function getEntryValue( string $logicalKey ): ?string {
+        $val = rgar( $this->entry, $logicalKey );
+        if ( $val !== null && $val !== '' ) {
+            return (string) $val;
+        }
+        $fieldId = FieldMapService::tryResolve( $logicalKey );
+        if ( $fieldId === null ) {
+            return null;
+        }
+        $gfKey = preg_replace( '/^input_/', '', $fieldId );
+        $gfKey = str_replace( '_', '.', $gfKey );
+        $val   = rgar( $this->entry, $gfKey );
+        return $val !== null && $val !== '' ? (string) $val : null;
+    }
+
     // ── Sanitizované čítanie ─────────────────────────────────────────────────
 
     public function getText( string $logicalKey ): string {
-        return sanitize_text_field(
-            rgar( $this->entry, FieldMapService::resolve( $logicalKey ) )
-        );
+        return sanitize_text_field( (string) ( $this->getEntryValue( $logicalKey ) ?? '' ) );
     }
 
     public function getEmail( string $logicalKey ): string {
-        return sanitize_email(
-            rgar( $this->entry, FieldMapService::resolve( $logicalKey ) )
-        );
+        return sanitize_email( (string) ( $this->getEntryValue( $logicalKey ) ?? '' ) );
     }
 
     public function getTextarea( string $logicalKey ): string {
-        return sanitize_textarea_field(
-            rgar( $this->entry, FieldMapService::resolve( $logicalKey ) )
-        );
+        return sanitize_textarea_field( (string) ( $this->getEntryValue( $logicalKey ) ?? '' ) );
     }
 
     public function getBool( string $logicalKey ): bool {
-        $val = rgar( $this->entry, FieldMapService::resolve( $logicalKey ) );
-        return ! empty( $val );
+        return ! empty( $this->getEntryValue( $logicalKey ) );
     }
 
     // ── Bezpečné čítanie (null ak key neexistuje v mape) ─────────────────────
 
     public function tryGetText( string $logicalKey ): ?string {
-        $fieldId = FieldMapService::tryResolve( $logicalKey );
-        if ( $fieldId === null ) {
-            return null;
-        }
-        $val = rgar( $this->entry, $fieldId );
-        return $val !== '' ? sanitize_text_field( $val ) : null;
+        $val = $this->getEntryValue( $logicalKey );
+        return $val !== null ? sanitize_text_field( $val ) : null;
     }
 
     // ── GF entry ID ──────────────────────────────────────────────────────────
