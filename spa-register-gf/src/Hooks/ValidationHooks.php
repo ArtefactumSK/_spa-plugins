@@ -62,6 +62,25 @@ class ValidationHooks {
             return $validationResult;
         }
 
+        $entry = $this->buildEntryFromPost( $form );
+
+        // === AUTO REMOVE REQUIRED FOR HIDDEN FIELDS ===
+        foreach ( $form['fields'] as &$field ) {
+
+            if ( $field->isRequired ) {
+
+                $isHidden = \GFFormsModel::is_field_hidden(
+                    $form,
+                    $field,
+                    $entry
+                );
+
+                if ( $isHidden ) {
+                    $field->isRequired = false;
+                }
+            }
+        }
+
         // Ak GF sám zistil chyby, nepokračujeme (vyhneme sa duplicitám)
         if ( ! $validationResult['is_valid'] ) {
             error_log('VALIDATION FAILED: ' . print_r($validationResult, true));
