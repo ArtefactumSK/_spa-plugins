@@ -50,19 +50,51 @@
     /**
      * Hlavná funkcia – skontroluje vek a zobrazí/skryje varovanie
      */
+    function calcAgeLabel(age) {
+        if (age === 1) return '1 rok';
+        if (age >= 2 && age <= 4) return age + ' roky';
+        return age + ' rokov';
+    }
+
     function checkAge() {
         const warningEl = document.querySelector('.spa-summary-age-warning');
+        const previewEl = document.getElementById('spa-age-preview');
+
+        const inputEl = findBirthdateInput();
+        const age = inputEl ? calcAge(inputEl.value) : null;
+
+        // Age preview
+        if (previewEl) {
+            if (age !== null) {
+                const ageMin = warningEl ? parseFloat(warningEl.dataset.ageMin) : NaN;
+                const ageMax = warningEl && warningEl.dataset.ageMax !== undefined
+                    ? parseFloat(warningEl.dataset.ageMax)
+                    : null;
+
+                const tooYoung = !isNaN(ageMin) && age < ageMin;
+                const tooOld   = ageMax !== null && !isNaN(ageMax) && age > ageMax;
+
+                if (tooYoung || tooOld) {
+                    previewEl.textContent = calcAgeLabel(age) + ' – nezodpovedá vybranému programu';
+                    previewEl.style.color = '#e53935';
+                } else {
+                    previewEl.textContent = calcAgeLabel(age);
+                    previewEl.style.color = '';
+                }
+                previewEl.style.display = '';
+            } else {
+                previewEl.textContent = '';
+                previewEl.style.display = 'none';
+            }
+        }
+
+        // Pôvodný warning blok – skry ho, preview preberá jeho úlohu
         if (!warningEl) return;
 
         const ageMin = parseFloat(warningEl.dataset.ageMin);
         const ageMax = warningEl.dataset.ageMax !== undefined
             ? parseFloat(warningEl.dataset.ageMax)
             : null;
-
-        const inputEl = findBirthdateInput();
-        if (!inputEl) return;
-
-        const age = calcAge(inputEl.value);
 
         if (age === null) {
             warningEl.style.display = 'none';
