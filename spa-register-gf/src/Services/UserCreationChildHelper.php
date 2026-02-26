@@ -60,9 +60,17 @@ class UserCreationChildHelper {
         }
 
         if ( ! empty( $p->memberHealthRestrictions ) ) {
+            // Pôvodný meta kľúč pre spätnú kompatibilitu
             update_user_meta(
                 $childId,
                 'spa_health_restrictions',
+                sanitize_textarea_field( $p->memberHealthRestrictions )
+            );
+
+            // Nový zdroj pravdy – usermeta spa_health_notes
+            update_user_meta(
+                $childId,
+                'spa_health_notes',
                 sanitize_textarea_field( $p->memberHealthRestrictions )
             );
         }

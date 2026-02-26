@@ -25,6 +25,35 @@
         return;
     }
 
+    // ========== ROOT WRAPPER SCOPE SIGNAL ==========
+    /**
+     * Aplikuje scope signál na root wrapper registrácie tak,
+     * aby CSS vedelo rozlíšiť adult/child.
+     *
+     * Nepoužíva žiadne GF ID – len stabilný wrapper .spa-register-gf.
+     * @param {string|null} scopeValue
+     */
+    function applyScopeSignal(scopeValue) {
+        const wrapper = document.querySelector('.spa-register-gf');
+        if (!wrapper) return;
+
+        const normalized =
+            scopeValue === 'adult' ? 'adult' :
+            scopeValue === 'child' ? 'child' :
+            null;
+
+        wrapper.classList.remove('spa-scope-adult', 'spa-scope-child');
+        wrapper.removeAttribute('data-spa-scope');
+
+        if (!normalized) return;
+
+        wrapper.classList.add('spa-scope-' + normalized);
+        wrapper.dataset.spaScope = normalized;
+    }
+
+    // initial signal
+    applyScopeSignal(scope);
+    
     // ========== FIELD SCOPE DEFINITION ==========
     // Polia zo fields.json rozdelené podľa scope
     // Rozšíriteľné – pridaj sem iba polia, ktoré sú VÝLUČNE pre daný scope.
@@ -295,11 +324,16 @@
     if (window.jQuery) {
         jQuery(document).on('gform_post_render gform_post_conditional_logic', function () {
             setTimeout(function () {
+                const currentScope = window.spaRegisterScope || window.spaRegisterContext?.scope || scope;
+
+                // reapply scope signal on root wrapper (scope môže byť zmenený dynamicky)
+                applyScopeSignal(currentScope);
+
                 [...fieldScopes.child_only, ...fieldScopes.adult_only].forEach(fieldName => {
                     const fieldScopeValue = getFieldScope(fieldName);
                     let visible = false;
-                    if (fieldScopeValue === 'child') visible = (scope === 'child');
-                    if (fieldScopeValue === 'adult') visible = (scope === 'adult');
+                    if (fieldScopeValue === 'child') visible = (currentScope === 'child');
+                    if (fieldScopeValue === 'adult') visible = (currentScope === 'adult');
                     setFieldWrapperVisibility(fieldName, visible);
                 });
                 fieldScopes.common.forEach(fieldName => {

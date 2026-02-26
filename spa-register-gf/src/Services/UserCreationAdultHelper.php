@@ -34,6 +34,15 @@ class UserCreationAdultHelper {
             throw new \RuntimeException( 'Nepodarilo sa vytvoriť klienta.' );
         }
 
+        // Zdravotné poznámky – zdroj pravdy v usermeta spa_health_notes
+        if ( ! empty( $p->memberHealthRestrictions ) ) {
+            update_user_meta(
+                (int) $clientId,
+                'spa_health_notes',
+                sanitize_textarea_field( $p->memberHealthRestrictions )
+            );
+        }
+
         return [
             'client_user_id' => (int) $clientId,
         ];
