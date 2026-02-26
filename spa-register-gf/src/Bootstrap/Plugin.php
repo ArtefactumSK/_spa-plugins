@@ -52,10 +52,26 @@ class Plugin {
             }
 
             $relative = substr( $class, strlen( $prefix ) );
-            $file     = $baseDir . str_replace( '\\', '/', $relative ) . '.php';
+
+            // Primárne hľadáme v src/ podľa pôvodného PSR-4 mapovania
+            $file = $baseDir . str_replace( '\\', '/', $relative ) . '.php';
 
             if ( file_exists( $file ) ) {
                 require_once $file;
+                return;
+            }
+
+            // Špeciálny fallback pre konfiguračné triedy v spa-config/
+            $parts = explode( '\\', $relative );
+            if ( $parts[0] === 'Config' ) {
+                array_shift( $parts ); // odstránime "Config"
+                $configBase = defined('SPA_REG_GF_DIR') ? ( SPA_REG_GF_DIR . 'spa-config/' ) : null;
+                if ( $configBase ) {
+                    $configFile = $configBase . implode( '/', $parts ) . '.php';
+                    if ( file_exists( $configFile ) ) {
+                        require_once $configFile;
+                    }
+                }
             }
         } );
     }
@@ -78,26 +94,50 @@ class Plugin {
         return false;
     }
 
-    /**
-     * Session štartujeme LEN keď to dáva zmysel:
-     * - na FE pri zobrazení /register (tvoj register flow),
-     * - alebo pri našich debug ajax akciách.
-     *
-     * Nespúšťame session globálne na všetkých requestoch,
-     * ani na cudzích admin-ajax requestoch.
-     */
     public static function ensureSession(): void {
-        // Guard — session spúšťame len ak je to relevantné
-        $is_register_page = isset( $_SERVER['REQUEST_URI'] )
-            && str_contains( $_SERVER['REQUEST_URI'], 'register' );
-        $is_gf_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX
-            && isset( $_POST['gform_submit'] );
-        $is_spa_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX
-            && isset( $_REQUEST['action'] )
-            && str_starts_with( (string) $_REQUEST['action'], 'spa_' );
+        $uri        = $_SERVER['REQUEST_URI'] ?? '';
+        $is_admin   = is_admin();
+        $doing_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX;
+        $is_rest    = defined( 'REST_REQUEST' ) && REST_REQUEST;
+        $is_cron    = defined( 'DOING_CRON' ) && DOING_CRON;
+        $action     = $_REQUEST['action'] ?? '';
+        $is_spa_ajax = $doing_ajax
+            && is_string( $action )
+            && strpos( $action, 'spa_' ) === 0
+            && $action !== 'spa_create_session';
 
-        if ( ! $is_register_page && ! $is_gf_ajax && ! $is_spa_ajax ) {
+        // Admin (non-AJAX) → nespúšťame session
+        if ( $is_admin && ! $doing_ajax ) {
             return;
+        }
+
+        // REST alebo CRON → nespúšťame session
+        if ( $is_rest || $is_cron ) {
+            return;
+        }
+
+        // Špeciálny prípad: AJAX akcia spa_create_session má vlastné session/cookie nastavenia (téma spa_system)
+        if ( $doing_ajax && $action === 'spa_create_session' ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log(
+                    'SPA-REGISTER-GF: ensureSession skipped for spa_create_session'
+                    . ' | uri=' . $uri
+                    . ' | action=' . $action
+                );
+            }
+            return;
+        }
+
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log(
+                'SPA-REGISTER-GF: ensureSession hit'
+                . ' | uri=' . $uri
+                . ' | ajax=' . ( $doing_ajax ? '1' : '0' )
+                . ' | admin=' . ( $is_admin ? '1' : '0' )
+                . ' | spa_ajax=' . ( $is_spa_ajax ? '1' : '0' )
+                . ' | status=' . session_status()
+                . ' | action=' . $action
+            );
         }
 
         if ( session_status() !== PHP_SESSION_NONE ) {
@@ -115,7 +155,12 @@ class Plugin {
         session_start();
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( 'SPA-REGISTER-GF: Session started | ID: ' . session_id() );
+            error_log(
+                'SPA-REGISTER-GF: Session started'
+                . ' | action=' . $action
+                . ' | uri=' . $uri
+                . ' | session_id=' . session_id()
+            );
         }
     }
 
@@ -128,13 +173,11 @@ class Plugin {
         add_action( 'plugins_loaded', [ self::class, 'ensureSession' ], 1 );
         add_action( 'init',           [ self::class, 'ensureSession' ], 1 );
 
-        /**
-         * DEBUG endpointy: len keď WP_DEBUG a len pre admina.
-         * (Zabránime tomu, aby si testovaním „vyrábal“ session a maskoval chybu flow.)
-         */
         if ( defined('WP_DEBUG') && WP_DEBUG ) {
             add_action( 'wp_ajax_spa_debug_constants', [ self::class, 'debugConstants' ] );
             add_action( 'wp_ajax_spa_check_session',   [ self::class, 'checkSession' ] );
+            add_action( 'wp_ajax_spa_debug_session',   [ self::class, 'debugSession' ] );
+            add_action( 'wp_ajax_nopriv_spa_debug_session', [ self::class, 'debugSession' ] );
         }
 
         // GF hooky (bez form ID – guard má byť v Hooks triedach cez cssClass spa-register-gf)
@@ -145,10 +188,12 @@ class Plugin {
 
         $enqueue->register();
 
-        add_filter( 'gform_pre_render',       [ $preRender,  'handle' ],               10, 1 );
-        add_filter( 'gform_pre_validation',   [ $validation, 'handlePreValidation' ],  10, 1 );
-        add_filter( 'gform_validation',       [ $validation, 'handleValidation' ],     10, 1 );
-        add_action( 'gform_after_submission', [ $submission, 'handle' ],               10, 2 );
+        add_filter( 'gform_pre_render',             [ $preRender,  'handle' ],                 10, 1 );
+        add_filter( 'gform_pre_validation',         [ $validation, 'handlePreValidation' ],    10, 1 );
+        add_filter( 'gform_pre_validation',         [ $preRender,  'handlePreValidationScope'],10, 1 );
+        add_filter( 'gform_pre_submission_filter',  [ $preRender,  'handlePreSubmissionScope'],10, 1 );
+        add_filter( 'gform_validation',             [ $validation, 'handleValidation' ],       10, 1 );
+        add_action( 'gform_after_submission',       [ $submission, 'handle' ],                 10, 2 );
 
         /**
          * PIN pre dieťa – server-side po vytvorení WP používateľa.
@@ -251,6 +296,24 @@ class Plugin {
     // ─────────────────────────────────────────────────────────────
     // DEBUG ENDPOINTY (len WP_DEBUG + len wp_ajax)
     // ─────────────────────────────────────────────────────────────
+
+    public static function debugSession(): void {
+        if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+            wp_send_json_error( [ 'message' => 'disabled' ], 403 );
+        }
+
+        self::ensureSession();
+
+        $session_status = session_status();
+
+        wp_send_json( [
+            'session_status'   => $session_status,
+            'session_id'       => session_id(),
+            'cookie_present'   => isset( $_COOKIE[ session_name() ] ),
+            'session_name'     => session_name(),
+            'spa_registration' => $_SESSION['spa_registration'] ?? null,
+        ] );
+    }
 
     public static function debugConstants(): void {
         if ( ! current_user_can('manage_options') ) {

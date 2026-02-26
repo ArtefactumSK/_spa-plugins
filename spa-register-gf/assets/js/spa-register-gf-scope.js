@@ -155,7 +155,9 @@
     }
 
     /**
-     * Disable-uje iba inputy vo wrapperoch skrytých GF conditional logic.
+     * Synchronizuje disabled stav inputov s aktuálnou viditeľnosťou wrappera.
+     * - Ak je wrapper skrytý (GF conditional alebo scope) → disabled = true
+     * - Ak je wrapper viditeľný → disabled = false
      * Preskakuje input[type="hidden"] a gfield--type-hidden wrappery.
      */
     function disableConditionalHiddenGFFields() {
@@ -163,15 +165,13 @@
             // Preskočiť systémové hidden polia
             if (wrapper.classList.contains('gfield--type-hidden')) return;
 
-            // Disabled ak: GF conditional hidden ALEBO scope sekcia je skrytá
             const gfHidden = isGFConditionalHidden(wrapper);
             const scopeHidden = getComputedStyle(wrapper).display === 'none';
-
-            if (!gfHidden && !scopeHidden) return;
+            const shouldDisable = gfHidden || scopeHidden;
 
             wrapper.querySelectorAll('input, select, textarea').forEach(input => {
                 if (input.type === 'hidden') return;
-                input.disabled = true;
+                input.disabled = shouldDisable;
             });
         });
     }

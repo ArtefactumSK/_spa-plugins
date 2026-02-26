@@ -2,6 +2,7 @@
 namespace SpaRegisterGf\Hooks;
 
 use SpaRegisterGf\Infrastructure\GFFormFinder;
+use SpaRegisterGf\Infrastructure\Logger;
 use SpaRegisterGf\Services\SessionService;
 use SpaRegisterGf\Services\FieldMapService;
 
@@ -73,6 +74,61 @@ class PreRenderHooks {
                     'window.spaRegisterScope = "' . esc_js( $scope ) . '";',
                     'before'
                 );
+
+                $logicalKeysToOverride = [];
+
+                if ( $scope === 'adult' ) {
+                    $logicalKeysToOverride = [
+                        'spa_guardian_name',
+                        'spa_parent_email',
+                        'spa_parent_phone',
+                        'spa_consent_guardian',
+                    ];
+                } elseif ( $scope === 'child' ) {
+                    $logicalKeysToOverride = [
+                        'spa_client_email_required',
+                    ];
+                }
+
+                if ( ! empty( $logicalKeysToOverride ) ) {
+                    $fieldIds         = [];
+                    $overriddenFields = [];
+
+                    foreach ( $logicalKeysToOverride as $logicalKey ) {
+                        $resolvedId = FieldMapService::tryResolve( $logicalKey );
+                        if ( $resolvedId ) {
+                            $fieldIds[ $logicalKey ] = (int) $resolvedId;
+                        }
+                    }
+
+                    if ( ! empty( $fieldIds ) ) {
+                        foreach ( $form['fields'] as &$field ) {
+                            $fieldId = isset( $field->id ) ? (int) $field->id : 0;
+
+                            if ( $fieldId <= 0 ) {
+                                continue;
+                            }
+
+                            foreach ( $fieldIds as $logicalKey => $resolvedId ) {
+                                if ( $fieldId === (int) $resolvedId ) {
+                                    $field->isRequired = false;
+
+                                    if ( ! in_array( $logicalKey, $overriddenFields, true ) ) {
+                                        $overriddenFields[] = $logicalKey;
+                                    }
+                                }
+                            }
+                        }
+                        unset( $field );
+                    }
+
+                    if ( ! empty( $overriddenFields ) ) {
+                        Logger::info( 'scope_required_override', [
+                            'scope'             => $scope,
+                            'overridden_fields' => $overriddenFields,
+                        ] );
+                    }
+                }
 
             } catch ( \RuntimeException $e ) {
                 // scope chýba – formulár sa zobrazí bez predvyplnenia
@@ -235,6 +291,232 @@ class PreRenderHooks {
                 return $programVal;
             } );
         }
+
+        // Scope-based isRequired overrides for parent fields/sections.
+        $form = $this->applyScopeRequiredOverrides( $form );
+        // Company_* required overrides podľa spôsobu platby a voľby "fakturovať na firmu".
+        $form = $this->applyCompanyRequiredOverrides( $form );
+
+        return $form;
+    }
+
+    /**
+     * gform_pre_validation – scope-based isRequired overrides.
+     *
+     * This runs in addition to ValidationHooks::handlePreValidation().
+     */
+    public function handlePreValidationScope( array $form ): array {
+        if ( ! GFFormFinder::guard( $form ) ) {
+            return $form;
+        }
+
+        // Najskôr zachovaj existujúce scope-based overrides (child/adult)
+        $form = $this->applyScopeRequiredOverrides( $form );
+        // Company_* required overrides podľa spôsobu platby a voľby "fakturovať na firmu".
+        $form = $this->applyCompanyRequiredOverrides( $form );
+
+        return $form;
+    }
+
+    /**
+     * gform_pre_submission_filter – scope-based isRequired overrides.
+     *
+     * Signature keeps only $form; GF passes $entry as second param which is ignored.
+     */
+    public function handlePreSubmissionScope( array $form ): array {
+        if ( ! GFFormFinder::guard( $form ) ) {
+            return $form;
+        }
+
+        // Najskôr zachovaj existujúce scope-based overrides (child/adult)
+        $form = $this->applyScopeRequiredOverrides( $form );
+        // Company_* required overrides podľa spôsobu platby a voľby "fakturovať na firmu".
+        $form = $this->applyCompanyRequiredOverrides( $form );
+
+        return $form;
+    }
+
+    /**
+     * Dynamicky upraví isRequired pre "parent" polia podľa session scope.
+     *
+     * Scope čítame priamo zo $_SESSION['spa_registration']['scope'].
+     * - Ak scope nie je 'child' ani 'adult', formulár nemeníme.
+     * - Parent pole/sekcia je rozpoznaná podľa CSS tried:
+     *   - spa-section-parent
+     *   - spa-parent-field
+     */
+    private function applyScopeRequiredOverrides( array $form ): array {
+
+        $scope = $_SESSION['spa_registration']['scope'] ?? null;
+    
+        if ( $scope !== 'adult' ) {
+            return $form;
+        }
+    
+        if ( empty( $form['fields'] ) || ! is_array( $form['fields'] ) ) {
+            return $form;
+        }
+    
+        foreach ( $form['fields'] as &$field ) {
+    
+            $css = $field->cssClass ?? '';
+    
+            if ( ! is_string( $css ) || $css === '' ) {
+                continue;
+            }
+    
+            $isParentField =
+                strpos( $css, 'spa-parent' ) !== false
+                || strpos( $css, 'spa-guardian' ) !== false
+                || strpos( $css, 'company_' ) !== false;
+    
+            if ( $isParentField ) {
+    
+                // LEN neutralizácia pre adult
+                $field->isRequired         = false;
+                $field->failed_validation  = false;
+                $field->validation_message = '';
+            }
+        }
+    
+        unset( $field );
+    
+        return $form;
+    }
+
+    /**
+     * Fakturačné polia (company_*) – required override podľa platby.
+     *
+     * company_* sú required iba ak:
+     * - payment_method === 'invoice_payment'
+     * - a checkbox spa_invoice_tocompany je truthy
+     *
+     * Inak:
+     * - isRequired = false
+     * - failed_validation = false
+     * - validation_message = ''
+     *
+     * Identifikácia company_* výhradne podľa cssClass obsahujúcej "company_".
+     * Hodnoty čítame z $_POST cez FieldMapService (bez natvrdo ID).
+     */
+    private function applyCompanyRequiredOverrides( array $form ): array {
+        $paymentFieldKey     = 'payment_method';
+        $invoiceToCompanyKey = 'spa_invoice_tocompany';
+
+        $paymentFieldId     = FieldMapService::tryResolve( $paymentFieldKey );
+        $invoiceToCompanyId = FieldMapService::tryResolve( $invoiceToCompanyKey );
+
+        // GF POST keys používajú podčiarkovník namiesto bodky (input_48.1 → input_48_1)
+        $paymentPostKey = $paymentFieldId ? str_replace( '.', '_', $paymentFieldId ) : null;
+        $invoicePostKey = $invoiceToCompanyId ? str_replace( '.', '_', $invoiceToCompanyId ) : null;
+
+        $paymentValue        = $paymentPostKey ? \rgpost( $paymentPostKey ) : null;
+        $invoiceToCompanyRaw = $invoicePostKey ? \rgpost( $invoicePostKey ) : null;
+
+        // Robustné vyhodnotenie checkboxu "Faktúrovať na firmu?"
+        // - Ak GF vráti array → hľadáme value 'invoice_tocompany'
+        // - Ak vráti string → porovnávame na 'invoice_tocompany' (alebo obsahuje)
+        $invoiceChecked = false;
+        if ( is_array( $invoiceToCompanyRaw ) ) {
+            $invoiceChecked = in_array( 'invoice_tocompany', $invoiceToCompanyRaw, true );
+            if ( ! $invoiceChecked ) {
+                // fallback: akékoľvek neprázdne hodnoty v poli
+                $nonEmpty = array_filter(
+                    $invoiceToCompanyRaw,
+                    static function ( $v ) {
+                        return $v !== null && $v !== '';
+                    }
+                );
+                $invoiceChecked = ! empty( $nonEmpty );
+            }
+        } elseif ( is_string( $invoiceToCompanyRaw ) && $invoiceToCompanyRaw !== '' ) {
+            $invoiceChecked = (
+                $invoiceToCompanyRaw === 'invoice_tocompany'
+                || str_contains( $invoiceToCompanyRaw, 'invoice_tocompany' )
+            );
+            if ( ! $invoiceChecked ) {
+                // fallback: akýkoľvek neprázdny string považujeme za "zaškrtnuté"
+                $invoiceChecked = true;
+            }
+        }
+
+        $shouldRequireCompany = (
+            $paymentValue === 'invoice_payment'
+            && $invoiceChecked
+        );
+
+        // DEBUG toggle – dá sa vypnúť cez filter `spa_register_gf_debug_company`.
+        $debugCompany = apply_filters(
+            'spa_register_gf_debug_company',
+            defined( 'WP_DEBUG' ) && WP_DEBUG
+        );
+
+        if ( $debugCompany ) {
+            $scope     = $_SESSION['spa_registration']['scope'] ?? null;
+            $sessionId = session_id();
+
+            $debug = [
+                'session_id'          => $sessionId ?: null,
+                'scope'               => $scope,
+                'payment_logical_key' => $paymentFieldKey,
+                'payment_field_id'    => $paymentFieldId,
+                'payment_post_key'    => $paymentPostKey,
+                'payment_value_type'  => gettype( $paymentValue ),
+                'payment_value'       => $paymentValue,
+                'invoice_logical_key' => $invoiceToCompanyKey,
+                'invoice_field_id'    => $invoiceToCompanyId,
+                'invoice_post_key'    => $invoicePostKey,
+                'invoice_value_type'  => gettype( $invoiceToCompanyRaw ),
+                'invoice_value'       => $invoiceToCompanyRaw,
+                'should_require'      => $shouldRequireCompany,
+            ];
+
+            if ( headers_sent( $file, $line ) ) {
+                $debug['headers_sent'] = [
+                    'file' => $file,
+                    'line' => $line,
+                ];
+            }
+
+            error_log( '[spa-register-gf] company_required_debug: ' . wp_json_encode( $debug ) );
+        }
+
+        if ( empty( $form['fields'] ) || ! is_array( $form['fields'] ) ) {
+            return $form;
+        }
+
+        foreach ( $form['fields'] as &$field ) {
+            $css = $field->cssClass ?? '';
+
+            // company_* identifikujeme výhradne podľa CSS triedy (nie podľa ID)
+            if ( ! is_string( $css ) || $css === '' || strpos( $css, 'company_' ) === false ) {
+                continue;
+            }
+
+            $beforeRequired = isset( $field->isRequired ) ? (bool) $field->isRequired : false;
+
+            if ( $shouldRequireCompany ) {
+                // Pri fakturácii na firmu nastavíme company_* ako required
+                $field->isRequired = true;
+            } else {
+                // V ostatných prípadoch company_* NIKDY nesmú byť required ani mať chybu
+                $field->isRequired         = false;
+                $field->failed_validation  = false;
+                $field->validation_message = '';
+            }
+
+            if ( $debugCompany ) {
+                $fieldId = isset( $field->id ) ? (string) $field->id : '';
+                error_log(
+                    '[spa-register-gf] company_field_required_toggle: '
+                    . 'field_id=' . $fieldId
+                    . ' cssClass=' . $css
+                    . ' before=' . ( $beforeRequired ? '1' : '0' )
+                    . ' after=' . ( $field->isRequired ? '1' : '0' )
+                );
+            }
+        }
+        unset( $field );
 
         return $form;
     }
