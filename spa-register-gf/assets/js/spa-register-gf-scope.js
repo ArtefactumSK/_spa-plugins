@@ -72,6 +72,19 @@
         ]
     };
 
+    // Company polia – riadené výlučne server-side (required / scope).
+    // V JS platí: tieto polia NESMÚ byť nikdy disabled, aby sa vždy poslali v POST payload.
+    const companyFieldNames = [
+        'company_name',
+        'company_ico',
+        'company_dic',
+        'company_icdph',
+        'company_address_street',
+        'company_address_city',
+        'company_address_postcode',
+        'company_address_country'
+    ];
+
     // ========== HELPERS ==========
 
     /**
@@ -104,6 +117,21 @@
         const fields = window.spaRegisterFields || {};
         return fields[fieldName] || null;
     }
+
+    /**
+     * Množina GF input name identifikátorov pre company_* polia.
+     * Slúži výhradne na to, aby sa na tieto polia nikdy neaplikovalo disabled.
+     */
+    const companyInputNames = (function () {
+        const names = [];
+        companyFieldNames.forEach(fieldName => {
+            const inputId = resolveInputId(fieldName);
+            if (inputId) {
+                names.push(inputId);
+            }
+        });
+        return new Set(names);
+    })();
 
     /**
      * Nájde wrapper .gfield pre dané pole podľa name atribútu (stabilný GF identifikátor).
@@ -171,6 +199,14 @@
 
             wrapper.querySelectorAll('input, select, textarea').forEach(input => {
                 if (input.type === 'hidden') return;
+                const inputName = input.getAttribute('name');
+
+                // Company polia NESMÚ byť disabled – nikdy ich nevypíname, aby sa poslali v POST.
+                if (inputName && companyInputNames.has(inputName)) {
+                    input.disabled = false;
+                    return;
+                }
+
                 input.disabled = shouldDisable;
             });
         });
