@@ -99,11 +99,14 @@
             return;
         }
 
-        // Načítaj rozsah z data atribútov na .spa-age-warning
-        const ageMin = warningEl ? parseFloat(warningEl.dataset.ageMin) : NaN;
-        const ageMax = (warningEl && warningEl.dataset.ageMax !== undefined)
-            ? parseFloat(warningEl.dataset.ageMax)
-            : null;
+        // Načítaj rozsah – primárne z window.spaAgeMin/spaAgeMax (PHP inline script)
+        // fallback: data atribúty na .spa-age-warning (ak existuje v DOM)
+        const ageMin = (window.spaAgeMin !== undefined && window.spaAgeMin !== null)
+            ? window.spaAgeMin
+            : (warningEl ? parseFloat(warningEl.dataset.ageMin) : NaN);
+        const ageMax = (window.spaAgeMax !== undefined && window.spaAgeMax !== null)
+            ? window.spaAgeMax
+            : (warningEl && warningEl.dataset.ageMax !== undefined ? parseFloat(warningEl.dataset.ageMax) : null);
 
         const tooYoung = !isNaN(ageMin) && age < ageMin;
         const tooOld   = ageMax !== null && !isNaN(ageMax) && age > ageMax;

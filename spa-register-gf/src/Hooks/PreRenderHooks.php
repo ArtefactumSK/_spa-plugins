@@ -479,6 +479,15 @@ class PreRenderHooks {
         $ageMax = ( get_post_meta( $programId, 'spa_age_to', true ) !== '' )
             ? (float) get_post_meta( $programId, 'spa_age_to', true ) : null;
 
+        // Exponuj vekový rozsah do JS pre age.js
+        $ageMinJs = $ageMin !== null ? (float) $ageMin : 'null';
+        $ageMaxJs = $ageMax !== null ? (float) $ageMax : 'null';
+        wp_add_inline_script(
+            'spa-register-gf-age',
+            'window.spaAgeMin = ' . $ageMinJs . '; window.spaAgeMax = ' . $ageMaxJs . ';',
+            'before'
+        );
+
         // ── Miesto – kompletná adresa: "Košice • Drábova 3 (ZŠ Drábova)" ────
         // Rovnaká logika ako renderFullInfobox() v spa-selection.js
         $locationText = '';
