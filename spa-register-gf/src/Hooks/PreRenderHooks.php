@@ -134,84 +134,6 @@ class PreRenderHooks {
                 // scope chýba – formulár sa zobrazí bez predvyplnenia
             }
 
-            // Vek validácia – zobrazí warning ak vek nezodpovedá rozsahu programu
-            $ageMin = get_post_meta( $session->getProgramId(), 'spa_age_from', true );
-            $ageMax = get_post_meta( $session->getProgramId(), 'spa_age_to',   true );
-
-            if ( $ageMin !== '' || $ageMax !== '' ) {
-                $ageMinJs = $ageMin !== '' ? (float) $ageMin : 'null';
-                $ageMaxJs = $ageMax !== '' ? (float) $ageMax : 'null';
-
-                wp_add_inline_script(
-                    'spa-register-gf-js',
-                    '(function(){
-                        var ageMin = ' . $ageMinJs . ';
-                        var ageMax = ' . $ageMaxJs . ';
-
-                        function calcAge(val){
-                            // Formát: dd.mm.rrrr
-                            var parts = val.split(".");
-                            if(parts.length !== 3) return null;
-                            var d = parseInt(parts[0],10);
-                            var m = parseInt(parts[1],10) - 1;
-                            var y = parseInt(parts[2],10);
-                            if(isNaN(d)||isNaN(m)||isNaN(y)||y < 1900) return null;
-                            var today = new Date();
-                            var birth = new Date(y, m, d);
-                            if(birth > today) return null;
-                            var age = today.getFullYear() - birth.getFullYear();
-                            var mDiff = today.getMonth() - birth.getMonth();
-                            if(mDiff < 0 || (mDiff === 0 && today.getDate() < birth.getDate())) age--;
-                            return age;
-                        }
-
-                        function ageUnit(age){
-                            if(age === 1) return "rok";
-                            if(age >= 2 && age <= 4) return "roky";
-                            return "rokov";
-                        }
-
-                        function checkAgeWarning(val){
-                            var warning = document.querySelector(".spa-age-warning");
-                            if(!warning) return;
-                            var age = calcAge(val);
-                            if(age === null){ warning.style.display = "none"; return; }
-                            var outOfRange = false;
-                            if(ageMin !== null && age < ageMin) outOfRange = true;
-                            if(ageMax !== null && age > ageMax) outOfRange = true;
-                            if(outOfRange){
-                                warning.innerHTML = " Vek účastníka <span class=\"age-alert\">" + age + "</span> " + ageUnit(age) + " nezodpovedá vybranému programu!";
-                                warning.style.display = "";
-                            } else {
-                                warning.style.display = "none";
-                            }
-                        } 
-
-
-
-                        function bindBirthdate(){
-                            // GF date field – hľadáme input s dd.mm.rrrr placeholder
-                            var input = document.querySelector(".gfield input[placeholder=\"dd.mm.rrrr\"]");
-                            if(!input) return;
-                            input.addEventListener("change", function(){ checkAgeWarning(this.value); });
-                            input.addEventListener("blur",   function(){ checkAgeWarning(this.value); });
-                            // Ak je predvyplnené
-                            if(input.value) checkAgeWarning(input.value);
-                        }
-
-                        if(document.readyState === "loading"){
-                            document.addEventListener("DOMContentLoaded", bindBirthdate);
-                        } else {
-                            bindBirthdate();
-                        }
-
-                        // GF AJAX re-render (pagebreak späť/vpred)
-                        document.addEventListener("gform_post_render", bindBirthdate);
-                    })();',
-                    'after'
-                );
-            }
-
             $freqFieldId = FieldMapService::tryResolve( 'spa_frequency' );
             if ( $freqFieldId && ! empty( $session->getFrequencyKey() ) ) {
                 add_filter( 'gform_field_value_' . $freqFieldId, function () use ( $session ) {
@@ -348,23 +270,23 @@ class PreRenderHooks {
     private function applyScopeRequiredOverrides( array $form ): array {
 
         $scope = $_SESSION['spa_registration']['scope'] ?? null;
-    
+
         if ( $scope !== 'adult' ) {
             return $form;
         }
-    
+
         if ( empty( $form['fields'] ) || ! is_array( $form['fields'] ) ) {
             return $form;
         }
-    
+
         foreach ( $form['fields'] as &$field ) {
     
             $css = $field->cssClass ?? '';
-    
+
             if ( ! is_string( $css ) || $css === '' ) {
                 continue;
             }
-    
+
             $isParentField =
                 strpos( $css, 'spa-parent' ) !== false
                 || strpos( $css, 'spa-guardian' ) !== false
@@ -688,15 +610,7 @@ class PreRenderHooks {
             $html .= '<li class="spa-summary-item spa-summary-age">';
             $html .= '<span class="spa-summary-icon">' . $iconAge . '</span>';
             $html .= '<strong>' . esc_html( $ageText ) . '</strong>';
-            if ( $ageMin !== null ) {
-                $html .= '<span class="spa-age-warning"'
-                    . ' data-age-min="' . esc_attr( (string) $ageMin ) . '"'
-                    . ( $ageMax !== null ? ' data-age-max="' . esc_attr( (string) $ageMax ) . '"' : '' )
-                    . ' style="display:none;">Vek účastníka nezodpovedá vybranému programu!</span>';
-            }
-            $html .= '</li>';
-
-            
+            $html .= '</li>';            
         }
 
         // 4. Tréningové dni

@@ -1,10 +1,11 @@
 /**
- * SPA Register GF – Age Warning
+ * SPA Register GF – Age Preview & Warning
  *
  * Načíta birthdate z GF poľa spa_member_birthdate,
- * vypočíta vek a ak je mimo rozsahu, zobrazí varovanie.
+ * vypočíta vek a zobrazí ho v #spa-age-preview.
+ * Ak vek nezodpovedá rozsahu programu, zobrazí hlášku.
  *
- * Zdroj rozsahu: data-age-min / data-age-max na .spa-summary-age-warning
+ * Zdroj rozsahu: data-age-min / data-age-max na .spa-age-warning
  * (server vložil tieto atribúty cez PreRenderHooks::buildPriceSummary)
  *
  * Tento súbor NEOBSAHUJE žiadnu business logiku.
@@ -28,6 +29,7 @@
         if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
         const birth = new Date(year, month, day);
         const today = new Date();
+        if (birth > today) return null;
         let age = today.getFullYear() - birth.getFullYear();
         const m = today.getMonth() - birth.getMonth();
         if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
@@ -37,18 +39,9 @@
     }
 
     /**
-     * Nájdi birthdate input podľa name atribútu cez spaRegisterFields
-     * @returns {HTMLInputElement|null}
-     */
-    function findBirthdateInput() {
-        const fields = window.spaRegisterFields || {};
-        const inputId = fields['spa_member_birthdate'];
-        if (!inputId) return null;
-        return document.querySelector('[name="' + inputId + '"]');
-    }
-
-    /**
-     * Hlavná funkcia – skontroluje vek a zobrazí/skryje varovanie
+     * Slovenská gramatika pre vek
+     * @param {number} age
+     * @returns {string}
      */
     function calcAgeLabel(age) {
         if (age === 1) return '1 rok';
@@ -56,71 +49,94 @@
         return age + ' rokov';
     }
 
+    /**
+     * Nájdi birthdate input:
+     * 1. cez spaRegisterFields['spa_member_birthdate'] (name atribút)
+     * 2. fallback: placeholder="dd.mm.rrrr"
+     * @returns {HTMLInputElement|null}
+     */
+    function findBirthdateInput() {
+        const fields  = window.spaRegisterFields || {};
+        const inputId = fields['spa_member_birthdate'];
+        if (inputId) {
+            const el = document.querySelector('[name="' + inputId + '"]');
+            if (el) return el;
+        }
+        return document.querySelector('.gfield input[placeholder="dd.mm.rrrr"]');
+    }
+
+    /**
+     * Nájdi age warning element – PHP renderuje .spa-age-warning
+     * @returns {Element|null}
+     */
+    function findWarningEl() {
+        return document.querySelector('.spa-age-warning');
+    }
+
+    /**
+     * Hlavná funkcia – vypočíta vek, zapíše do #spa-age-preview,
+     * skryje server-renderovanú hlášku .spa-age-warning
+     */
     function checkAge() {
-        const warningEl = document.querySelector('.spa-summary-age-warning');
+        const warningEl = findWarningEl();
         const previewEl = document.getElementById('spa-age-preview');
 
-        const inputEl = findBirthdateInput();
-        const age = inputEl ? calcAge(inputEl.value) : null;
-
-        // Age preview
-        if (previewEl) {
-            if (age !== null) {
-                const ageMin = warningEl ? parseFloat(warningEl.dataset.ageMin) : NaN;
-                const ageMax = warningEl && warningEl.dataset.ageMax !== undefined
-                    ? parseFloat(warningEl.dataset.ageMax)
-                    : null;
-
-                const tooYoung = !isNaN(ageMin) && age < ageMin;
-                const tooOld   = ageMax !== null && !isNaN(ageMax) && age > ageMax;
-
-                if (tooYoung || tooOld) {
-                    previewEl.textContent = calcAgeLabel(age) + ' – nezodpovedá vybranému programu';
-                    previewEl.style.color = '#e53935';
-                } else {
-                    previewEl.textContent = calcAgeLabel(age);
-                    previewEl.style.color = '';
-                }
-                previewEl.style.display = '';
-            } else {
-                previewEl.textContent = '';
-                previewEl.style.display = 'none';
-            }
+        // Vždy skry server-renderovanú hlášku – preview preberá jej úlohu
+        if (warningEl) {
+            warningEl.style.display = 'none';
         }
 
-        // Pôvodný warning blok – skry ho, preview preberá jeho úlohu
-        if (!warningEl) return;
+        const inputEl = findBirthdateInput();
+        if (!inputEl) return;
 
-        const ageMin = parseFloat(warningEl.dataset.ageMin);
-        const ageMax = warningEl.dataset.ageMax !== undefined
-            ? parseFloat(warningEl.dataset.ageMax)
-            : null;
+        const age = calcAge(inputEl.value);
+
+        if (!previewEl) return;
 
         if (age === null) {
-            warningEl.style.display = 'none';
+            previewEl.innerHTML    = '';
+            previewEl.style.display = 'none';
             return;
         }
+
+        // Načítaj rozsah z data atribútov na .spa-age-warning
+        const ageMin = warningEl ? parseFloat(warningEl.dataset.ageMin) : NaN;
+        const ageMax = (warningEl && warningEl.dataset.ageMax !== undefined)
+            ? parseFloat(warningEl.dataset.ageMax)
+            : null;
 
         const tooYoung = !isNaN(ageMin) && age < ageMin;
         const tooOld   = ageMax !== null && !isNaN(ageMax) && age > ageMax;
 
-        warningEl.style.display = (tooYoung || tooOld) ? '' : 'none';
+        if (tooYoung || tooOld) {
+            previewEl.innerHTML = calcAgeLabel(age)
+                + ' <span class="gfield_required"> – nezodpovedá vybranému programu</span>';
+        } else {
+            previewEl.textContent = calcAgeLabel(age);
+        }
+        previewEl.style.display = '';
     }
 
     // ── Event listeners ──────────────────────────────────────────────────────
 
-    document.addEventListener('input',  function (e) {
-        const fields = window.spaRegisterFields || {};
+    document.addEventListener('input', function (e) {
+        const fields    = window.spaRegisterFields || {};
         const bdInputId = fields['spa_member_birthdate'];
-        if (bdInputId && e.target.name === bdInputId) {
+        if (
+            (bdInputId && e.target.name === bdInputId) ||
+            (!bdInputId && e.target.placeholder === 'dd.mm.rrrr')
+        ) {
             checkAge();
         }
     });
 
     document.addEventListener('change', function (e) {
-        const fields = window.spaRegisterFields || {};
+        const fields    = window.spaRegisterFields || {};
         const bdInputId = fields['spa_member_birthdate'];
-        if (bdInputId && e.target.name === bdInputId) {
+        if (
+            (bdInputId && e.target.name === bdInputId) ||
+            (!bdInputId && e.target.placeholder === 'dd.mm.rrrr')
+        ) {
             checkAge();
         }
     });
@@ -128,6 +144,11 @@
     // Initial check po načítaní (pre prípad predvyplneného poľa)
     document.addEventListener('DOMContentLoaded', function () {
         setTimeout(checkAge, 400);
+    });
+
+    // GF AJAX re-render (pagebreak späť/vpred)
+    document.addEventListener('gform_post_render', function () {
+        setTimeout(checkAge, 200);
     });
 
     // Expose pre prípadné externé volanie
