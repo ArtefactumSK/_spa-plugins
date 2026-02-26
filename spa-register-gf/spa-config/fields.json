@@ -2,7 +2,8 @@
   "payment_method": "input_47",
 
   "spa_invoice_tocompany": "input_48.1",
-  "spa_first_payment_amount": "input_55",
+  "spa_first_payment_amount": "input_63",
+  "spa_first_payment_total": "input_64",
 
   "company_name": "input_50",
   "company_ico": "input_52",

@@ -81,13 +81,41 @@
 
 ---
 
-### Field: Výška prvej platby
-- **GF Field ID**: 55
-- **Type**: hidden
+## Payment Fields
+
+### Field: spa_first_payment_amount
+- **GF Field ID**: 63
+- **Type**: product (single)
 - **Required**: false
-- **CSS Class**: (prázdne)
+- **CSS Class**: spa-hidden-product
+- **Admin Label**: spa_first_payment_amount
+- **Conditional Logic**: (žiadne / prázdne)
+- **Inputs**:
+  - **63.1** – label: Meno; name: (prázdne)
+  - **63.2** – label: Cena; name: (prázdne)
+  - **63.3** – label: Množstvo; name: (prázdne)
+- **Poznámky**:
+  - Používa sa ako technické Product pole
+  - Skryté cez CSS (spa-hidden-product)
+  - Cena nastavovaná server-side
+  - Stripe používa Form total (nie toto pole)
+  - Produktové pole nie je zdroj pravdy pre Stripe
+  - Cena sa verifikuje cez AmountVerificationService
+
+---
+
+### Field: spa_first_payment_total
+- **GF Field ID**: 64
+- **Type**: total
+- **Required**: false
+- **CSS Class**: spa-hidden-total
+- **Admin Label**: spa_first_payment_total
 - **Conditional Logic**: (žiadne / prázdne)
 - **Inputs**: none
+- **Poznámky**:
+  - Používa sa výhradne pre Stripe
+  - Skryté cez CSS (spa-hidden-total)
+  - Stripe feed používa GF total z tohto poľa
 
 ---
 
@@ -373,7 +401,8 @@
 | 48 | Faktúrovať na firmu? | checkbox | false | 1 | áno |
 | 62 | HTML Online Platba | html | false | 1 | áno |
 | 60 | HTML Platba 48h pred tréneingom | html | false | 1 | nie |
-| 55 | Výška prvej platby | hidden | false | 1 | nie |
+| 63 | Výška prvej platby | product (single) | false | 1 | nie |
+| 64 | Celkom | total | false | 1 | nie |
 | 49 | Fakturačné údaje | section | false | 1 | áno |
 | 50 | Názov firmy (daňový subjekt) | text | true | 1 | nie |
 | 52 | IČO | text | true | 1 | nie |

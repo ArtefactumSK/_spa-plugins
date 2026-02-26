@@ -76,8 +76,11 @@ gform_validation [filter, priority 10]
   └── GFEntryReader::buildPayload() z $_POST
   └── ChildScopeValidator alebo AdultScopeValidator podľa $scope
         → chyby → addFieldError (cez FieldMapService) → is_valid = false
+  └── GF Product field existuje (spa_first_payment_amount, GF ID: 63)
   └── AmountVerificationService::verify($session)
+        → cena sa porovnáva proti DB cez AmountVerificationService
         → mismatch → blockWithMessage("Cena sa zmenila") → is_valid = false
+  └── Stripe feed používa "Form total" (GF Total field), nie konkrétne product pole.
   └── return $validationResult
 
 gform_after_submission [action, priority 10]
@@ -88,6 +91,9 @@ gform_after_submission [action, priority 10]
   └── AmountVerificationService::verify()
         → mismatch → do_action('spa_registration_amount_mismatch') → return
   └── GFEntryReader::buildPayload($entry)
+  └── Ak je payment_method = online_payment:
+        → registrácia zostáva v stave "pending"
+        → aktivácia po Stripe webhook potvrdení (len poznámka, neimplementuj)
   └── UserCreationService::createForScope($payload, $scope)
         → zlyhanie → Logger::error + do_action('spa_registration_failed') → return
   └── RegistrationService::create($payload, $userIds, $session)

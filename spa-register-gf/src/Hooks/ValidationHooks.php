@@ -48,13 +48,15 @@ class ValidationHooks {
     // ── gform_validation ─────────────────────────────────────────────────────
 
     public function handleValidation( array $validationResult ): array {
-        error_log('---- SPA VALIDATION START ----');
-        error_log('SESSION STATUS: ' . session_status());
-        error_log('SESSION DATA: ' . print_r($_SESSION['spa_registration'] ?? null, true));
-        error_log('POST input_55: ' . ($_POST['input_55'] ?? 'NULL'));
         $form = $validationResult['form'] ?? [];
 
-        error_log( '[spa-register-gf] handleValidation called | is_valid=' . ( $validationResult['is_valid'] ? 'true' : 'false' ) . ' | cssClass="' . ( $form['cssClass'] ?? '' ) . '"' );
+        Logger::info(
+            'validation_gf_handle',
+            [
+                'is_valid' => (bool) ( $validationResult['is_valid'] ?? true ),
+                'cssClass' => $form['cssClass'] ?? '',
+            ]
+        );
 
         if ( ! GFFormFinder::guard( $form ) ) {
             error_log( '[spa-register-gf] handleValidation guard=false → skip' );
@@ -119,10 +121,6 @@ class ValidationHooks {
         }
 
         // Scope-based validácia
-        $entry   = $validationResult['form']['failed_validation_page'] ?? [];
-        $allFields = $form['fields'] ?? [];
-        $submittedValues = array_column( $allFields, null, 'id' );
-
         // Zostavíme RegistrationPayload z POST dát cez GFEntryReader
         // GF v tomto bode ešte nemá entry, takže čítame z $_POST cez rgar emuláciu
         $fakeEntry = $this->buildEntryFromPost( $form );
@@ -139,13 +137,25 @@ class ValidationHooks {
             $result = $validator->validate( $payload );
 
             if ( ! $result->isValid() ) {
-                error_log( '[spa-register-gf] ScopeValidator FAILED | errors=' . json_encode( $result->getErrors() ) );
+                Logger::info(
+                    'validation_scope_failed',
+                    [
+                        'scope'  => $scope,
+                        'errors' => $result->getErrors(),
+                    ]
+                );
+
                 foreach ( $result->getErrors() as $logicalKey => $message ) {
-                    $validationResult = $this->addFieldError( $validationResult, $logicalKey, $message );
+                    $validationResult = $this->addFieldError( $validationResult, $logicalKey, $message, $scope );
                 }
                 $validationResult['is_valid'] = false;
             } else {
-                error_log( '[spa-register-gf] ScopeValidator OK' );
+                Logger::info(
+                    'validation_scope_ok',
+                    [
+                        'scope' => $scope,
+                    ]
+                );
             }
         }
 
@@ -153,7 +163,6 @@ class ValidationHooks {
         if ( $validationResult['is_valid'] ) {
             $amountService = new AmountVerificationService();
             $amountOk = $amountService->verify( $session );
-            error_log( '[spa-register-gf] AmountVerification result=' . ( $amountOk ? 'true' : 'false' ) );
             if ( ! $amountOk ) {
                 $validationResult = $this->blockWithMessage(
                     $validationResult,
@@ -161,8 +170,14 @@ class ValidationHooks {
                 );
             }
         }
-        error_log( '[spa-register-gf] handleValidation END | is_valid=' . ( $validationResult['is_valid'] ? 'true' : 'false' ) );
-        error_log('FINAL VALIDATION RESULT: ' . print_r($validationResult, true));
+
+        Logger::info(
+            'validation_gf_handle_end',
+            [
+                'is_valid' => (bool) ( $validationResult['is_valid'] ?? true ),
+            ]
+        );
+
         return $validationResult;
     }
 
@@ -197,25 +212,145 @@ class ValidationHooks {
         return $vr;
     }
 
-    private function addFieldError( array $vr, string $logicalKey, string $message ): array {
-        error_log('ADD FIELD ERROR CALLED: ' . $logicalKey . ' - ' . $message);
-        $fieldId = FieldMapService::tryResolve( $logicalKey );
-        if ( $fieldId === null ) {
+    /**
+     * Priradí chybu k správnemu GF field objektu podľa logical key.
+     * Vždy nastavuje chybu na parent field (aj pri subinputoch / checkboxoch).
+     */
+    private function addFieldError( array $vr, string $logicalKey, string $message, string $scope ): array {
+        $mappedId = FieldMapService::tryResolve( $logicalKey );
+
+        if ( $mappedId === null ) {
+            Logger::warning(
+                'validation_field_map_missing',
+                [
+                    'scope'       => $scope,
+                    'logical_key' => $logicalKey,
+                ]
+            );
             return $vr;
         }
 
-        // Nájdi GF field podľa id a nastav chybu
-        foreach ( $vr['form']['fields'] as &$field ) {
-            // GF field id môže byť "6.3" (subpole) – porovnávame s prefixom
-            if ( (string) $field->id === explode( '.', $fieldId )[0] ) {
+        // Jednotné UX správy pre vybrané polia (bez prekladu GF)
+        if ( $logicalKey === 'spa_client_email_required' ) {
+            $message = 'E-mail účastníka je povinný.';
+        } elseif ( $logicalKey === 'spa_client_phone' ) {
+            $message = 'Telefónne číslo účastníka je povinné.';
+        } elseif ( $logicalKey === 'spa_consent_guardian' ) {
+            $message = 'Potvrdenie pravdivosti údajov je povinné.';
+        }
+
+        $parentId = $this->resolveParentFieldIdFromMapping( $mappedId );
+
+        if ( $parentId === null ) {
+            Logger::warning(
+                'validation_field_parent_unresolved',
+                [
+                    'scope'       => $scope,
+                    'logical_key' => $logicalKey,
+                    'mapped_id'   => $mappedId,
+                ]
+            );
+            return $vr;
+        }
+
+        // Nájdi GF field podľa parent id a nastav chybu
+        foreach ( $vr['form']['fields'] as $index => $field ) {
+            if ( ! isset( $field->id ) ) {  
+                continue;
+            }
+
+            if ( (int) $field->id === (int) $parentId ) {
                 $field->failed_validation  = true;
                 $field->validation_message = $message;
+
+                // Špeciálna vetva pre spa_consent_guardian (child)
+                if ( $logicalKey === 'spa_consent_guardian' ) {
+                    if ( property_exists( $field, 'errorMessage' ) ) {
+                        $field->errorMessage = $message;
+                    }
+
+                    if ( property_exists( $field, 'cssClass' ) ) {
+                        $cssClass = (string) $field->cssClass;
+                        if ( strpos( $cssClass, 'gfield_error' ) === false ) {
+                            $field->cssClass = trim( $cssClass . ' gfield_error' );
+                        }
+                    }
+
+                    // DEBUG log pre spa_consent_guardian (iba pri nevalidnom stave)
+                    Logger::info(
+                        'validation_spa_consent_guardian_error',
+                        [
+                            'scope'              => $scope,
+                            'logical_key'        => $logicalKey,
+                            'mapped_id'          => $mappedId,
+                            'parent_id'          => $parentId,
+                            'field_id'           => $field->id,
+                            'field_type'         => $field->type ?? null,
+                            'field_input_type'   => $field->inputType ?? null,
+                            'failed_validation'  => isset( $field->failed_validation ) ? (bool) $field->failed_validation : false,
+                            'validation_message' => $field->validation_message ?? null,
+                        ]
+                    );
+                }
+
+                // Jednorazový debug výpis pre nevalidný stav – výhradne pri scope chybách
+                Logger::info(
+                    'validation_scope_field_error',
+                    [
+                        'scope'          => $scope,
+                        'logical_key'    => $logicalKey,
+                        'mapped_id'      => $mappedId,                 // mapped GF value (napr. input_16, input_42.1)
+                        'parent_id'      => $parentId,                 // resolved parent field id
+                        'field_type'     => $field->type ?? null,      // nájdený field->type
+                        'field_id'       => $field->id,
+                        'failed_set'     => isset( $field->failed_validation ) ? (bool) $field->failed_validation : false,
+                    ]
+                );
+
+                // Uisti sa, že upravený field sa vráti späť do formy
+                $vr['form']['fields'][ $index ] = $field;
                 break;
             }
         }
 
         $vr['is_valid'] = false;
         return $vr;
+    }
+
+    /**
+     * Resolver pre GF parent field ID z hodnoty z FieldMapService.
+     * Podporuje formáty:
+     *  - "input_19"
+     *  - "input_6.3"
+     *  - "input_6_3" (POST varianta, konvertovaná na 6.3)
+     */
+    private function resolveParentFieldIdFromMapping( string $mappedId ): ?int {
+        /**
+         * fields.json používa formát "input_19" alebo "input_6.3".
+         * GF field objekt má id ako číslo "19" alebo "6".
+         *
+         * Preto:
+         *  - odstránime prefix "input_"
+         *  - normalizujeme "_" na "." (pre istotu)
+         *  - zoberieme len base ID pred prípadnou bodkou (napr. "6.3" → "6")
+         */
+        $normalized = $mappedId;
+
+        if ( strpos( $normalized, 'input_' ) === 0 ) {
+            $normalized = substr( $normalized, strlen( 'input_' ) );
+        }
+
+        // Podpora aj pre "6_3" → "6.3"
+        $normalized = str_replace( '_', '.', $normalized );
+
+        $parts = explode( '.', $normalized );
+        $base  = $parts[0] ?? null;
+
+        if ( $base === null || $base === '' ) {
+            return null;
+        }
+
+        return (int) $base;
     }
 
     /**

@@ -359,4 +359,12 @@
         initSpaScope();
     }
 
+    // Global SPA loader – hide full-screen overlay after /register is ready
+    document.addEventListener('DOMContentLoaded', function () {
+        const loader = document.getElementById('spa-global-loader');
+        if (loader) {
+            loader.classList.remove('active');
+        }
+    });
+
 })();

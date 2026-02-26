@@ -14,7 +14,8 @@ return [
 
     'spa_payment_method'        => 'input_47',
     'spa_fakturovat_na_firmu'   => 'input_48.1',
-    'spa_vyska_prvej_platby'    => 'input_55',
+    'spa_first_payment_amount'   => 'input_63',
+    'spa_first_payment_total'   => 'input_64',
 
     /* ==========================
        FAKTURAČNÉ ÚDAJE
