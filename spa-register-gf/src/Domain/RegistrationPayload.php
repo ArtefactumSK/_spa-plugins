@@ -42,4 +42,13 @@ class RegistrationPayload {
     public bool    $consentTerms          = false;
     public bool    $consentGuardian       = false;
     public bool    $consentMarketing      = false;
+
+    /**
+     * Spôsob platby z GF (logical key "payment_method").
+     * Očakávané hodnoty podľa GF konfigurácie:
+     * - cash_payment
+     * - invoice_payment
+     * - online_payment (Stripe Checkout)
+     */
+    public ?string $paymentMethod         = null;
 }

@@ -43,9 +43,9 @@ class SubmissionHooks {
             return;
         }
 
-        // ── Krok 3: Amount verification (blokujúci) ───────────────────────────
+        // ── Krok 3: Amount verification (blokujúci) – cez session + GF entry ─
         $amountService = new AmountVerificationService();
-        if ( ! $amountService->verify( $session ) ) {
+        if ( ! $amountService->verify( $session, $entry ) ) {
             Logger::error( 'submission_amount_mismatch', [
                 'session_amount' => $session->getAmount(),
                 'program_id'     => $session->getProgramId(),

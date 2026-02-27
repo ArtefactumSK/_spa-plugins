@@ -159,10 +159,10 @@ class ValidationHooks {
             }
         }
 
-        // Blokujúca kontrola sumy
+        // Blokujúca kontrola sumy – výhradne server-side cez session + GFEntryReader
         if ( $validationResult['is_valid'] ) {
             $amountService = new AmountVerificationService();
-            $amountOk = $amountService->verify( $session );
+            $amountOk      = $amountService->verify( $session, $fakeEntry );
             if ( ! $amountOk ) {
                 $validationResult = $this->blockWithMessage(
                     $validationResult,

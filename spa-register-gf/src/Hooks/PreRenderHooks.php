@@ -5,6 +5,7 @@ use SpaRegisterGf\Infrastructure\GFFormFinder;
 use SpaRegisterGf\Infrastructure\Logger;
 use SpaRegisterGf\Services\SessionService;
 use SpaRegisterGf\Services\FieldMapService;
+use SpaRegisterGf\Services\PriceCalculatorService;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -42,6 +43,9 @@ class PreRenderHooks {
     // ────────────────────────────────────────────────────────────────────────
 
     public function handle( array $form ): array {
+        error_log( 'SPA PRERENDER START' );
+        error_log( 'SPA SESSION: ' . print_r( $_SESSION['spa_registration'] ?? null, true ) );
+
         if ( ! GFFormFinder::guard( $form ) ) {
             return $form;
         }
@@ -144,11 +148,62 @@ class PreRenderHooks {
             $summaryResult  = $this->buildPriceSummary( $session );
             $summaryHtml    = $summaryResult['html'];
             $finalAmount    = $summaryResult['finalAmount'];
+            error_log( 'SPA CALCULATED AMOUNT: ' . $finalAmount );
 
-            $targetInput = FieldMapService::tryResolve( 'spa_first_payment_amount' );
-            $targetId    = $targetInput ? (int) str_replace( 'input_', '', $targetInput ) : 0;
+            // Resolve first payment product field via FieldMapService.
+            $firstPaymentInput   = FieldMapService::tryResolve( 'spa_first_payment_amount' );
+            $firstPaymentFieldId = $firstPaymentInput ? (int) str_replace( 'input_', '', $firstPaymentInput ) : 0;
+
+            // Read amount from session (including optional external surcharge).
+            $sessionAmount       = (float) $session->getAmount();
+            $sessionSurchargeRaw = $session->getExternalSurcharge();
+            $sessionSurcharge    = $sessionSurchargeRaw !== null ? (float) $sessionSurchargeRaw : 0.0;
+            $productAmount       = $sessionAmount + $sessionSurcharge;
+
+            error_log( '[spa-register-gf] prerender_product_field_id: ' . $firstPaymentFieldId );
+            error_log( '[spa-register-gf] prerender_session_amount: ' . $sessionAmount );
+            error_log( '[spa-register-gf] prerender_session_surcharge: ' . $sessionSurcharge );
+            error_log( '[spa-register-gf] prerender_product_amount: ' . $productAmount );
 
             foreach ( $form['fields'] as &$field ) {
+                if (
+                    $firstPaymentFieldId > 0
+                    && isset( $field->id )
+                    && (int) $field->id === $firstPaymentFieldId
+                    && $field->type === 'product'
+                ) {
+                    $beforeType      = $field->type ?? null;
+                    $beforeInputType = $field->inputType ?? null;
+
+                    error_log(
+                        '[spa-register-gf] prerender_product_field_before: '
+                        . 'id=' . $firstPaymentFieldId
+                        . ' type=' . ( $beforeType ?? 'null' )
+                        . ' inputType=' . ( $beforeInputType ?? 'null' )
+                    );
+
+                    $field->basePrice    = $productAmount;
+                    $field->defaultValue = $productAmount;
+
+                    if ( is_object( $field ) && ( property_exists( $field, 'inputType' ) || isset( $field->inputType ) ) ) {
+                        $field->inputType = 'singleproduct';
+                    }
+
+                    $field->enableCalculation = false;
+
+                    error_log(
+                        '[spa-register-gf] prerender_product_field_after: '
+                        . 'id=' . $firstPaymentFieldId
+                        . ' type=' . ( $field->type ?? 'null' )
+                        . ' inputType=' . ( $field->inputType ?? 'null' )
+                    );
+
+                    error_log(
+                        '[spa-register-gf] prerender_product_field_price_set: '
+                        . $productAmount
+                    );
+                }
+
                 if (
                     $field->type === 'html' &&
                     strpos( $field->cssClass ?? '', 'info_price_summary' ) !== false
@@ -156,13 +211,6 @@ class PreRenderHooks {
                     $field->content = $summaryHtml !== ''
                         ? $summaryHtml
                         : $this->buildSummaryFallback();
-                }
-                if ( $targetId > 0 && (int) $field->id === $targetId ) {
-                    $field->defaultValue = $finalAmount;
-                    $field->value        = $finalAmount;
-                    if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                        error_log( '[spa-register-gf] hidden set via mapping id=' . $targetId . ' value=' . $finalAmount );
-                    }
                 }
             }
         }
@@ -236,6 +284,78 @@ class PreRenderHooks {
         $form = $this->applyScopeRequiredOverrides( $form );
         // Company_* required overrides podľa spôsobu platby a voľby "fakturovať na firmu".
         $form = $this->applyCompanyRequiredOverrides( $form );
+
+        /**
+         * Nastavenie ceny (spa_first_payment_amount) presunuté z gform_pre_render do
+         * gform_pre_validation, aby bola cena vyrátaná ešte pred validáciou.
+         * PreRender teraz rieši len HTML summary.
+         */
+        $session = SessionService::tryCreate();
+
+        if ( $session ) {
+            $summaryResult = $this->buildPriceSummary( $session );
+            $finalAmount   = $summaryResult['finalAmount'];
+
+            $targetInput = FieldMapService::tryResolve( 'spa_first_payment_amount' );
+            $targetId    = $targetInput ? (int) str_replace( 'input_', '', $targetInput ) : 0;
+
+            // Read amount from session (including optional external surcharge).
+            $sessionAmount       = (float) $session->getAmount();
+            $sessionSurchargeRaw = $session->getExternalSurcharge();
+            $sessionSurcharge    = $sessionSurchargeRaw !== null ? (float) $sessionSurchargeRaw : 0.0;
+            $productAmount       = $sessionAmount + $sessionSurcharge;
+
+            error_log( '[spa-register-gf] prevalidation_product_field_id: ' . $targetId );
+            error_log( '[spa-register-gf] prevalidation_session_amount: ' . $sessionAmount );
+            error_log( '[spa-register-gf] prevalidation_session_surcharge: ' . $sessionSurcharge );
+            error_log( '[spa-register-gf] prevalidation_product_amount: ' . $productAmount );
+
+            if ( $targetId > 0 && ! empty( $form['fields'] ) && is_array( $form['fields'] ) ) {
+                foreach ( $form['fields'] as &$field ) {
+                    $fieldId = isset( $field->id ) ? (int) $field->id : 0;
+
+                    if ( $fieldId !== $targetId ) {
+                        continue;
+                    }
+
+                    if ( $field->type === 'product' ) {
+                        $beforeType      = $field->type ?? null;
+                        $beforeInputType = $field->inputType ?? null;
+
+                        error_log(
+                            '[spa-register-gf] prevalidation_product_field_before: '
+                            . 'id=' . $targetId
+                            . ' type=' . ( $beforeType ?? 'null' )
+                            . ' inputType=' . ( $beforeInputType ?? 'null' )
+                        );
+
+                        $field->basePrice    = $productAmount;
+                        $field->defaultValue = $productAmount;
+
+                        if ( is_object( $field ) && ( property_exists( $field, 'inputType' ) || isset( $field->inputType ) ) ) {
+                            $field->inputType = 'singleproduct';
+                        }
+
+                        $field->enableCalculation = false;
+
+                        error_log(
+                            '[spa-register-gf] prevalidation_product_field_after: '
+                            . 'id=' . $targetId
+                            . ' type=' . ( $field->type ?? 'null' )
+                            . ' inputType=' . ( $field->inputType ?? 'null' )
+                        );
+
+                        error_log(
+                            '[spa-register-gf] prevalidation_product_field_price_set: '
+                            . $productAmount
+                        );
+                    } else {
+                        $field->defaultValue = $finalAmount;
+                    }
+                }
+                unset( $field );
+            }
+        }
 
         return $form;
     }
@@ -453,8 +573,6 @@ class PreRenderHooks {
     private function buildPriceSummary( SessionService $session ): array {
         $programId    = $session->getProgramId();
         $frequencyKey = $session->getFrequencyKey();
-        $baseAmount   = method_exists( $session, 'getAmount' )            ? (float)  $session->getAmount()            : 0.0;
-        $surchargeRaw = method_exists( $session, 'getExternalSurcharge' ) ? (string) $session->getExternalSurcharge() : '';
 
         try {
             $scope = $session->getScope();
@@ -517,41 +635,14 @@ class PreRenderHooks {
         // ── Rozvrh ───────────────────────────────────────────────────────────
         $scheduleText = $this->buildScheduleText( $programId );
 
-        // ── Cena z DB ────────────────────────────────────────────────────────
-        $dbAmount = 0.0;
-        if ( $frequencyKey && array_key_exists( $frequencyKey, self::FREQUENCY_LABELS ) ) {
-            $metaVal  = get_post_meta( $programId, $frequencyKey, true );
-            $dbAmount = ( $metaVal !== '' && $metaVal !== null ) ? (float) $metaVal : $baseAmount;
-        } else {
-            $dbAmount = $baseAmount;
-        }
+        // ── Cena + surcharge – spoločná kalkulácia ───────────────────────────
+        $priceCalculator = new PriceCalculatorService();
+        $calc            = $priceCalculator->calculate( $session );
 
-        // ── Surcharge ────────────────────────────────────────────────────────
-        $finalAmount    = $dbAmount;
-        $surchargeLabel = '';
-        $hasSurcharge   = false;
-
-        if ( $surchargeRaw !== '' && $surchargeRaw !== '0' ) {
-            $isPercent = str_ends_with( $surchargeRaw, '%' );
-            $numVal    = (float) str_replace( '%', '', $surchargeRaw );
-            if ( $numVal !== 0.0 ) {
-                $hasSurcharge = true;
-                if ( $isPercent ) {
-                    $finalAmount    = $dbAmount * ( 1 + $numVal / 100 );
-                    $absVal         = abs( $numVal );
-                    $surchargeLabel = $numVal > 0
-                        ? 'Registračný príplatok +' . $absVal . '%'
-                        : 'Registračná zľava -' . $absVal . '%';
-                } else {
-                    $finalAmount    = $dbAmount + $numVal;
-                    $absVal         = abs( $numVal );
-                    $surchargeLabel = $numVal > 0
-                        ? 'Registračný príplatok +' . number_format( $absVal, 2, ',', ' ' ) . ' €'
-                        : 'Registračná zľava -' . number_format( $absVal, 2, ',', ' ' ) . ' €';
-                }
-            }
-        }
-        $finalAmount = round( $finalAmount * 10 ) / 10;
+        $dbAmount       = $calc['dbAmount'];
+        $finalAmount    = $calc['finalAmount'];
+        $hasSurcharge   = $calc['hasSurcharge'];
+        $surchargeLabel = $calc['surchargeLabel'];
 
         // ── Scope label ──────────────────────────────────────────────────────
         $scopeLabel = match ( $scope ) {

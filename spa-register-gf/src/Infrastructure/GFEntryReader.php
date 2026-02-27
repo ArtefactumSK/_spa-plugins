@@ -49,6 +49,14 @@ class GFEntryReader {
     }
 
     /**
+     * Public wrapper pre interné getEntryValue – vráti raw hodnotu z entry.
+     * Použité napr. pre server-side verifikáciu sumy.
+     */
+    public function get( string $logicalKey ): ?string {
+        return $this->getEntryValue( $logicalKey );
+    }
+
+    /**
      * Získa hodnotu produktového poľa cez GFCommon::get_product_fields.
      * Fallback na GF total pole ak produkt nenájde.
      */

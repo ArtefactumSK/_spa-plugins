@@ -24,7 +24,7 @@
 - **spa_member_birthdate**  
   Dátum narodenia účastníka
 
-- **spa_member_nin**  
+- **spa_member_birthnumber**  
   Rodné číslo účastníka (nepovinné)
 
 - **spa_client_address**  

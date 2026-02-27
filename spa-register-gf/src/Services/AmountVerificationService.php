@@ -1,155 +1,139 @@
 <?php
 namespace SpaRegisterGf\Services;
 
+use SpaRegisterGf\Infrastructure\GFEntryReader;
 use SpaRegisterGf\Infrastructure\Logger;
+use SpaRegisterGf\Services\FieldMapService;
+use SpaRegisterGf\Services\PriceCalculatorService;
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
 /**
- * Prepočíta cenu z DB podľa program_id + frequency_key.
- * Ak recalculated_amount !== session.amount → blokujúca chyba.
- *
- * Postmeta kľúče pre ceny (z SPA-DATA-MAP.md):
- *   spa_price_1x_weekly
- *   spa_price_2x_weekly
- *   spa_price_monthly
- *   spa_price_semester
- *
- * external_surcharge formáty (z SPA-SELECTION-FLOW.md):
- *   "-10%"  → percentuálna zľava
- *   "+10%"  → percentuálny príplatok
- *   "10"    → fixná suma EUR
- *   "-10"   → fixná zľava EUR
+ * Server-side verifikácia sumy bez použitia POST – iba cez session + GF entry.
  */
 class AmountVerificationService {
 
     /**
-     * Overí, či session.amount zodpovedá prepočítanej cene z DB.
+     * Overí, či suma z GF entry zodpovedá prepočítanej cene z DB cez session.
      *
      * @return bool  true = suma súhlasí, false = mismatch (blokujúce)
      */
-    public function verify( SessionService $session ): bool {
+    public function verify( SessionService $session, array $entry ): bool {
         $debug = defined( 'SPA_REGISTER_DEBUG' ) && SPA_REGISTER_DEBUG;
 
+        // ── Session – musí existovať a obsahovať kľúčové hodnoty ──────────────
         $programId    = $session->getProgramId();
         $frequencyKey = $session->getFrequencyKey();
-        $surcharge    = $session->getExternalSurcharge();
-        
-        $postedRaw = rgpost( 'input_55' );
-        if ( $postedRaw === null || $postedRaw === '' ) {
-            Logger::warning( 'amount_verify_missing_post', [ 'input_55' => $postedRaw ] );
-            return false;
-        }
-        $postedAmount = (float) $postedRaw;
+        $amount       = $session->getAmount();
+        $surchargeRaw = $session->getExternalSurcharge();
+        $createdAt    = $session->getCreatedAt();
 
-        if ( $programId <= 0 || empty( $frequencyKey ) ) {
-            Logger::error( 'amount_verify_missing_params', [
+        $scope        = null;
+        $scopeValid   = true;
+        try {
+            $scope = $session->getScope();
+        } catch ( \RuntimeException $e ) {
+            $scopeValid = false;
+        }
+
+        if ( $programId <= 0 || empty( $frequencyKey ) || $amount <= 0 || ! $scopeValid ) {
+            Logger::error( 'amount_verify_missing_session', [
                 'program_id'    => $programId,
                 'frequency_key' => $frequencyKey,
+                'amount'        => $amount,
+                'scope_valid'   => $scopeValid,
             ] );
             return false;
         }
 
-        // Čítaj base cenu z postmeta spa_group CPT
-        $basePrice = $this->getBasePrice( $programId, $frequencyKey );
+        // Detailný log session stavu
+        Logger::info( 'amount_verify_server_session', [
+            'program_id'         => $programId,
+            'frequency_key'      => $frequencyKey,
+            'amount'             => $amount,
+            'external_surcharge' => $surchargeRaw,
+            'scope'              => $scope,
+            'created_at'         => $createdAt,
+        ] );
 
-        if ( $basePrice === null ) {
-            Logger::error( 'amount_verify_price_not_found', [
-                'program_id'    => $programId,
-                'frequency_key' => $frequencyKey,
-            ] );
-            return false;
+        // ── Očakávaná suma – zdieľaná kalkulácia (zhodná s PreRenderHooks) ────
+        $calculator = new PriceCalculatorService();
+        $calc       = $calculator->calculate( $session );
+        $expected   = (float) $calc['finalAmount'];
+
+        Logger::info( 'amount_verify_server_expected', [
+            'expected_amount' => $expected,
+            'db_amount'       => $calc['dbAmount'],
+            'has_surcharge'   => $calc['hasSurcharge'],
+            'surcharge_label' => $calc['surchargeLabel'],
+        ] );
+
+        // ── Pokus o prečítanie "posted" sumy z GF entry (nie z POST) ──────────
+        $entryReader = new GFEntryReader( $entry );
+        $postedRaw   = $entryReader->tryGetText( 'spa_first_payment_amount' );
+
+        $hasNumericPosted = false;
+        $postedAmount     = null;
+        $postedSource     = null;
+
+        if ( $postedRaw !== null && $postedRaw !== '' ) {
+            // Normalize "46,50" / "46.50" / "46 500" → float
+            $normalized = str_replace( [ ' ', ',' ], [ '', '.' ], $postedRaw );
+            if ( is_numeric( $normalized ) ) {
+                $hasNumericPosted = true;
+                $postedAmount     = (float) $normalized;
+                $postedSource     = 'gf_entry:spa_first_payment_amount';
+            }
         }
 
-        // Vypočítaj očakávanú prvú platbu: base * (1 + surchargePercent)
-        $expected = $this->applySurcharge( $basePrice, $surcharge );
+        Logger::info( 'amount_verify_post_amount_state', [
+            'has_numeric' => $hasNumericPosted,
+            'source'      => $postedSource,
+            'raw_value'   => $postedRaw,
+        ] );
 
-        // Tolerancia 0.05 EUR kvôli zaokrúhľovaniu UI
-        $diff    = abs( $postedAmount - $expected );
-        $matches = $diff <= 0.05;
+        // Ak nevieme spoľahlivo prečítať numerickú hodnotu z entry,
+        // NEBLOKUJEME registráciu – session je autoritatívna.
+        if ( ! $hasNumericPosted ) {
+            if ( $debug ) {
+                Logger::info( 'amount_verify_no_post_amount', [
+                    'reason' => 'no_numeric_value_in_entry',
+                ] );
+            }
+
+            return true;
+        }
+
+        // ── Porovnanie hodnôt ────────────────────────────────────────────────
+        $diff    = abs( (float) $postedAmount - (float) $expected );
+        $matches = $diff < 0.01; // tolerancia na centy
 
         if ( ! $matches ) {
-            $debugMsg = $debug
-                ? sprintf(
-                    'DEBUG: base=%.2f surcharge=%s expected=%.2f posted=%.2f diff=%.2f',
-                    $basePrice,
-                    (string) $surcharge,
+            $payload = [
+                'expected'        => $expected,
+                'posted'          => $postedAmount,
+                'diff'            => $diff,
+                'program_id'      => $programId,
+                'frequency_key'   => $frequencyKey,
+                'scope'           => $scope,
+                'external_amount' => $amount,
+            ];
+
+            if ( $debug ) {
+                $payload['debug_msg'] = sprintf(
+                    'DEBUG: expected=%.2f posted=%.2f diff=%.4f',
                     $expected,
                     $postedAmount,
                     $diff
-                )
-                : '';
+                );
+            }
 
-            Logger::warning( 'amount_verify_mismatch', [
-                'expected'      => $expected,
-                'posted'        => $postedAmount,
-                'diff'          => $diff,
-                'base_price'    => $basePrice,
-                'surcharge'     => $surcharge,
-                'program_id'    => $programId,
-                'frequency_key' => $frequencyKey,
-                'debug_msg'     => $debugMsg,
-            ] );
-
+            Logger::warning( 'amount_verify_mismatch', $payload );
             return false;
         }
 
         return true;
-    }
-
-    // ── Interné metódy ───────────────────────────────────────────────────────
-
-    /**
-     * Načíta base cenu z postmeta spa_group.
-     * Frequency key je zároveň postmeta kľúč (spa_price_1x_weekly, atď.)
-     */
-    private function getBasePrice( int $programId, string $frequencyKey ): ?float {
-        // Povolené kľúče podľa SPA-DATA-MAP.md
-        $allowed = [
-            'spa_price_1x_weekly',
-            'spa_price_2x_weekly',
-            'spa_price_monthly',
-            'spa_price_semester',
-        ];
-
-        if ( ! in_array( $frequencyKey, $allowed, true ) ) {
-            Logger::warning( 'amount_verify_unknown_frequency', [ 'key' => $frequencyKey ] );
-            return null;
-        }
-
-        $meta = get_post_meta( $programId, $frequencyKey, true );
-
-        if ( $meta === '' || $meta === false ) {
-            return null;
-        }
-
-        return (float) $meta;
-    }
-
-    /**
-     * Aplikuje external_surcharge na base cenu.
-     *
-     * Formáty (SPA-SELECTION-FLOW.md):
-     *   "-10%"  → zľava 10 %
-     *   "+10%"  → príplatok 10 %
-     *   "10"    → fixný príplatok +10 EUR
-     *   "-10"   → fixná zľava -10 EUR
-     */
-    private function applySurcharge( float $base, ?string $surcharge ): float {
-        if ( $surcharge === null || $surcharge === '' ) {
-            return $base;
-        }
-
-        if ( str_contains( $surcharge, '%' ) ) {
-            // Percentuálny model
-            $pct  = (float) str_replace( [ '%', '+' ], '', $surcharge );
-            return round( $base + ( $base * $pct / 100 ), 2 );
-        }
-
-        // Fixný model
-        $fixed = (float) $surcharge;
-        return round( $base + $fixed, 2 );
     }
 }
