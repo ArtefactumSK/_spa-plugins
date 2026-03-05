@@ -38,3 +38,19 @@ register_deactivation_hook( __FILE__, function () {
 add_action( 'plugins_loaded', function () {
     SpaRegisterGf\Bootstrap\Plugin::boot();
 }, 20 );
+
+add_action('after_setup_theme', function () {
+
+    if (
+        interface_exists('\SpaSystem\Settings\RegistrationModuleInterface') &&
+        class_exists('\SpaSystem\Settings\RegistrationModuleRegistry')
+    ) {
+
+        require_once __DIR__ . '/includes/GFRegistrationModule.php';
+
+        \SpaSystem\Settings\RegistrationModuleRegistry::register(
+            new \SpaRegisterGF\GFRegistrationModule()
+        );
+    }
+
+});

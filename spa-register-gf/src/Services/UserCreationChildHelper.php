@@ -1,7 +1,6 @@
 <?php
 namespace SpaRegisterGf\Services;
 
-use SpaRegisterGf\Config\SpaConfig;
 use SpaRegisterGf\Domain\RegistrationPayload;
 use SpaRegisterGf\Infrastructure\Logger;
 
@@ -114,11 +113,19 @@ class UserCreationChildHelper {
     private function createChild( RegistrationPayload $p, int $parentId ): int {
         $username = $this->resolveUsername( $p->memberFirstName, $p->memberLastName );
         $password = wp_generate_password( 12, true );
-        $child_domain = SpaConfig::CHILD_EMAIL_DOMAIN;
-        $first        = sanitize_title( $p->memberFirstName );
-        $last         = sanitize_title( $p->memberLastName );
-        $base         = strtolower( $first . '.' . $last );
-        $email        = $base . '@' . $child_domain;
+
+        $domain = '';
+
+        if ( class_exists( '\SpaSystem\Settings\SettingsService' ) ) {
+            $domain = \SpaSystem\Settings\SettingsService::get( 'academy.domain', '' );
+        }
+
+        $child_domain = $domain;
+
+        $first = sanitize_title( $p->memberFirstName );
+        $last  = sanitize_title( $p->memberLastName );
+        $base  = strtolower( $first . '.' . $last );
+        $email = $base . '@' . $child_domain;
         $i            = 1;
         while ( email_exists( $email ) ) {
             $email = $base . $i . '@' . $child_domain;
