@@ -692,7 +692,7 @@ class PreRenderHooks {
         // 1. Program  
         $html .= '<li class="spa-summary-item spa-summary-program">';
         $html .= '<span class="spa-summary-icon">' . $iconLogo . '</span>';
-        $html .= '<span><strong>' . $programName . '</strong>';
+        $html .= '<h5>' . $programName . '</h5>';
         $html .= '<span class="spa-summary-participant-name"></span>';
         $html .= '</span>';
         $html .= '</li>';
