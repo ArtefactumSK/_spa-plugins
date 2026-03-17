@@ -20,24 +20,24 @@ class PreRenderHooks {
         'spa_price_1x_weekly' => '1× týždenne',
         'spa_price_2x_weekly' => '2× týždenne',
         'spa_price_monthly'   => 'Mesačný paušál',
-        'spa_price_semester'  => 'Cena za semester',
+        'spa_price_semester'  => 'Cena za celý program',
     ];
 
     private const FREQUENCY_PERIOD = [
         'spa_price_1x_weekly' => 'za tréningový týždeň',
         'spa_price_2x_weekly' => 'za tréningový týždeň',
         'spa_price_monthly'   => 'za kalendárny mesiac',
-        'spa_price_semester'  => 'za semester',
+        'spa_price_semester'  => 'za turnus',
     ];
 
     private const DAY_LABELS = [
-        'monday'    => 'Pondelok',
-        'tuesday'   => 'Utorok',
-        'wednesday' => 'Streda',
-        'thursday'  => 'Štvrtok',
-        'friday'    => 'Piatok',
-        'saturday'  => 'Sobota',
-        'sunday'    => 'Nedeľa',
+        'monday'    => 'PO',
+        'tuesday'   => 'UT',
+        'wednesday' => 'ST',
+        'thursday'  => 'ŠT',
+        'friday'    => 'PI',
+        'saturday'  => 'SO',
+        'sunday'    => 'NE',
     ];
 
     // ────────────────────────────────────────────────────────────────────────
@@ -574,6 +574,11 @@ class PreRenderHooks {
         $programId    = $session->getProgramId();
         $frequencyKey = $session->getFrequencyKey();
 
+        // Časový rozsah programu (dátumy / kalendárne týždne)
+        $startDate = get_post_meta( $programId, 'spa_program_start_date', true );
+        $endDate   = get_post_meta( $programId, 'spa_program_end_date', true );
+        $weeksRaw  = get_post_meta( $programId, 'spa_program_calendar_weeks', true );
+
         try {
             $scope = $session->getScope();
         } catch ( \RuntimeException $e ) {
@@ -633,7 +638,8 @@ class PreRenderHooks {
         }
 
         // ── Rozvrh ───────────────────────────────────────────────────────────
-        $scheduleText = $this->buildScheduleText( $programId );
+        $scheduleText       = $this->buildScheduleText( $programId );
+        $trainingUnitsCount = $this->countTrainingUnits( $programId, $startDate, $endDate, $weeksRaw );
 
         // ── Cena + surcharge – spoločná kalkulácia ───────────────────────────
         $priceCalculator = new PriceCalculatorService();
@@ -682,6 +688,7 @@ class PreRenderHooks {
         $iconPriceW   = $this->icon( 'price-weekly', 'spa-icon-price-weekly', [ 'fill'   => $fillColor, 'stroke' => 'none' ] );
         $iconFreq     = $this->icon( 'frequency',    'spa-icon-frequency',    [ 'fill'   => $fillColor, 'stroke' => 'none' ] );
         $iconPrice    = $this->icon( 'price',        'spa-icon-price',        [ 'fill'   => $fillColor, 'stroke' => 'none' ] );
+        $iconCalendar = $iconTime;
 
         // ════════════════════════════════════════════════════════════════════
         // HTML – štruktúra zhodná so .spa-infobox-summary v spa-selection.js
@@ -717,11 +724,80 @@ class PreRenderHooks {
         if ( $scheduleText ) {
             $html .= '<li class="spa-summary-item spa-summary-schedule">';
             $html .= '<span class="spa-summary-icon">' . $iconTime . '</span>';
-            $html .= '<span><strong>Tréningové dni:</strong> ' . esc_html( $scheduleText ) . '</span>';
+            // $scheduleText už obsahuje HTML span.schedule-tm-unit pre jednotlivé časové úseky.
+            $html .= '<span><strong>Týždenný rozvrh:</strong> <span class="schedule-tm-slot">' . $scheduleText . '</span></span>';
             $html .= '</li>';
         }
 
-        // 5. Cena za frekvenciu
+        // 5. Časový rozsah – dátumy alebo kalendárne týždne (len ak existujú)
+        if ( $dbAmount > 0 && ( ( ! empty( $startDate ) && ! empty( $endDate ) ) || ! empty( $weeksRaw ) ) ) {
+            $html .= '<li class="spa-summary-item spa-summary-time-range">';
+            $html .= '<span class="spa-summary-icon">' . $iconCalendar . '</span>';
+
+            if ( ! empty( $startDate ) && ! empty( $endDate ) ) {
+                try {
+                    $startObj = new \DateTime( $startDate );
+                    $endObj   = new \DateTime( $endDate );
+
+                    $startFormatted = $startObj->format( 'd.m.Y' );
+                    $endFormatted   = $endObj->format( 'd.m.Y' );
+
+                    $html .= 'od <span class="spa-time-range">' . esc_html( $startFormatted ) . '</span>';
+                    $html .= ' do <span class="spa-time-range">' . esc_html( $endFormatted ) . '</span>';
+                } catch ( \Exception $e ) {
+                    // Ak formátovanie zlyhá, časový rozsah len vynecháme
+                }
+            } elseif ( ! empty( $weeksRaw ) ) {
+                $weeksArr = array_filter( array_map( 'trim', explode( ',', (string) $weeksRaw ) ) );
+
+                if ( ! empty( $weeksArr ) ) {
+                    if ( count( $weeksArr ) === 1 ) {
+                        $html .= 'týždeň <span class="spa-time-range">' . esc_html( $weeksArr[0] ) . '</span>';
+                    } else {
+                        $html .= 'v ';
+                        $formattedWeeks = [];
+                        foreach ( $weeksArr as $week ) {
+                            $formattedWeeks[] = '<span class="spa-time-range">' . esc_html( $week ) . '.</span>';
+                        }
+                        $html .= implode( ' a ', $formattedWeeks );
+                        $html .= ' týždni';
+                    }
+                }
+            }
+
+            $html .= '</li>';
+        }
+
+        // 6. Tréning Xx / turnus alebo frekvencia
+        if ( $dbAmount > 0 ) {
+            $html .= '<li class="spa-summary-item spa-summary-frequency">';
+            $html .= '<span class="spa-summary-icon">' . $iconFreq . '</span>';
+
+            if ( $frequencyKey === 'spa_price_semester' ) {
+                $unitsForLabel = ( $trainingUnitsCount !== null && $trainingUnitsCount > 0 )
+                    ? (int) $trainingUnitsCount
+                    : 1;
+                $label = 'Tréning ' . $unitsForLabel . 'x / turnus';
+                $html .= esc_html( $label );
+            } else {
+                $html .= '<strong>Tréning</strong> ' . esc_html( $freqLabel );
+            }
+
+            $html .= '</li>';
+        }
+
+        // 7. Cena k úhrade – zobrazí sa len ak existuje surcharge
+        if ( $hasSurcharge && $surchargeLabel && $finalAmount > 0 ) {
+            $html .= '<li class="spa-summary-item spa-summary-price">';
+            $html .= '<span class="spa-summary-icon">' . $iconPrice . '</span>';
+            $parts          = explode( ' ', $surchargeLabel );
+            $surchargeValue = array_pop( $parts );
+            $surchargeText  = implode( ' ', $parts );
+            $html .= esc_html( $surchargeText ) . ' <strong>' . esc_html( $surchargeValue ) . '</strong>';
+            $html .= '</li>';
+        }
+
+        // 8. Cena za frekvenciu (napr. "250 € za turnus") – posledný riadok pred scope warning
         if ( $dbAmount > 0 ) {
             $html .= '<li class="spa-summary-item spa-summary-price-weekly">';
             $html .= '<span class="spa-summary-icon">' . $iconPriceW . '</span>';
@@ -729,29 +805,11 @@ class PreRenderHooks {
             $html .= '</strong>';
             if ( $periodLabel ) {
                 $html .= ' ' . esc_html( $periodLabel );
-            }            
-            $html .= '</li>';
-
-            $html .= '<li class="spa-summary-item spa-summary-frequency">';
-            $html .= '<span class="spa-summary-icon">' . $iconFreq . '</span>';
-            $html .= '<strong>Tréning</strong> ' . esc_html( $freqLabel );
-            $html .= '</li>';
-        }
-
-        // 6. Cena k úhrade – zobrazí sa VŽDY (surcharge aj bez)
-        if ( $hasSurcharge && $surchargeLabel && $finalAmount > 0) {
-            $html .= '<li class="spa-summary-item spa-summary-price">';
-            $html .= '<span class="spa-summary-icon">' . $iconPrice . '</span>';
-            if ( $hasSurcharge && $surchargeLabel ) {
-                $parts          = explode( ' ', $surchargeLabel );
-                $surchargeValue = array_pop( $parts );
-                $surchargeText  = implode( ' ', $parts );
-                $html .= esc_html( $surchargeText ) . ' <strong>' . esc_html( $surchargeValue ) . '</strong>';
-            } else {
             }
             $html .= '</li>';
         }
-        // 7. Scope  
+
+        // 9. Scope  
         if ( $scopeLabel ) {
             $html .= '<li class="spa-summary-item spa-scope-warning">';
             $html .= '<span>' . esc_html( $scopeLabel ) . '</span>';
@@ -767,7 +825,7 @@ class PreRenderHooks {
             $euroSymbol  = array_pop( $priceParts );
             $priceNumber = implode( ' ', $priceParts );
             $html .= '<div class="spa-summary-amount-final-price">';
-            $html .= '<span>Výška prvej platby</span>';
+            $html .= '<span>' . esc_html( $frequencyKey === 'spa_price_semester' ? 'Celková výška platby' : 'Výška prvej platby' ) . '</span>';
             $html .= '<div class="final-price">' . esc_html( $priceNumber ) . '</span> <span class="final-price-symbol">' . esc_html( $euroSymbol ) . '</div>';
             $html .= '</div>';
         }
@@ -826,29 +884,149 @@ class PreRenderHooks {
      */
     private function buildScheduleText( int $programId ): string {
         $json = get_post_meta( $programId, 'spa_schedule', true );
-        if ( ! $json ) return '';
+        if ( ! $json ) {
+            return '';
+        }
 
         $data = json_decode( $json, true );
-        if ( ! is_array( $data ) || empty( $data ) ) return '';
+        if ( ! is_array( $data ) || empty( $data ) ) {
+            return '';
+        }
 
         $scheduleMap = [];
         foreach ( $data as $item ) {
             $day = $item['day'] ?? '';
-            if ( ! array_key_exists( $day, self::DAY_LABELS ) ) continue;
+            if ( ! array_key_exists( $day, self::DAY_LABELS ) ) {
+                continue;
+            }
             $from = substr( $item['from'] ?? '', 0, 5 );
             $to   = ! empty( $item['to'] ) ? substr( $item['to'], 0, 5 ) : '';
             $scheduleMap[ $day ][] = $to ? $from . '–' . $to : $from;
         }
 
-        if ( empty( $scheduleMap ) ) return '';
+        if ( empty( $scheduleMap ) ) {
+            return '';
+        }
 
         $parts = [];
         foreach ( self::DAY_LABELS as $dayKey => $dayLabel ) {
-            if ( ! isset( $scheduleMap[ $dayKey ] ) ) continue;
-            $parts[] = $dayLabel . ' ' . implode( ', ', $scheduleMap[ $dayKey ] );
+            if ( ! isset( $scheduleMap[ $dayKey ] ) ) {
+                continue;
+            }
+
+            $formattedTimes = array_map(
+                static function ( string $time ): string {
+                    return '<span class="schedule-tm-unit">' . $time . '</span>';
+                },
+                $scheduleMap[ $dayKey ]
+            );
+
+            $parts[] = $dayLabel . ' ' . implode( ', ', $formattedTimes );
         }
 
         return implode( ', ', $parts );
+    }
+
+    /**
+     * Počet tréningových jednotiek v turnuse podľa:
+     *  - spa_schedule (tréningové dni v týždni)
+     *  - dátumov programu (startDate, endDate – ISO yyyy-mm-dd)
+     *
+     * Ak nie je k dispozícii spoľahlivý rozsah dátumov alebo rozvrh, vráti null.
+     *
+     * @return int|null null ak sa nepodarí spoľahlivo určiť
+     */
+    private function countTrainingUnits(
+        int $programId,
+        ?string $startDate = null,
+        ?string $endDate = null,
+        ?string $weeksRaw = null
+    ): ?int {
+        $json = get_post_meta( $programId, 'spa_schedule', true );
+        if ( ! $json ) {
+            return null;
+        }
+
+        $data = json_decode( $json, true );
+        if ( ! is_array( $data ) || empty( $data ) ) {
+            return null;
+        }
+
+        // Mapuj tréningové dni v týždni (PO–NE) podľa spa_schedule.
+        $activeWeekdays = [];
+        foreach ( $data as $item ) {
+            $dayKey = $item['day'] ?? '';
+            if ( ! array_key_exists( $dayKey, self::DAY_LABELS ) ) {
+                continue;
+            }
+
+            // \DateTime::format('N') -> 1 (pondelok) až 7 (nedeľa)
+            $weekday = match ( $dayKey ) {
+                'monday'    => 1,
+                'tuesday'   => 2,
+                'wednesday' => 3,
+                'thursday'  => 4,
+                'friday'    => 5,
+                'saturday'  => 6,
+                'sunday'    => 7,
+                default     => null,
+            };
+
+            if ( $weekday !== null ) {
+                $activeWeekdays[ $weekday ] = true;
+            }
+        }
+
+        if ( empty( $activeWeekdays ) ) {
+            return null;
+        }
+
+        // 1) Ak existujú kalendárne týždne, použijeme výpočet podľa týždňov.
+        if ( ! empty( $weeksRaw ) ) {
+            $weeksArr = array_filter(
+                array_map( 'trim', explode( ',', (string) $weeksRaw ) ),
+                static function ( $v ) {
+                    return $v !== '';
+                }
+            );
+
+            $weeksCount = count( $weeksArr );
+            $trainingsPerWeek = count( $activeWeekdays );
+
+            if ( $weeksCount > 0 && $trainingsPerWeek > 0 ) {
+                $total = $trainingsPerWeek * $weeksCount;
+                return $total > 0 ? $total : null;
+            }
+        }
+
+        // 2) Inak, ak máme platné dátumy turnusu, použijeme pôvodný výpočet podľa dátumov.
+        if ( empty( $startDate ) || empty( $endDate ) ) {
+            return null;
+        }
+
+        try {
+            $start = new \DateTime( $startDate );
+            $end   = new \DateTime( $endDate );
+        } catch ( \Exception $e ) {
+            return null;
+        }
+
+        if ( $start > $end ) {
+            return null;
+        }
+
+        $count   = 0;
+        $current = clone $start;
+
+        while ( $current <= $end ) {
+            $weekday = (int) $current->format( 'N' ); // 1 = PO, 7 = NE
+            if ( isset( $activeWeekdays[ $weekday ] ) ) {
+                $count++;
+            }
+            $current->modify( '+1 day' );
+        }
+
+        return $count > 0 ? $count : null;
     }
 
     /**
