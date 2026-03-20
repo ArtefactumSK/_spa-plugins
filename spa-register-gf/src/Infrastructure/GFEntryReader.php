@@ -71,7 +71,9 @@ class GFEntryReader {
         $formId = (int) rgar( $this->entry, 'form_id', 0 );
         if ( $formId <= 0 ) {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                if (defined('SPA_DEBUG') && SPA_DEBUG) {
                 error_log( '[spa-register-gf] GFEntryReader: Cannot get form_id from entry for product field ' . $numericId );
+                }
             }
             return $this->fallbackToTotal();
         }
@@ -79,7 +81,9 @@ class GFEntryReader {
         $form = \GFAPI::get_form( $formId );
         if ( ! $form || is_wp_error( $form ) ) {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                if (defined('SPA_DEBUG') && SPA_DEBUG) {
                 error_log( '[spa-register-gf] GFEntryReader: Cannot get form ' . $formId . ' for product field ' . $numericId );
+                }
             }
             return $this->fallbackToTotal();
         }
@@ -88,7 +92,9 @@ class GFEntryReader {
         $products = \GFCommon::get_product_fields( $form, $this->entry );
         if ( empty( $products ) || ! is_array( $products ) ) {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                if (defined('SPA_DEBUG') && SPA_DEBUG) {
                 error_log( '[spa-register-gf] GFEntryReader: No products found for field ' . $numericId );
+                }
             }
             return $this->fallbackToTotal();
         }
@@ -106,7 +112,9 @@ class GFEntryReader {
 
         // Fallback na total pole
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log( '[spa-register-gf] GFEntryReader: Product field ' . $numericId . ' not found in products, falling back to total' );
+            }
         }
         return $this->fallbackToTotal();
     }

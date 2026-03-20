@@ -31,7 +31,9 @@ class Logger {
         if ( function_exists( 'spa_log' ) ) {
             spa_log( $event, $context );
         } else {
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log( $msg );
+            }
         }
     }
 }

@@ -31,7 +31,9 @@ class Plugin {
 
         // DEBUG len v debug režime
         if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log( 'SPA-REGISTER-GF: Plugin booted successfully' );
+            }
         }
     }
 
@@ -119,16 +121,19 @@ class Plugin {
         // Špeciálny prípad: AJAX akcia spa_create_session má vlastné session/cookie nastavenia (téma spa_system)
         if ( $doing_ajax && $action === 'spa_create_session' ) {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                if (defined('SPA_DEBUG') && SPA_DEBUG) {
                 error_log(
                     'SPA-REGISTER-GF: ensureSession skipped for spa_create_session'
                     . ' | uri=' . $uri
                     . ' | action=' . $action
                 );
+                }
             }
             return;
         }
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log(
                 'SPA-REGISTER-GF: ensureSession hit'
                 . ' | uri=' . $uri
@@ -138,6 +143,7 @@ class Plugin {
                 . ' | status=' . session_status()
                 . ' | action=' . $action
             );
+            }
         }
 
         if ( session_status() !== PHP_SESSION_NONE ) {
@@ -155,12 +161,14 @@ class Plugin {
         session_start();
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log(
                 'SPA-REGISTER-GF: Session started'
                 . ' | action=' . $action
                 . ' | uri=' . $uri
                 . ' | session_id=' . session_id()
             );
+            }
         }
     }
 
@@ -211,7 +219,9 @@ class Plugin {
         add_action( 'user_register', [ self::class, 'assignChildPinOnRegister' ], 20, 1 );
 
         if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log( 'SPA-REGISTER-GF: Hooks wired successfully' );
+            }
         }
     }
 
@@ -289,7 +299,9 @@ class Plugin {
         update_user_meta( $user_id, 'spa_pin', wp_hash_password( $pin_plain ) );
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log( '[spa-register-gf] PIN assigned user=' . $user_id . ' pin=' . $pin_plain );
+            }
         }
     }
 
