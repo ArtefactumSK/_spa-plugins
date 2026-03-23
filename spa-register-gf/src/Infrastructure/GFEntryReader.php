@@ -193,6 +193,7 @@ class GFEntryReader {
         $p->clientAddressStreet    = $this->tryGetText( 'spa_client_address_street' );
         $p->clientAddressCity      = $this->tryGetText( 'spa_client_address_city' );
         $p->clientAddressPostcode  = $this->tryGetText( 'spa_client_address_postcode' );
+        $p->clientAddressCountry   = $this->tryGetText( 'spa_client_address_country' );
 
         // Rodič / guardian (child scope)
         $p->guardianFirstName      = $this->tryGetText( 'spa_guardian_name_first' );

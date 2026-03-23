@@ -24,6 +24,7 @@
   "spa_client_address_street": "input_17.1",
   "spa_client_address_city": "input_17.3",
   "spa_client_address_postcode": "input_17.5",
+  "spa_client_address_country": "input_17.6",
 
   "spa_client_email": "input_15",
   "spa_client_email_required": "input_16",

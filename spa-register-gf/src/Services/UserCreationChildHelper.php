@@ -17,6 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *   Email NIE JE login.
  */
 class UserCreationChildHelper {
+    private const DEFAULT_COUNTRY = 'Slovensko';
 
     public function create( RegistrationPayload $p ): array {
         // 1. Rodič
@@ -74,6 +75,9 @@ class UserCreationChildHelper {
             );
         }
 
+        update_user_meta( $parentId, 'consent_marketing', $p->consentMarketing ? 1 : 0 );
+        update_user_meta( $childId, 'address_country', $this->normalizeCountry( $p->clientAddressCountry ) );
+
         return [
             'parent_user_id' => (int) $parentId,
             'child_user_id'  => (int) $childId,
@@ -91,6 +95,7 @@ class UserCreationChildHelper {
             update_user_meta( $existing->ID, 'first_name', $p->guardianFirstName );
             update_user_meta( $existing->ID, 'last_name',  $p->guardianLastName );
             update_user_meta( $existing->ID, 'phone',      $p->parentPhone );
+            update_user_meta( $existing->ID, 'consent_marketing', $p->consentMarketing ? 1 : 0 );
             return $existing->ID;
         }
 
@@ -106,6 +111,7 @@ class UserCreationChildHelper {
         update_user_meta( $userId, 'first_name', $p->guardianFirstName );
         update_user_meta( $userId, 'last_name',  $p->guardianLastName );
         update_user_meta( $userId, 'phone',      $p->parentPhone );
+        update_user_meta( $userId, 'consent_marketing', $p->consentMarketing ? 1 : 0 );
 
         return $userId;
     }
@@ -190,5 +196,10 @@ class UserCreationChildHelper {
         }
 
         return $username;
+    }
+
+    private function normalizeCountry( ?string $country ): string {
+        $value = sanitize_text_field( (string) $country );
+        return $value !== '' ? $value : self::DEFAULT_COUNTRY;
     }
 }

@@ -28,6 +28,7 @@ class RegistrationPayload {
     public ?string $clientAddressStreet   = null;
     public ?string $clientAddressCity     = null;
     public ?string $clientAddressPostcode = null;
+    public ?string $clientAddressCountry  = null;
 
     // Rodič (child)
     public ?string $guardianFirstName     = null;

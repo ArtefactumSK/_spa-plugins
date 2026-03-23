@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Meta kľúče výhradne podľa SPA-DATA-MAP.md.
  */
 class UserCreationAdultHelper {
+    private const DEFAULT_COUNTRY = 'Slovensko';
 
     public function create( RegistrationPayload $p ): array {
         $email = $p->clientEmailRequired ?? $p->clientEmail;
@@ -42,6 +43,7 @@ class UserCreationAdultHelper {
                 sanitize_textarea_field( $p->memberHealthRestrictions )
             );
         }
+        update_user_meta( (int) $clientId, 'consent_marketing', $p->consentMarketing ? 1 : 0 );
 
         return [
             'client_user_id' => (int) $clientId,
@@ -61,6 +63,8 @@ class UserCreationAdultHelper {
             update_user_meta( $existing->ID, 'address_street',   $p->clientAddressStreet );
             update_user_meta( $existing->ID, 'address_psc',      $p->clientAddressPostcode );
             update_user_meta( $existing->ID, 'address_city',     $p->clientAddressCity );
+            update_user_meta( $existing->ID, 'address_country',  $this->normalizeCountry( $p->clientAddressCountry ) );
+            update_user_meta( $existing->ID, 'consent_marketing', $p->consentMarketing ? 1 : 0 );
 
             if ( ! empty( $p->memberHealthRestrictions ) ) {
                 update_user_meta( $existing->ID, 'health_notes', $p->memberHealthRestrictions );
@@ -87,6 +91,8 @@ class UserCreationAdultHelper {
         update_user_meta( $userId, 'address_street',  $p->clientAddressStreet );
         update_user_meta( $userId, 'address_psc',     $p->clientAddressPostcode );
         update_user_meta( $userId, 'address_city',    $p->clientAddressCity );
+        update_user_meta( $userId, 'address_country', $this->normalizeCountry( $p->clientAddressCountry ) );
+        update_user_meta( $userId, 'consent_marketing', $p->consentMarketing ? 1 : 0 );
 
         if ( ! empty( $p->memberHealthRestrictions ) ) {
             update_user_meta( $userId, 'health_notes', $p->memberHealthRestrictions );
@@ -95,6 +101,11 @@ class UserCreationAdultHelper {
         do_action( 'spa_after_client_created', $userId );
 
         return $userId;
+    }
+
+    private function normalizeCountry( ?string $country ): string {
+        $value = sanitize_text_field( (string) $country );
+        return $value !== '' ? $value : self::DEFAULT_COUNTRY;
     }
 
     /**
