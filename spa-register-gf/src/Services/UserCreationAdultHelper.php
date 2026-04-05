@@ -17,8 +17,22 @@ class UserCreationAdultHelper {
 
     public function create( RegistrationPayload $p ): array {
         $email = $p->clientEmailRequired ?? $p->clientEmail;
+        $existing = $this->findExistingClientByEmail( $email );
 
-        if ( function_exists( 'spa_get_or_create_client' ) ) {
+        if ( $existing ) {
+            $clientId = (int) $existing->ID;
+            Logger::info( 'adult_identity_reused', [ 'client_user_id' => $clientId ] );
+            update_user_meta( $clientId, 'first_name', $p->memberFirstName );
+            update_user_meta( $clientId, 'last_name',  $p->memberLastName );
+            update_user_meta( $clientId, 'phone',            $p->clientPhone );
+            update_user_meta( $clientId, 'birthdate',        $p->memberBirthdate );
+            update_user_meta( $clientId, 'address_street',   $p->clientAddressStreet );
+            update_user_meta( $clientId, 'address_psc',      $p->clientAddressPostcode );
+            update_user_meta( $clientId, 'address_city',     $p->clientAddressCity );
+            update_user_meta( $clientId, 'address_country',  $this->normalizeCountry( $p->clientAddressCountry ) );
+            update_user_meta( $clientId, 'consent_marketing', $p->consentMarketing ? 1 : 0 );
+        } elseif ( function_exists( 'spa_get_or_create_client' ) ) {
+            Logger::warning( 'adult_identity_lookup_miss_new_user', [ 'email' => (string) $email ] );
             $clientId = spa_get_or_create_client(
                 $email,
                 $p->memberFirstName,
@@ -27,6 +41,7 @@ class UserCreationAdultHelper {
                 $p->memberBirthdate
             );
         } else {
+            Logger::warning( 'adult_identity_lookup_miss_new_user', [ 'email' => (string) $email ] );
             $clientId = $this->createOrUpdateClient( $p, $email );
         }
 
@@ -48,6 +63,16 @@ class UserCreationAdultHelper {
         return [
             'client_user_id' => (int) $clientId,
         ];
+    }
+
+    private function findExistingClientByEmail( ?string $email ): ?\WP_User {
+        $normalized = sanitize_email( (string) $email );
+        if ( $normalized === '' ) {
+            return null;
+        }
+
+        $user = get_user_by( 'email', $normalized );
+        return $user instanceof \WP_User ? $user : null;
     }
 
     private function createOrUpdateClient( RegistrationPayload $p, ?string $email ): int {

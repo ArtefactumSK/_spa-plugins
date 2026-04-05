@@ -40,8 +40,20 @@ class UserCreationChildHelper {
             throw new \RuntimeException( 'Nepodarilo sa vytvoriť rodiča.' );
         }
 
-        // 2. Dieťa
-        if ( function_exists( 'spa_create_child_account' ) ) {
+        // 2. Dieťa: najprv lookup podľa rodného čísla, až potom create.
+        $existingChildId = $this->findExistingChildIdByBirthnumber( $p->memberBirthnumber );
+        if ( $existingChildId > 0 ) {
+            $childId = $existingChildId;
+            Logger::info( 'child_identity_reused', [ 'child_user_id' => $childId ] );
+
+            update_user_meta( $childId, 'first_name', $p->memberFirstName );
+            update_user_meta( $childId, 'last_name',  $p->memberLastName );
+            update_user_meta( $childId, 'birthdate',  $p->memberBirthdate );
+            update_user_meta( $childId, 'parent_id',  $parentId );
+        } elseif ( function_exists( 'spa_create_child_account' ) ) {
+            Logger::warning( 'child_identity_lookup_miss_new_user', [
+                'birthnumber' => (string) $p->memberBirthnumber,
+            ] );
             $childId = spa_create_child_account(
                 $p->memberFirstName,
                 $p->memberLastName,
@@ -51,6 +63,9 @@ class UserCreationChildHelper {
                 $p->memberBirthnumber
             );
         } else {
+            Logger::warning( 'child_identity_lookup_miss_new_user', [
+                'birthnumber' => (string) $p->memberBirthnumber,
+            ] );
             $childId = $this->createChild( $p, $parentId );
         }
 
@@ -83,6 +98,46 @@ class UserCreationChildHelper {
             'child_user_id'  => (int) $childId,
             'client_user_id' => (int) $childId,  // alias pre RegistrationService
         ];
+    }
+
+    private function findExistingChildIdByBirthnumber( ?string $birthnumber ): int {
+        $rc = preg_replace( '/[^0-9]/', '', (string) $birthnumber );
+        if ( $rc === '' ) {
+            return 0;
+        }
+
+        $values = [ $rc ];
+        if ( strlen( $rc ) > 6 ) {
+            $values[] = substr( $rc, 0, 6 ) . '/' . substr( $rc, 6 );
+        }
+
+        $metaQuery = [
+            'relation' => 'OR',
+            [
+                'key'   => 'rodne_cislo',
+                'value' => $values[0],
+            ],
+        ];
+        if ( isset( $values[1] ) ) {
+            $metaQuery[] = [
+                'key'   => 'rodne_cislo',
+                'value' => $values[1],
+            ];
+        }
+
+        $query = new \WP_User_Query( [
+            'number'     => 1,
+            'count_total'=> false,
+            'fields'     => 'ID',
+            'meta_query' => $metaQuery,
+        ] );
+
+        $ids = $query->get_results();
+        if ( empty( $ids ) ) {
+            return 0;
+        }
+
+        return (int) $ids[0];
     }
 
     // ── Vlastná implementácia ak téma helper neexistuje ──────────────────────
