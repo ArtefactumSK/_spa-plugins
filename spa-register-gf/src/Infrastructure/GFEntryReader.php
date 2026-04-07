@@ -209,6 +209,56 @@ class GFEntryReader {
         $p->consentGuardian        = $this->getBool( 'spa_consent_guardian' );
         $p->consentMarketing       = $this->getBool( 'spa_consent_marketing' );
 
+        // Platba + fakturácia
+        $p->paymentMethod          = $this->tryGetText( 'payment_method' );
+        $p->invoiceToCompany       = $this->getBool( 'spa_invoice_tocompany' );
+        $p->invoiceAddressDifferent = $this->getBool( 'spa_invoice_address_different' );
+        $p->companyName            = $this->tryGetText( 'company_name' );
+        $p->companyIco             = $this->tryGetText( 'company_ico' );
+        $p->companyDic             = $this->tryGetText( 'company_dic' );
+        $p->companyIcdph           = $this->tryGetText( 'company_icdph' );
+        $p->companyAddressStreet   = $this->tryGetText( 'company_address_street' );
+        $p->companyAddressCity     = $this->tryGetText( 'company_address_city' );
+        $p->companyAddressPostcode = $this->tryGetText( 'company_address_postcode' );
+        $p->companyAddressCountry  = $this->tryGetText( 'company_address_country' );
+
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'SPA_DEBUG' ) && SPA_DEBUG ) {
+            $auditKeys = [
+                'payment_method',
+                'spa_invoice_tocompany',
+                'spa_invoice_address_different',
+                'company_name',
+                'company_ico',
+                'company_dic',
+                'company_icdph',
+                'company_address_street',
+                'company_address_city',
+                'company_address_postcode',
+                'company_address_country',
+            ];
+            $resolved = [];
+            foreach ( $auditKeys as $key ) {
+                $resolved[ $key ] = FieldMapService::tryResolve( $key ) !== null;
+            }
+            error_log( '[spa-phase-b-audit] payload_build: ' . wp_json_encode( [
+                'entry_id' => $p->gfEntryId,
+                'resolved_keys' => $resolved,
+                'filled' => [
+                    'payment_method' => $p->paymentMethod,
+                    'invoice_to_company' => $p->invoiceToCompany,
+                    'invoice_address_different' => $p->invoiceAddressDifferent,
+                    'company_name' => $p->companyName,
+                    'company_ico' => $p->companyIco,
+                    'company_dic' => $p->companyDic,
+                    'company_icdph' => $p->companyIcdph,
+                    'company_address_street' => $p->companyAddressStreet,
+                    'company_address_city' => $p->companyAddressCity,
+                    'company_address_postcode' => $p->companyAddressPostcode,
+                    'company_address_country' => $p->companyAddressCountry,
+                ],
+            ] ) );
+        }
+
         return $p;
     }
 }

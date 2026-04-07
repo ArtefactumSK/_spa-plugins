@@ -60,6 +60,8 @@ class PreRenderHooks {
         $programFieldId = FieldMapService::tryResolve( 'spa_program' );
 
         if ( $session ) {
+            $this->applyParentPrefillFilters( $session );
+
             if ( $programFieldId && $session->getProgramId() > 0 ) {
                 add_filter( 'gform_field_value_' . $programFieldId, function () use ( $session ) {
                     return $session->getProgramId();
@@ -159,21 +161,28 @@ class PreRenderHooks {
             // Resolve first payment product field via FieldMapService.
             $firstPaymentInput   = FieldMapService::tryResolve( 'spa_first_payment_amount' );
             $firstPaymentFieldId = $firstPaymentInput ? (int) str_replace( 'input_', '', $firstPaymentInput ) : 0;
+            $totalInput          = FieldMapService::tryResolve( 'spa_first_payment_total' );
+            $totalFieldId        = $totalInput ? (int) str_replace( 'input_', '', $totalInput ) : 0;
 
-            // Read amount from session (including optional external surcharge).
             $sessionAmount       = (float) $session->getAmount();
             $sessionSurchargeRaw = $session->getExternalSurcharge();
-            $sessionSurcharge    = $sessionSurchargeRaw !== null ? (float) $sessionSurchargeRaw : 0.0;
-            $productAmount       = $sessionAmount + $sessionSurcharge;
+            // Source of truth pre prvú platbu: finalAmount z PriceCalculatorService.
+            $productAmount       = (float) $finalAmount;
 
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log( '[spa-register-gf] prerender_product_field_id: ' . $firstPaymentFieldId );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
+            error_log( '[spa-register-gf] prerender_total_field_id: ' . $totalFieldId );
+            }
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log( '[spa-register-gf] prerender_session_amount: ' . $sessionAmount );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prerender_session_surcharge: ' . $sessionSurcharge );
+            error_log( '[spa-register-gf] prerender_external_surcharge_raw: ' . (string) $sessionSurchargeRaw );
+            }
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
+            error_log( '[spa-register-gf] prerender_final_amount: ' . $finalAmount );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log( '[spa-register-gf] prerender_product_amount: ' . $productAmount );
@@ -218,9 +227,21 @@ class PreRenderHooks {
 
                     if (defined('SPA_DEBUG') && SPA_DEBUG) {
                     error_log(
-                        '[spa-register-gf] prerender_product_field_price_set: '
+                        '[spa-register-gf] final_amount_to_gf_product: '
                         . $productAmount
                     );
+                    }
+                }
+
+                if (
+                    $totalFieldId > 0
+                    && isset( $field->id )
+                    && (int) $field->id === $totalFieldId
+                    && $field->type === 'total'
+                ) {
+                    $field->defaultValue = $productAmount;
+                    if (defined('SPA_DEBUG') && SPA_DEBUG) {
+                    error_log( '[spa-register-gf] prerender_total_field_amount_set: ' . $productAmount );
                     }
                 }
 
@@ -313,26 +334,34 @@ class PreRenderHooks {
         $session = SessionService::tryCreate();
 
         if ( $session ) {
-            $summaryResult = $this->buildPriceSummary( $session );
-            $finalAmount   = $summaryResult['finalAmount'];
+            $priceCalculator = new PriceCalculatorService();
+            $calc            = $priceCalculator->calculate( $session );
+            $finalAmount     = (float) $calc['finalAmount'];
 
             $targetInput = FieldMapService::tryResolve( 'spa_first_payment_amount' );
             $targetId    = $targetInput ? (int) str_replace( 'input_', '', $targetInput ) : 0;
+            $totalInput  = FieldMapService::tryResolve( 'spa_first_payment_total' );
+            $totalId     = $totalInput ? (int) str_replace( 'input_', '', $totalInput ) : 0;
 
-            // Read amount from session (including optional external surcharge).
             $sessionAmount       = (float) $session->getAmount();
             $sessionSurchargeRaw = $session->getExternalSurcharge();
-            $sessionSurcharge    = $sessionSurchargeRaw !== null ? (float) $sessionSurchargeRaw : 0.0;
-            $productAmount       = $sessionAmount + $sessionSurcharge;
+            // Source of truth pre prvú platbu: finalAmount z PriceCalculatorService.
+            $productAmount       = (float) $finalAmount;
 
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log( '[spa-register-gf] prevalidation_product_field_id: ' . $targetId );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
+            error_log( '[spa-register-gf] prevalidation_total_field_id: ' . $totalId );
+            }
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log( '[spa-register-gf] prevalidation_session_amount: ' . $sessionAmount );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prevalidation_session_surcharge: ' . $sessionSurcharge );
+            error_log( '[spa-register-gf] prevalidation_external_surcharge_raw: ' . (string) $sessionSurchargeRaw );
+            }
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
+            error_log( '[spa-register-gf] prevalidation_final_amount: ' . $finalAmount );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
             error_log( '[spa-register-gf] prevalidation_product_amount: ' . $productAmount );
@@ -379,12 +408,23 @@ class PreRenderHooks {
 
                         if (defined('SPA_DEBUG') && SPA_DEBUG) {
                         error_log(
-                            '[spa-register-gf] prevalidation_product_field_price_set: '
+                            '[spa-register-gf] final_amount_to_gf_product: '
                             . $productAmount
                         );
                         }
                     } else {
                         $field->defaultValue = $finalAmount;
+                    }
+
+                    if (
+                        $totalId > 0
+                        && $fieldId === $totalId
+                        && $field->type === 'total'
+                    ) {
+                        $field->defaultValue = $finalAmount;
+                        if (defined('SPA_DEBUG') && SPA_DEBUG) {
+                        error_log( '[spa-register-gf] prevalidation_total_field_amount_set: ' . $finalAmount );
+                        }
                     }
                 }
                 unset( $field );
@@ -409,7 +449,123 @@ class PreRenderHooks {
         // Company_* required overrides podľa spôsobu platby a voľby "fakturovať na firmu".
         $form = $this->applyCompanyRequiredOverrides( $form );
 
+        // Final amount musíme zapísať aj do POST payloadu pre GF order/email summary.
+        $session = SessionService::tryCreate();
+        if ( $session ) {
+            $priceCalculator = new PriceCalculatorService();
+            $calc            = $priceCalculator->calculate( $session );
+            $finalAmount     = (float) $calc['finalAmount'];
+
+            $firstPaymentInput = FieldMapService::tryResolve( 'spa_first_payment_amount' );
+            $totalInput        = FieldMapService::tryResolve( 'spa_first_payment_total' );
+
+            if ( $firstPaymentInput ) {
+                $productPostKey = str_replace( '.', '_', $firstPaymentInput );
+                $_POST[ $productPostKey ] = $finalAmount;
+            }
+
+            if ( $totalInput ) {
+                $totalPostKey = str_replace( '.', '_', $totalInput );
+                $_POST[ $totalPostKey ] = $finalAmount;
+            }
+
+            if (defined('SPA_DEBUG') && SPA_DEBUG) {
+            error_log( '[spa-register-gf] final_amount_to_gf_order_summary: ' . $finalAmount );
+            }
+        }
+
         return $form;
+    }
+
+    private function applyParentPrefillFilters( SessionService $session ): void {
+        try {
+            $scope = $session->getScope();
+        } catch ( \RuntimeException $e ) {
+            return;
+        }
+
+        if ( $scope !== 'child' ) {
+            return;
+        }
+
+        $parentUser = $this->resolveParentUserForPrefill();
+        if ( ! $parentUser ) {
+            return;
+        }
+
+        $email   = (string) $parentUser->user_email;
+        $phone   = (string) get_user_meta( $parentUser->ID, 'phone', true );
+        $street  = (string) get_user_meta( $parentUser->ID, 'address_street', true );
+        $psc     = (string) get_user_meta( $parentUser->ID, 'address_psc', true );
+        $city    = (string) get_user_meta( $parentUser->ID, 'address_city', true );
+        $country = (string) get_user_meta( $parentUser->ID, 'address_country', true );
+
+        $this->registerPrefillFilterByLogicalKey( 'spa_parent_email', $email );
+        $this->registerPrefillFilterByLogicalKey( 'spa_parent_phone', $phone );
+        $this->registerPrefillFilterByLogicalKey( 'spa_client_address_street', $street );
+        $this->registerPrefillFilterByLogicalKey( 'spa_client_address_postcode', $psc );
+        $this->registerPrefillFilterByLogicalKey( 'spa_client_address_city', $city );
+        $this->registerPrefillFilterByLogicalKey( 'spa_client_address_country', $country );
+
+        if (defined('SPA_DEBUG') && SPA_DEBUG) {
+        error_log(
+            '[spa-register-gf] parent_address_prefill: '
+            . wp_json_encode( [
+                'parent_user_id' => (int) $parentUser->ID,
+                'email' => $email,
+                'phone' => $phone,
+                'address_street' => $street,
+                'address_psc' => $psc,
+                'address_city' => $city,
+                'address_country' => $country,
+            ] )
+        );
+        }
+    }
+
+    private function registerPrefillFilterByLogicalKey( string $logicalKey, string $value ): void {
+        if ( $value === '' ) {
+            return;
+        }
+
+        $fieldId = FieldMapService::tryResolve( $logicalKey );
+        if ( ! $fieldId ) {
+            return;
+        }
+
+        add_filter( 'gform_field_value_' . $fieldId, static function () use ( $value ) {
+            return $value;
+        } );
+
+        $altFieldId = str_replace( '.', '_', $fieldId );
+        if ( $altFieldId !== $fieldId ) {
+            add_filter( 'gform_field_value_' . $altFieldId, static function () use ( $value ) {
+                return $value;
+            } );
+        }
+    }
+
+    private function resolveParentUserForPrefill(): ?\WP_User {
+        if ( is_user_logged_in() ) {
+            $user = wp_get_current_user();
+            if ( $user instanceof \WP_User && ! empty( $user->ID ) && in_array( 'spa_parent', (array) $user->roles, true ) ) {
+                return $user;
+            }
+        }
+
+        $parentEmailFieldId = FieldMapService::tryResolve( 'spa_parent_email' );
+        if ( ! $parentEmailFieldId ) {
+            return null;
+        }
+
+        $postKey = str_replace( '.', '_', $parentEmailFieldId );
+        $email   = sanitize_email( (string) \rgpost( $postKey ) );
+        if ( $email === '' ) {
+            return null;
+        }
+
+        $parentUser = get_user_by( 'email', $email );
+        return $parentUser instanceof \WP_User ? $parentUser : null;
     }
 
     /**
@@ -463,7 +619,14 @@ class PreRenderHooks {
     /**
      * Fakturačné polia (company_*) – required override podľa platby.
      *
-     * company_* sú required iba ak:
+     * Pri firemnej fakturácii sú required iba:
+     * - company_name
+     * - company_ico
+     * - company_dic
+     *
+     * company_icdph je voliteľné (nikdy ho neoznačujeme ako required).
+     *
+     * Podmienka zapnutia required vetvy:
      * - payment_method === 'invoice_payment'
      * - a checkbox spa_invoice_tocompany je truthy
      *
@@ -472,7 +635,7 @@ class PreRenderHooks {
      * - failed_validation = false
      * - validation_message = ''
      *
-     * Identifikácia company_* výhradne podľa cssClass obsahujúcej "company_".
+     * Identifikácia company_* prebieha podľa cssClass.
      * Hodnoty čítame z $_POST cez FieldMapService (bez natvrdo ID).
      */
     private function applyCompanyRequiredOverrides( array $form ): array {
@@ -574,8 +737,13 @@ class PreRenderHooks {
             $beforeRequired = isset( $field->isRequired ) ? (bool) $field->isRequired : false;
 
             if ( $shouldRequireCompany ) {
-                // Pri fakturácii na firmu nastavíme company_* ako required
-                $field->isRequired = true;
+                // Pri fakturácii na firmu je IČ DPH voliteľné.
+                $isIcdphField = (
+                    ( is_string( $css ) && strpos( $css, 'company_icdph' ) !== false )
+                    || ( isset( $field->adminLabel ) && (string) $field->adminLabel === 'company_icdph' )
+                );
+
+                $field->isRequired = ! $isIcdphField;
             } else {
                 // V ostatných prípadoch company_* NIKDY nesmú byť required ani mať chybu
                 $field->isRequired         = false;

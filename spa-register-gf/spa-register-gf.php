@@ -23,12 +23,173 @@ define( 'SPA_REG_GF_SESSION_KEY',  'spa_registration' );
 define( 'SPA_REG_GF_SESSION_TTL',  1800 );
 define( 'SPA_REG_GF_CSS_CLASS',    'spa-register-gf' );
 define( 'SPA_REG_GF_SELECTOR_URL', '/spa-selector' );
+define( 'SPA_REG_GF_DB_VERSION',   '1.2.0' );
 
 require_once SPA_REG_GF_DIR . 'src/Bootstrap/Plugin.php';
 
+/**
+ * Installer (Faza A+B): vytvorenie DB tabulky pre DB-first registracie.
+ *
+ * @return bool true ak je tabulka dostupna po pokuse o install
+ */
+function spa_reg_gf_install_or_upgrade(): bool {
+    global $wpdb;
+
+    if ( ! isset( $wpdb ) || ! ( $wpdb instanceof wpdb ) ) {
+        return false;
+    }
+
+    if ( ! class_exists( '\SpaRegisterGf\Infrastructure\Logger', false ) ) {
+        require_once SPA_REG_GF_DIR . 'src/Infrastructure/Logger.php';
+    }
+
+    $table_name = $wpdb->prefix . 'spa_registrations';
+    $charset_collate = $wpdb->get_charset_collate();
+    $expected_columns = [
+        'id',
+        'client_user_id',
+        'parent_user_id',
+        'program_id',
+        'status',
+        'amount',
+        'frequency_key',
+        'spa_vs',
+        'payment_method',
+        'invoice_to_company',
+        'invoice_address_different',
+        'company_name',
+        'company_ico',
+        'company_dic',
+        'company_icdph',
+        'company_address_street',
+        'company_address_city',
+        'company_address_postcode',
+        'company_address_country',
+        'created_at',
+        'updated_at',
+    ];
+
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+    $exists_before = (string) $wpdb->get_var(
+        $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name )
+    ) === $table_name;
+
+    if ( $exists_before ) {
+        $columns_raw = $wpdb->get_results( "DESCRIBE {$table_name}", ARRAY_A );
+        $actual_columns = [];
+        foreach ( (array) $columns_raw as $row ) {
+            if ( is_array( $row ) && isset( $row['Field'] ) ) {
+                $actual_columns[] = (string) $row['Field'];
+            }
+        }
+
+        $extra_columns = array_values( array_diff( $actual_columns, $expected_columns ) );
+        $missing_columns = array_values( array_diff( $expected_columns, $actual_columns ) );
+
+        if ( ! empty( $extra_columns ) ) {
+            \SpaRegisterGf\Infrastructure\Logger::info( 'installer_spa_registrations_drop_recreate', [
+                'table' => $table_name,
+                'extra_columns' => $extra_columns,
+                'missing_columns' => $missing_columns,
+            ] );
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log(
+                    'SPA-REGISTER-GF installer: DROP TABLE ' . $table_name
+                    . ' | extra=' . wp_json_encode( $extra_columns )
+                    . ' | missing=' . wp_json_encode( $missing_columns )
+                );
+            }
+
+            $drop_sql = "DROP TABLE IF EXISTS {$table_name}";
+            $drop_ok = $wpdb->query( $drop_sql );
+            if ( $drop_ok === false ) {
+                \SpaRegisterGf\Infrastructure\Logger::error( 'installer_spa_registrations_drop_failed', [
+                    'table' => $table_name,
+                    'last_error' => (string) $wpdb->last_error,
+                ] );
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( 'SPA-REGISTER-GF installer ERROR: DROP TABLE failed for ' . $table_name );
+                }
+                return false;
+            }
+        }
+        if ( ! empty( $missing_columns ) ) {
+            \SpaRegisterGf\Infrastructure\Logger::info( 'installer_spa_registrations_missing_columns', [
+                'table' => $table_name,
+                'missing_columns' => $missing_columns,
+                'strategy' => 'dbdelta_add_columns',
+            ] );
+        }
+    }
+
+    $sql = "CREATE TABLE {$table_name} (
+        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        client_user_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+        parent_user_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+        program_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+        status VARCHAR(32) NOT NULL DEFAULT 'pending',
+        amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        frequency_key VARCHAR(50) NOT NULL DEFAULT '',
+        spa_vs VARCHAR(32) NOT NULL DEFAULT '',
+        payment_method VARCHAR(50) NOT NULL DEFAULT '',
+        invoice_to_company TINYINT(1) NOT NULL DEFAULT 0,
+        invoice_address_different TINYINT(1) NOT NULL DEFAULT 0,
+        company_name VARCHAR(191) NOT NULL DEFAULT '',
+        company_ico VARCHAR(64) NOT NULL DEFAULT '',
+        company_dic VARCHAR(64) NOT NULL DEFAULT '',
+        company_icdph VARCHAR(64) NOT NULL DEFAULT '',
+        company_address_street VARCHAR(191) NOT NULL DEFAULT '',
+        company_address_city VARCHAR(191) NOT NULL DEFAULT '',
+        company_address_postcode VARCHAR(64) NOT NULL DEFAULT '',
+        company_address_country VARCHAR(191) NOT NULL DEFAULT '',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY  (id),
+        KEY client_user_id (client_user_id),
+        KEY parent_user_id (parent_user_id),
+        KEY program_id (program_id),
+        KEY status (status),
+        KEY spa_vs (spa_vs)
+    ) {$charset_collate};";
+
+    $result = dbDelta( $sql );
+
+    $exists = (string) $wpdb->get_var(
+        $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name )
+    ) === $table_name;
+
+    if ( $exists ) {
+        \SpaRegisterGf\Infrastructure\Logger::info( 'installer_spa_registrations_ready', [
+            'table' => $table_name,
+            'db_version' => SPA_REG_GF_DB_VERSION,
+            'dbdelta_result' => is_array( $result ) ? $result : [],
+        ] );
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( 'SPA-REGISTER-GF installer: table ready ' . $table_name );
+        }
+        return true;
+    }
+
+    \SpaRegisterGf\Infrastructure\Logger::error( 'installer_spa_registrations_failed', [
+        'table' => $table_name,
+        'db_version' => SPA_REG_GF_DB_VERSION,
+        'last_error' => (string) $wpdb->last_error,
+        'dbdelta_result' => is_array( $result ) ? $result : [],
+    ] );
+    if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+        error_log( 'SPA-REGISTER-GF installer ERROR: table missing after dbDelta for ' . $table_name );
+    }
+
+    return false;
+}
+
 register_activation_hook( __FILE__, function () {
     delete_transient( 'spa_reg_gf_form_id' );
-    update_option( 'spa_reg_gf_version', '1.0.0' );
+    $ok = spa_reg_gf_install_or_upgrade();
+    if ( $ok ) {
+        update_option( 'spa_reg_gf_version', SPA_REG_GF_DB_VERSION );
+    }
 } );
 
 register_deactivation_hook( __FILE__, function () {
@@ -36,6 +197,13 @@ register_deactivation_hook( __FILE__, function () {
 } );
 
 add_action( 'plugins_loaded', function () {
+    $installed_version = (string) get_option( 'spa_reg_gf_version', '' );
+    if ( $installed_version === '' || version_compare( $installed_version, SPA_REG_GF_DB_VERSION, '<' ) ) {
+        $ok = spa_reg_gf_install_or_upgrade();
+        if ( $ok ) {
+            update_option( 'spa_reg_gf_version', SPA_REG_GF_DB_VERSION );
+        }
+    }
     SpaRegisterGf\Bootstrap\Plugin::boot();
 }, 20 );
 

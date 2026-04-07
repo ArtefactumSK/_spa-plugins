@@ -20,17 +20,36 @@ class UserCreationChildHelper {
     private const DEFAULT_COUNTRY = 'Slovensko';
 
     public function create( RegistrationPayload $p ): array {
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log(
+                '[spa-register-gf] parent_address_payload: '
+                . wp_json_encode( [
+                    'street' => (string) $p->clientAddressStreet,
+                    'psc' => (string) $p->clientAddressPostcode,
+                    'city' => (string) $p->clientAddressCity,
+                    'country' => (string) $p->clientAddressCountry,
+                ] )
+            );
+        }
+
         // 1. Rodič
         if ( function_exists( 'spa_get_or_create_parent' ) ) {
+            $existingParent = get_user_by( 'email', sanitize_email( (string) $p->parentEmail ) );
+            if ( $existingParent && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( '[spa-register-gf] existing_parent_found: ' . (int) $existingParent->ID );
+            }
             $parentId = spa_get_or_create_parent(
                 $p->parentEmail,
                 $p->guardianFirstName,
                 $p->guardianLastName,
                 $p->parentPhone,
-                '',  // address_street (child formulár túto adresu nemá)
-                '',
-                ''
+                (string) $p->clientAddressStreet,
+                (string) $p->clientAddressPostcode,
+                (string) $p->clientAddressCity
             );
+            if ( ! $existingParent && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( '[spa-register-gf] created_new_parent: ' . (int) $parentId );
+            }
         } else {
             $parentId = $this->createOrUpdateParent( $p );
         }
@@ -45,6 +64,9 @@ class UserCreationChildHelper {
         if ( $existingChildId > 0 ) {
             $childId = $existingChildId;
             Logger::info( 'child_identity_reused', [ 'child_user_id' => $childId ] );
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( '[spa-register-gf] existing_child_found: ' . (int) $childId );
+            }
 
             update_user_meta( $childId, 'first_name', $p->memberFirstName );
             update_user_meta( $childId, 'last_name',  $p->memberLastName );
@@ -62,11 +84,17 @@ class UserCreationChildHelper {
                 $p->memberHealthRestrictions,
                 $p->memberBirthnumber
             );
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( '[spa-register-gf] created_new_child: ' . (int) $childId );
+            }
         } else {
             Logger::warning( 'child_identity_lookup_miss_new_user', [
                 'birthnumber' => (string) $p->memberBirthnumber,
             ] );
             $childId = $this->createChild( $p, $parentId );
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( '[spa-register-gf] created_new_child: ' . (int) $childId );
+            }
         }
 
         if ( ! $childId || is_wp_error( $childId ) ) {
@@ -92,6 +120,24 @@ class UserCreationChildHelper {
 
         update_user_meta( $parentId, 'consent_marketing', $p->consentMarketing ? 1 : 0 );
         update_user_meta( $childId, 'address_country', $this->normalizeCountry( $p->clientAddressCountry ) );
+
+        $this->updateUserMetaIfNotEmpty( (int) $parentId, 'address_street', (string) $p->clientAddressStreet );
+        $this->updateUserMetaIfNotEmpty( (int) $parentId, 'address_psc', (string) $p->clientAddressPostcode );
+        $this->updateUserMetaIfNotEmpty( (int) $parentId, 'address_city', (string) $p->clientAddressCity );
+        $this->updateUserMetaIfNotEmpty( (int) $parentId, 'address_country', $this->normalizeCountry( $p->clientAddressCountry ) );
+
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log(
+                '[spa-register-gf] parent_address_saved: '
+                . wp_json_encode( [
+                    'parent_user_id' => (int) $parentId,
+                    'address_street' => (string) get_user_meta( (int) $parentId, 'address_street', true ),
+                    'address_psc' => (string) get_user_meta( (int) $parentId, 'address_psc', true ),
+                    'address_city' => (string) get_user_meta( (int) $parentId, 'address_city', true ),
+                    'address_country' => (string) get_user_meta( (int) $parentId, 'address_country', true ),
+                ] )
+            );
+        }
 
         return [
             'parent_user_id' => (int) $parentId,
@@ -146,11 +192,18 @@ class UserCreationChildHelper {
         $existing = get_user_by( 'email', $p->parentEmail );
 
         if ( $existing ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( '[spa-register-gf] existing_parent_found: ' . (int) $existing->ID );
+            }
             // Aktualizuj meta
             update_user_meta( $existing->ID, 'first_name', $p->guardianFirstName );
             update_user_meta( $existing->ID, 'last_name',  $p->guardianLastName );
             update_user_meta( $existing->ID, 'phone',      $p->parentPhone );
             update_user_meta( $existing->ID, 'consent_marketing', $p->consentMarketing ? 1 : 0 );
+            $this->updateUserMetaIfNotEmpty( (int) $existing->ID, 'address_street', (string) $p->clientAddressStreet );
+            $this->updateUserMetaIfNotEmpty( (int) $existing->ID, 'address_psc', (string) $p->clientAddressPostcode );
+            $this->updateUserMetaIfNotEmpty( (int) $existing->ID, 'address_city', (string) $p->clientAddressCity );
+            $this->updateUserMetaIfNotEmpty( (int) $existing->ID, 'address_country', $this->normalizeCountry( $p->clientAddressCountry ) );
             return $existing->ID;
         }
 
@@ -167,6 +220,14 @@ class UserCreationChildHelper {
         update_user_meta( $userId, 'last_name',  $p->guardianLastName );
         update_user_meta( $userId, 'phone',      $p->parentPhone );
         update_user_meta( $userId, 'consent_marketing', $p->consentMarketing ? 1 : 0 );
+        $this->updateUserMetaIfNotEmpty( (int) $userId, 'address_street', (string) $p->clientAddressStreet );
+        $this->updateUserMetaIfNotEmpty( (int) $userId, 'address_psc', (string) $p->clientAddressPostcode );
+        $this->updateUserMetaIfNotEmpty( (int) $userId, 'address_city', (string) $p->clientAddressCity );
+        $this->updateUserMetaIfNotEmpty( (int) $userId, 'address_country', $this->normalizeCountry( $p->clientAddressCountry ) );
+
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( '[spa-register-gf] created_new_parent: ' . (int) $userId );
+        }
 
         return $userId;
     }
@@ -256,5 +317,13 @@ class UserCreationChildHelper {
     private function normalizeCountry( ?string $country ): string {
         $value = sanitize_text_field( (string) $country );
         return $value !== '' ? $value : self::DEFAULT_COUNTRY;
+    }
+
+    private function updateUserMetaIfNotEmpty( int $userId, string $metaKey, string $value ): void {
+        $trimmed = trim( $value );
+        if ( $trimmed === '' ) {
+            return;
+        }
+        update_user_meta( $userId, $metaKey, $trimmed );
     }
 }

@@ -52,4 +52,16 @@ class RegistrationPayload {
      * - online_payment (Stripe Checkout)
      */
     public ?string $paymentMethod         = null;
+
+    // Fakturácia (invoice/company)
+    public bool    $invoiceToCompany      = false;
+    public bool    $invoiceAddressDifferent = false;
+    public ?string $companyName           = null;
+    public ?string $companyIco            = null;
+    public ?string $companyDic            = null;
+    public ?string $companyIcdph          = null;
+    public ?string $companyAddressStreet  = null;
+    public ?string $companyAddressCity    = null;
+    public ?string $companyAddressPostcode = null;
+    public ?string $companyAddressCountry = null;
 }

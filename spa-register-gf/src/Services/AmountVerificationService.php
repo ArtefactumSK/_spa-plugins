@@ -106,34 +106,22 @@ class AmountVerificationService {
             return true;
         }
 
-        // ── Porovnanie hodnôt ────────────────────────────────────────────────
-        $diff    = abs( (float) $postedAmount - (float) $expected );
-        $matches = $diff < 0.01; // tolerancia na centy
-
-        if ( ! $matches ) {
-            $payload = [
-                'expected'        => $expected,
-                'posted'          => $postedAmount,
-                'diff'            => $diff,
+        // Session suma je source of truth; GF entry suma sa uz nepouziva
+        // ako blokujuca validacia.
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( 'SPA VERIFY: session amount = ' . $amount );
+            error_log( 'SPA VERIFY: entry amount = ' . $postedAmount );
+        }
+        if ( $debug ) {
+            Logger::info( 'amount_verify_session_authoritative', [
+                'session_amount'  => $amount,
+                'expected_amount' => $expected,
+                'entry_amount'    => $postedAmount,
                 'program_id'      => $programId,
                 'frequency_key'   => $frequencyKey,
                 'scope'           => $scope,
-                'external_amount' => $amount,
-            ];
-
-            if ( $debug ) {
-                $payload['debug_msg'] = sprintf(
-                    'DEBUG: expected=%.2f posted=%.2f diff=%.4f',
-                    $expected,
-                    $postedAmount,
-                    $diff
-                );
-            }
-
-            Logger::warning( 'amount_verify_mismatch', $payload );
-            return false;
+            ] );
         }
-
         return true;
     }
 }
