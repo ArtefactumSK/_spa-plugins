@@ -21,7 +21,7 @@ class UserCreationChildHelper {
 
     public function create( RegistrationPayload $p ): array {
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log(
+            spa_debug_log(
                 '[spa-register-gf] parent_address_payload: '
                 . wp_json_encode( [
                     'street' => (string) $p->clientAddressStreet,
@@ -36,7 +36,7 @@ class UserCreationChildHelper {
         if ( function_exists( 'spa_get_or_create_parent' ) ) {
             $existingParent = get_user_by( 'email', sanitize_email( (string) $p->parentEmail ) );
             if ( $existingParent && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log( '[spa-register-gf] existing_parent_found: ' . (int) $existingParent->ID );
+                spa_debug_log( '[spa-register-gf] existing_parent_found: ' . (int) $existingParent->ID );
             }
             $parentId = spa_get_or_create_parent(
                 $p->parentEmail,
@@ -48,7 +48,7 @@ class UserCreationChildHelper {
                 (string) $p->clientAddressCity
             );
             if ( ! $existingParent && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log( '[spa-register-gf] created_new_parent: ' . (int) $parentId );
+                spa_debug_log( '[spa-register-gf] created_new_parent: ' . (int) $parentId );
             }
         } else {
             $parentId = $this->createOrUpdateParent( $p );
@@ -65,7 +65,7 @@ class UserCreationChildHelper {
             $childId = $existingChildId;
             Logger::info( 'child_identity_reused', [ 'child_user_id' => $childId ] );
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log( '[spa-register-gf] existing_child_found: ' . (int) $childId );
+                spa_debug_log( '[spa-register-gf] existing_child_found: ' . (int) $childId );
             }
 
             update_user_meta( $childId, 'first_name', $p->memberFirstName );
@@ -85,7 +85,7 @@ class UserCreationChildHelper {
                 $p->memberBirthnumber
             );
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log( '[spa-register-gf] created_new_child: ' . (int) $childId );
+                spa_debug_log( '[spa-register-gf] created_new_child: ' . (int) $childId );
             }
         } else {
             Logger::warning( 'child_identity_lookup_miss_new_user', [
@@ -93,7 +93,7 @@ class UserCreationChildHelper {
             ] );
             $childId = $this->createChild( $p, $parentId );
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log( '[spa-register-gf] created_new_child: ' . (int) $childId );
+                spa_debug_log( '[spa-register-gf] created_new_child: ' . (int) $childId );
             }
         }
 
@@ -127,7 +127,7 @@ class UserCreationChildHelper {
         $this->updateUserMetaIfNotEmpty( (int) $parentId, 'address_country', $this->normalizeCountry( $p->clientAddressCountry ) );
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log(
+            spa_debug_log(
                 '[spa-register-gf] parent_address_saved: '
                 . wp_json_encode( [
                     'parent_user_id' => (int) $parentId,
@@ -193,7 +193,7 @@ class UserCreationChildHelper {
 
         if ( $existing ) {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log( '[spa-register-gf] existing_parent_found: ' . (int) $existing->ID );
+                spa_debug_log( '[spa-register-gf] existing_parent_found: ' . (int) $existing->ID );
             }
             // Aktualizuj meta
             update_user_meta( $existing->ID, 'first_name', $p->guardianFirstName );
@@ -226,7 +226,7 @@ class UserCreationChildHelper {
         $this->updateUserMetaIfNotEmpty( (int) $userId, 'address_country', $this->normalizeCountry( $p->clientAddressCountry ) );
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( '[spa-register-gf] created_new_parent: ' . (int) $userId );
+            spa_debug_log( '[spa-register-gf] created_new_parent: ' . (int) $userId );
         }
 
         return $userId;

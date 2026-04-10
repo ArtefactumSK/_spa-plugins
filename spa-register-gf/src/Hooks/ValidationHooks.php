@@ -60,10 +60,10 @@ class ValidationHooks {
 
         if ( ! GFFormFinder::guard( $form ) ) {
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] handleValidation guard=false → skip' );
+            spa_debug_log( '[spa-register-gf] handleValidation guard=false → skip' );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log('VALIDATION FAILED AT: <NAME_OF_GUARD>');
+            spa_debug_log('VALIDATION FAILED AT: <NAME_OF_GUARD>');
             }
             return $validationResult;
         }
@@ -89,9 +89,6 @@ class ValidationHooks {
 
         // Ak GF sám zistil chyby, nepokračujeme (vyhneme sa duplicitám)
         if ( ! $validationResult['is_valid'] ) {
-            if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log('VALIDATION FAILED: ' . print_r($validationResult, true));
-            }
             return $validationResult;
         }
 
@@ -191,7 +188,7 @@ class ValidationHooks {
 
     public function forceSessionError( array $validationResult ): array {
         if (defined('SPA_DEBUG') && SPA_DEBUG) {
-        error_log('FORCE SESSION ERROR CALLED');
+        spa_debug_log('FORCE SESSION ERROR CALLED');
         }
         return $this->blockWithMessage(
             $validationResult,
@@ -201,7 +198,7 @@ class ValidationHooks {
 
     public function forceExpiredError( array $validationResult ): array {
         if (defined('SPA_DEBUG') && SPA_DEBUG) {
-        error_log('FORCE EXPIRED ERROR CALLED');
+        spa_debug_log('FORCE EXPIRED ERROR CALLED');
         }
         return $this->blockWithMessage(
             $validationResult,
@@ -211,7 +208,7 @@ class ValidationHooks {
 
     private function blockWithMessage( array $vr, string $message ): array {
         if (defined('SPA_DEBUG') && SPA_DEBUG) {
-        error_log('BLOCK WITH MESSAGE CALLED: ' . $message);
+        spa_debug_log('BLOCK WITH MESSAGE CALLED: ' . $message);
         }
         $vr['is_valid'] = false;
 
@@ -379,7 +376,7 @@ class ValidationHooks {
      */
     private function buildEntryFromPost( array $form ): array {
         if (defined('SPA_DEBUG') && SPA_DEBUG) {
-        error_log( '[spa-register-gf] buildEntryFromPost called' );
+        spa_debug_log( '[spa-register-gf] buildEntryFromPost called' );
         }
         $entry = [];
 
@@ -489,7 +486,7 @@ class ValidationHooks {
         }
 
         if (defined('SPA_DEBUG') && SPA_DEBUG) {
-        error_log( '[spa-register-gf] buildEntryFromPost keys: ' . implode( ', ', array_keys( $entry ) ) );
+        spa_debug_log( '[spa-register-gf] buildEntryFromPost keys: ' . implode( ', ', array_keys( $entry ) ) );
         }
         return $entry;
     }

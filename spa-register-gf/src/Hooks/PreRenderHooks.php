@@ -43,13 +43,6 @@ class PreRenderHooks {
     // ────────────────────────────────────────────────────────────────────────
 
     public function handle( array $form ): array {
-        if (defined('SPA_DEBUG') && SPA_DEBUG) {
-        error_log( 'SPA PRERENDER START' );
-        }
-        if (defined('SPA_DEBUG') && SPA_DEBUG) {
-        error_log( 'SPA SESSION: ' . print_r( $_SESSION['spa_registration'] ?? null, true ) );
-        }
-
         if ( ! GFFormFinder::guard( $form ) ) {
             return $form;
         }
@@ -155,7 +148,9 @@ class PreRenderHooks {
             $summaryHtml    = $summaryResult['html'];
             $finalAmount    = $summaryResult['finalAmount'];
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( 'SPA CALCULATED AMOUNT: ' . $finalAmount );
+            if (defined('SPA_DEBUG') && SPA_DEBUG === true) {
+                spa_debug_log( 'SPA CALCULATED AMOUNT: ' . $finalAmount );
+            }
             }
 
             // Resolve first payment product field via FieldMapService.
@@ -170,22 +165,22 @@ class PreRenderHooks {
             $productAmount       = (float) $finalAmount;
 
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prerender_product_field_id: ' . $firstPaymentFieldId );
+            spa_debug_log( '[spa-register-gf] prerender_product_field_id: ' . $firstPaymentFieldId );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prerender_total_field_id: ' . $totalFieldId );
+            spa_debug_log( '[spa-register-gf] prerender_total_field_id: ' . $totalFieldId );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prerender_session_amount: ' . $sessionAmount );
+            spa_debug_log( '[spa-register-gf] prerender_session_amount: ' . $sessionAmount );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prerender_external_surcharge_raw: ' . (string) $sessionSurchargeRaw );
+            spa_debug_log( '[spa-register-gf] prerender_external_surcharge_raw: ' . (string) $sessionSurchargeRaw );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prerender_final_amount: ' . $finalAmount );
+            spa_debug_log( '[spa-register-gf] prerender_final_amount: ' . $finalAmount );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prerender_product_amount: ' . $productAmount );
+            spa_debug_log( '[spa-register-gf] prerender_product_amount: ' . $productAmount );
             }
 
             foreach ( $form['fields'] as &$field ) {
@@ -199,7 +194,7 @@ class PreRenderHooks {
                     $beforeInputType = $field->inputType ?? null;
 
                     if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                    error_log(
+                    spa_debug_log(
                         '[spa-register-gf] prerender_product_field_before: '
                         . 'id=' . $firstPaymentFieldId
                         . ' type=' . ( $beforeType ?? 'null' )
@@ -217,7 +212,7 @@ class PreRenderHooks {
                     $field->enableCalculation = false;
 
                     if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                    error_log(
+                    spa_debug_log(
                         '[spa-register-gf] prerender_product_field_after: '
                         . 'id=' . $firstPaymentFieldId
                         . ' type=' . ( $field->type ?? 'null' )
@@ -226,7 +221,7 @@ class PreRenderHooks {
                     }
 
                     if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                    error_log(
+                    spa_debug_log(
                         '[spa-register-gf] final_amount_to_gf_product: '
                         . $productAmount
                     );
@@ -241,7 +236,7 @@ class PreRenderHooks {
                 ) {
                     $field->defaultValue = $productAmount;
                     if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                    error_log( '[spa-register-gf] prerender_total_field_amount_set: ' . $productAmount );
+                    spa_debug_log( '[spa-register-gf] prerender_total_field_amount_set: ' . $productAmount );
                     }
                 }
 
@@ -349,22 +344,22 @@ class PreRenderHooks {
             $productAmount       = (float) $finalAmount;
 
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prevalidation_product_field_id: ' . $targetId );
+            spa_debug_log( '[spa-register-gf] prevalidation_product_field_id: ' . $targetId );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prevalidation_total_field_id: ' . $totalId );
+            spa_debug_log( '[spa-register-gf] prevalidation_total_field_id: ' . $totalId );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prevalidation_session_amount: ' . $sessionAmount );
+            spa_debug_log( '[spa-register-gf] prevalidation_session_amount: ' . $sessionAmount );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prevalidation_external_surcharge_raw: ' . (string) $sessionSurchargeRaw );
+            spa_debug_log( '[spa-register-gf] prevalidation_external_surcharge_raw: ' . (string) $sessionSurchargeRaw );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prevalidation_final_amount: ' . $finalAmount );
+            spa_debug_log( '[spa-register-gf] prevalidation_final_amount: ' . $finalAmount );
             }
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] prevalidation_product_amount: ' . $productAmount );
+            spa_debug_log( '[spa-register-gf] prevalidation_product_amount: ' . $productAmount );
             }
 
             if ( $targetId > 0 && ! empty( $form['fields'] ) && is_array( $form['fields'] ) ) {
@@ -380,7 +375,7 @@ class PreRenderHooks {
                         $beforeInputType = $field->inputType ?? null;
 
                         if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                        error_log(
+                        spa_debug_log(
                             '[spa-register-gf] prevalidation_product_field_before: '
                             . 'id=' . $targetId
                             . ' type=' . ( $beforeType ?? 'null' )
@@ -398,7 +393,7 @@ class PreRenderHooks {
                         $field->enableCalculation = false;
 
                         if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                        error_log(
+                        spa_debug_log(
                             '[spa-register-gf] prevalidation_product_field_after: '
                             . 'id=' . $targetId
                             . ' type=' . ( $field->type ?? 'null' )
@@ -407,7 +402,7 @@ class PreRenderHooks {
                         }
 
                         if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                        error_log(
+                        spa_debug_log(
                             '[spa-register-gf] final_amount_to_gf_product: '
                             . $productAmount
                         );
@@ -423,7 +418,7 @@ class PreRenderHooks {
                     ) {
                         $field->defaultValue = $finalAmount;
                         if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                        error_log( '[spa-register-gf] prevalidation_total_field_amount_set: ' . $finalAmount );
+                        spa_debug_log( '[spa-register-gf] prevalidation_total_field_amount_set: ' . $finalAmount );
                         }
                     }
                 }
@@ -470,7 +465,7 @@ class PreRenderHooks {
             }
 
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] final_amount_to_gf_order_summary: ' . $finalAmount );
+            spa_debug_log( '[spa-register-gf] final_amount_to_gf_order_summary: ' . $finalAmount );
             }
         }
 
@@ -508,7 +503,7 @@ class PreRenderHooks {
         $this->registerPrefillFilterByLogicalKey( 'spa_client_address_country', $country );
 
         if (defined('SPA_DEBUG') && SPA_DEBUG) {
-        error_log(
+        spa_debug_log(
             '[spa-register-gf] parent_address_prefill: '
             . wp_json_encode( [
                 'parent_user_id' => (int) $parentUser->ID,
@@ -718,7 +713,7 @@ class PreRenderHooks {
             }
 
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] company_required_debug: ' . wp_json_encode( $debug ) );
+            spa_debug_log( '[spa-register-gf] company_required_debug: ' . wp_json_encode( $debug ) );
             }
         }
 
@@ -754,7 +749,7 @@ class PreRenderHooks {
             if ( $debugCompany ) {
                 $fieldId = isset( $field->id ) ? (string) $field->id : '';
                 if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                error_log(
+                spa_debug_log(
                     '[spa-register-gf] company_field_required_toggle: '
                     . 'field_id=' . $fieldId
                     . ' cssClass=' . $css

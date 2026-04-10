@@ -13,9 +13,11 @@ class Plugin {
      * Boot pluginu – bezpečne len raz.
      */
     public static function boot(): void {
-        if ( self::$booted ) {
+        error_log( 'SPA_BOOTSTRAP_GF' );
+        if ( self::$booted || defined( 'SPA_REG_GF_BOOTSTRAPPED' ) ) {
             return;
         }
+        define( 'SPA_REG_GF_BOOTSTRAPPED', true );
 
         // Autoload musí byť prvý, aby sa dali loadnúť triedy v wireHooks()
         self::registerAutoload();
@@ -29,12 +31,7 @@ class Plugin {
 
         self::$booted = true;
 
-        // DEBUG len v debug režime
-        if ( defined('WP_DEBUG') && WP_DEBUG ) {
-            if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( 'SPA-REGISTER-GF: Plugin booted successfully' );
-            }
-        }
+        \SpaRegisterGf\Infrastructure\Logger::info( 'plugin_booted', [] );
     }
 
     /**
@@ -120,30 +117,7 @@ class Plugin {
 
         // Špeciálny prípad: AJAX akcia spa_create_session má vlastné session/cookie nastavenia (téma spa_system)
         if ( $doing_ajax && $action === 'spa_create_session' ) {
-            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                error_log(
-                    'SPA-REGISTER-GF: ensureSession skipped for spa_create_session'
-                    . ' | uri=' . $uri
-                    . ' | action=' . $action
-                );
-                }
-            }
             return;
-        }
-
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log(
-                'SPA-REGISTER-GF: ensureSession hit'
-                . ' | uri=' . $uri
-                . ' | ajax=' . ( $doing_ajax ? '1' : '0' )
-                . ' | admin=' . ( $is_admin ? '1' : '0' )
-                . ' | spa_ajax=' . ( $is_spa_ajax ? '1' : '0' )
-                . ' | status=' . session_status()
-                . ' | action=' . $action
-            );
-            }
         }
 
         if ( session_status() !== PHP_SESSION_NONE ) {
@@ -151,7 +125,7 @@ class Plugin {
         }
 
         if ( headers_sent( $file, $line ) ) {
-            Logger::warning( 'session_headers_already_sent', [
+            \SpaRegisterGf\Infrastructure\Logger::warning( 'session_headers_already_sent', [
                 'file' => $file,
                 'line' => $line,
             ] );
@@ -160,16 +134,6 @@ class Plugin {
 
         session_start();
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log(
-                'SPA-REGISTER-GF: Session started'
-                . ' | action=' . $action
-                . ' | uri=' . $uri
-                . ' | session_id=' . session_id()
-            );
-            }
-        }
     }
 
     private static function wireHooks(): void {
@@ -218,11 +182,7 @@ class Plugin {
          */
         add_action( 'user_register', [ self::class, 'assignChildPinOnRegister' ], 20, 1 );
 
-        if ( defined('WP_DEBUG') && WP_DEBUG ) {
-            if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( 'SPA-REGISTER-GF: Hooks wired successfully' );
-            }
-        }
+        \SpaRegisterGf\Infrastructure\Logger::info( 'hooks_wired', [] );
     }
 
     /**
@@ -300,7 +260,7 @@ class Plugin {
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] PIN assigned user=' . $user_id . ' pin=' . $pin_plain );
+            spa_debug_log( '[spa-register-gf] PIN assigned user=' . $user_id . ' pin=' . $pin_plain );
             }
         }
     }

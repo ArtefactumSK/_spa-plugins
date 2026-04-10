@@ -72,7 +72,7 @@ class GFEntryReader {
         if ( $formId <= 0 ) {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
                 if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                error_log( '[spa-register-gf] GFEntryReader: Cannot get form_id from entry for product field ' . $numericId );
+                spa_debug_log( '[spa-register-gf] GFEntryReader: Cannot get form_id from entry for product field ' . $numericId );
                 }
             }
             return $this->fallbackToTotal();
@@ -82,7 +82,7 @@ class GFEntryReader {
         if ( ! $form || is_wp_error( $form ) ) {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
                 if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                error_log( '[spa-register-gf] GFEntryReader: Cannot get form ' . $formId . ' for product field ' . $numericId );
+                spa_debug_log( '[spa-register-gf] GFEntryReader: Cannot get form ' . $formId . ' for product field ' . $numericId );
                 }
             }
             return $this->fallbackToTotal();
@@ -93,7 +93,7 @@ class GFEntryReader {
         if ( empty( $products ) || ! is_array( $products ) ) {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
                 if (defined('SPA_DEBUG') && SPA_DEBUG) {
-                error_log( '[spa-register-gf] GFEntryReader: No products found for field ' . $numericId );
+                spa_debug_log( '[spa-register-gf] GFEntryReader: No products found for field ' . $numericId );
                 }
             }
             return $this->fallbackToTotal();
@@ -113,7 +113,7 @@ class GFEntryReader {
         // Fallback na total pole
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] GFEntryReader: Product field ' . $numericId . ' not found in products, falling back to total' );
+            spa_debug_log( '[spa-register-gf] GFEntryReader: Product field ' . $numericId . ' not found in products, falling back to total' );
             }
         }
         return $this->fallbackToTotal();
@@ -240,7 +240,7 @@ class GFEntryReader {
             foreach ( $auditKeys as $key ) {
                 $resolved[ $key ] = FieldMapService::tryResolve( $key ) !== null;
             }
-            error_log( '[spa-phase-b-audit] payload_build: ' . wp_json_encode( [
+            spa_debug_log( '[spa-phase-b-audit] payload_build: ' . wp_json_encode( [
                 'entry_id' => $p->gfEntryId,
                 'resolved_keys' => $resolved,
                 'filled' => [

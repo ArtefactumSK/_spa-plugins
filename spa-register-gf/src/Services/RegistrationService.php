@@ -33,7 +33,7 @@ class RegistrationService {
         $finalAmount     = (float) $priceCalc['finalAmount'];
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log(
+            spa_debug_log(
                 '[spa-register-gf] registration_amount_debug: '
                 . 'base_amount=' . $baseAmount
                 . ' | external_surcharge_raw=' . (string) $surchargeRaw
@@ -74,6 +74,19 @@ class RegistrationService {
 
         // Názov programu pre post_title
         $program  = get_post( $programId );
+        if ( function_exists( 'spa_maybe_update_program_status_by_date' ) ) {
+            spa_maybe_update_program_status_by_date( $programId );
+        }
+        $isProgramAvailable = function_exists( 'spa_is_group_available_for_registration' )
+            ? (bool) spa_is_group_available_for_registration( $programId )
+            : ( $program && $program->post_type === 'spa_group' && $program->post_status === 'publish' );
+        if ( ! $isProgramAvailable ) {
+            Logger::warning( 'registration_program_inactive_or_unavailable', [
+                'program_id' => $programId,
+            ] );
+            throw new \RuntimeException( 'Vybraný program nie je dostupný pre registráciu.' );
+        }
+
         $client   = get_userdata( $clientUserId );
         $title    = ( $client ? trim( $client->first_name . ' ' . $client->last_name ) : 'Neznámy' )
                     . ' – '
@@ -120,13 +133,7 @@ class RegistrationService {
                 'gf_entry_id' => $gfEntryId,
                 'message' => $e->getMessage(),
             ] );
-            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log( 'SPA-REGISTER-GF: DB INSERT exception ' . $e->getMessage() );
-            }
             $dbRegistrationId = 0;
-        }
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( 'DB INSERT RESULT: ' . print_r( $dbRegistrationId, true ) );
         }
 
         // Reuse témy ak existuje
@@ -157,9 +164,11 @@ class RegistrationService {
             'gf_entry_id' => $gfEntryId,
         ] );
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( 'SPA-REGISTER-GF: CPT CREATE success id=' . (int) $registrationId );
-            error_log( '[spa-register-gf] registration_saved_amount: ' . $finalAmount );
-            error_log( '[spa-register-gf] final_amount_saved_registration: ' . $finalAmount );
+            if (defined('SPA_DEBUG') && SPA_DEBUG === true) {
+                spa_debug_log( 'SPA-REGISTER-GF: CPT CREATE success id=' . (int) $registrationId );
+            }
+            spa_debug_log( '[spa-register-gf] registration_saved_amount: ' . $finalAmount );
+            spa_debug_log( '[spa-register-gf] final_amount_saved_registration: ' . $finalAmount );
         }
 
         // 2) CPT mirror
@@ -236,7 +245,7 @@ class RegistrationService {
         update_user_meta( $targetUserId, 'billing_invoice_address_different', $payload->invoiceAddressDifferent ? 1 : 0 );
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log(
+            spa_debug_log(
                 '[SPA-INVOICE-SYNC] user_id=' . $targetUserId
                 . ' company_name=' . $companyName
                 . ' saved=1'
@@ -282,7 +291,7 @@ class RegistrationService {
         update_post_meta( $id, 'company_address_country', (string) ( $payload->companyAddressCountry ?? '' ) );
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'SPA_DEBUG' ) && SPA_DEBUG ) {
-            error_log( '[spa-phase-b-audit] cpt_meta_write: ' . wp_json_encode( [
+            spa_debug_log( '[spa-phase-b-audit] cpt_meta_write: ' . wp_json_encode( [
                 'registration_id' => $id,
                 'meta_keys' => [
                     'payment_method',
@@ -359,7 +368,7 @@ class RegistrationService {
         if ( $dbRegistrationId > 0 ) {
             update_post_meta( $registrationId, 'db_registration_id', $dbRegistrationId );
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log(
+                spa_debug_log(
                     'SPA-REGISTER-GF: DB↔CPT sync ok registration_id=' . $registrationId
                     . ' db_registration_id=' . $dbRegistrationId
                 );
@@ -466,7 +475,7 @@ class RegistrationService {
                 'last_error' => (string) $wpdb->last_error,
             ] );
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log(
+                spa_debug_log(
                     'SPA-REGISTER-GF: DB INSERT fail table=' . $table
                     . ' error=' . (string) $wpdb->last_error
                 );
@@ -480,10 +489,12 @@ class RegistrationService {
             'table' => $table,
         ] );
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( 'SPA-REGISTER-GF: DB INSERT success id=' . $dbRegistrationId );
+            if (defined('SPA_DEBUG') && SPA_DEBUG === true) {
+                spa_debug_log( 'SPA-REGISTER-GF: DB INSERT success id=' . $dbRegistrationId );
+            }
         }
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'SPA_DEBUG' ) && SPA_DEBUG ) {
-            error_log( '[spa-phase-b-audit] db_write: ' . wp_json_encode( [
+            spa_debug_log( '[spa-phase-b-audit] db_write: ' . wp_json_encode( [
                 'db_registration_id' => $dbRegistrationId,
                 'db_columns' => [
                     'payment_method',

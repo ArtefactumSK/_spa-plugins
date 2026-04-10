@@ -10,6 +10,22 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+if ( ! function_exists( 'spa_debug_log' ) ) {
+    /**
+     * Centralized SPA debug logger fallback for plugin context.
+     *
+     * @param mixed $message
+     */
+    function spa_debug_log( $message ): void {
+        $text = is_scalar( $message ) ? (string) $message : wp_json_encode( $message );
+        $is_spa_log = is_string( $text ) && stripos( $text, 'spa' ) !== false;
+        if ( $is_spa_log && !( defined( 'SPA_DEBUG' ) && SPA_DEBUG === true ) ) {
+            return;
+        }
+        error_log( $text );
+    }
+}
+
 // Guard proti dvojitému načítaniu
 if ( defined( 'SPA_REG_GF_VERSION' ) ) {
     return;
@@ -93,14 +109,6 @@ function spa_reg_gf_install_or_upgrade(): bool {
                 'extra_columns' => $extra_columns,
                 'missing_columns' => $missing_columns,
             ] );
-            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log(
-                    'SPA-REGISTER-GF installer: DROP TABLE ' . $table_name
-                    . ' | extra=' . wp_json_encode( $extra_columns )
-                    . ' | missing=' . wp_json_encode( $missing_columns )
-                );
-            }
-
             $drop_sql = "DROP TABLE IF EXISTS {$table_name}";
             $drop_ok = $wpdb->query( $drop_sql );
             if ( $drop_ok === false ) {
@@ -108,9 +116,6 @@ function spa_reg_gf_install_or_upgrade(): bool {
                     'table' => $table_name,
                     'last_error' => (string) $wpdb->last_error,
                 ] );
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( 'SPA-REGISTER-GF installer ERROR: DROP TABLE failed for ' . $table_name );
-                }
                 return false;
             }
         }
@@ -165,9 +170,6 @@ function spa_reg_gf_install_or_upgrade(): bool {
             'db_version' => SPA_REG_GF_DB_VERSION,
             'dbdelta_result' => is_array( $result ) ? $result : [],
         ] );
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( 'SPA-REGISTER-GF installer: table ready ' . $table_name );
-        }
         return true;
     }
 
@@ -177,10 +179,6 @@ function spa_reg_gf_install_or_upgrade(): bool {
         'last_error' => (string) $wpdb->last_error,
         'dbdelta_result' => is_array( $result ) ? $result : [],
     ] );
-    if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-        error_log( 'SPA-REGISTER-GF installer ERROR: table missing after dbDelta for ' . $table_name );
-    }
-
     return false;
 }
 

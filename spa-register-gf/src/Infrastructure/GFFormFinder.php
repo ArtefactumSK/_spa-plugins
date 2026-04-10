@@ -28,7 +28,9 @@ class GFFormFinder {
         $result = self::isSpaForm( $form );
         if ( defined('WP_DEBUG') && WP_DEBUG ) {
             if (defined('SPA_DEBUG') && SPA_DEBUG) {
-            error_log( '[spa-register-gf] GFFormFinder::guard | cssClass="' . ( $form['cssClass'] ?? '' ) . '" | const="' . ( defined('SPA_REG_GF_CSS_CLASS') ? SPA_REG_GF_CSS_CLASS : 'NOT_DEFINED' ) . '" | result=' . ( $result ? 'true' : 'false' ) );
+            if (defined('SPA_DEBUG') && SPA_DEBUG === true) {
+                spa_debug_log( '[spa-register-gf] GFFormFinder::guard | cssClass="' . ( $form['cssClass'] ?? '' ) . '" | const="' . ( defined('SPA_REG_GF_CSS_CLASS') ? SPA_REG_GF_CSS_CLASS : 'NOT_DEFINED' ) . '" | result=' . ( $result ? 'true' : 'false' ) );
+            }
             }
         }
         return $result;

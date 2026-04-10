@@ -109,8 +109,12 @@ class AmountVerificationService {
         // Session suma je source of truth; GF entry suma sa uz nepouziva
         // ako blokujuca validacia.
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( 'SPA VERIFY: session amount = ' . $amount );
-            error_log( 'SPA VERIFY: entry amount = ' . $postedAmount );
+            if (defined('SPA_DEBUG') && SPA_DEBUG === true) {
+                spa_debug_log( 'SPA VERIFY: session amount = ' . $amount );
+            }
+            if (defined('SPA_DEBUG') && SPA_DEBUG === true) {
+                spa_debug_log( 'SPA VERIFY: entry amount = ' . $postedAmount );
+            }
         }
         if ( $debug ) {
             Logger::info( 'amount_verify_session_authoritative', [
