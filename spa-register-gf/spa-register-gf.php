@@ -39,7 +39,7 @@ define( 'SPA_REG_GF_SESSION_KEY',  'spa_registration' );
 define( 'SPA_REG_GF_SESSION_TTL',  1800 );
 define( 'SPA_REG_GF_CSS_CLASS',    'spa-register-gf' );
 define( 'SPA_REG_GF_SELECTOR_URL', '/spa-selector' );
-define( 'SPA_REG_GF_DB_VERSION',   '1.2.0' );
+define( 'SPA_REG_GF_DB_VERSION',   '1.3.0' );
 
 require_once SPA_REG_GF_DIR . 'src/Bootstrap/Plugin.php';
 
@@ -155,7 +155,7 @@ function spa_reg_gf_install_or_upgrade(): bool {
         KEY parent_user_id (parent_user_id),
         KEY program_id (program_id),
         KEY status (status),
-        KEY spa_vs (spa_vs)
+        UNIQUE KEY unique_spa_vs (spa_vs)
     ) {$charset_collate};";
 
     $result = dbDelta( $sql );
@@ -182,10 +182,92 @@ function spa_reg_gf_install_or_upgrade(): bool {
     return false;
 }
 
+/**
+ * Adds UNIQUE(spa_vs) on wp_spa_registrations when safe.
+ * If duplicate spa_vs values exist, logs them and does not ALTER (manual cleanup required).
+ */
+function spa_reg_gf_maybe_add_unique_spa_vs(): void {
+    global $wpdb;
+
+    if ( ! isset( $wpdb ) || ! ( $wpdb instanceof wpdb ) ) {
+        return;
+    }
+
+    $table = $wpdb->prefix . 'spa_registrations';
+    if ( (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+        return;
+    }
+
+    if ( get_option( 'spa_reg_gf_vs_unique_applied' ) === 'yes' ) {
+        return;
+    }
+
+    $has_unique = $wpdb->get_results(
+        $wpdb->prepare( "SHOW INDEX FROM `{$table}` WHERE Key_name = %s", 'unique_spa_vs' ),
+        ARRAY_A
+    );
+    if ( ! empty( $has_unique ) ) {
+        update_option( 'spa_reg_gf_vs_unique_applied', 'yes', true );
+        return;
+    }
+
+    $dup_groups = $wpdb->get_results(
+        "SELECT spa_vs, COUNT(*) AS cnt FROM `{$table}` GROUP BY spa_vs HAVING cnt > 1",
+        ARRAY_A
+    );
+    if ( ! empty( $dup_groups ) ) {
+        if ( ! get_transient( 'spa_reg_gf_vs_dup_logged' ) ) {
+            foreach ( $dup_groups as $row ) {
+                $vs_val = isset( $row['spa_vs'] ) ? (string) $row['spa_vs'] : '';
+                $cnt     = isset( $row['cnt'] ) ? (int) $row['cnt'] : 0;
+                $line    = '[SPA VS UNIQUE MIGRATION] duplicate spa_vs — vs=' . $vs_val . ' count=' . $cnt;
+                error_log( $line );
+                if ( class_exists( '\SpaRegisterGf\Infrastructure\Logger', false ) ) {
+                    \SpaRegisterGf\Infrastructure\Logger::error(
+                        'spa_registrations_duplicate_spa_vs',
+                        [
+                            'spa_vs' => $vs_val,
+                            'count'  => $cnt,
+                        ]
+                    );
+                }
+            }
+            set_transient( 'spa_reg_gf_vs_dup_logged', 1, DAY_IN_SECONDS );
+        }
+        return;
+    }
+
+    $key_spa_vs = $wpdb->get_results(
+        "SHOW INDEX FROM `{$table}` WHERE Key_name = 'spa_vs'",
+        ARRAY_A
+    );
+    if ( ! empty( $key_spa_vs ) ) {
+        $wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `spa_vs`" );
+    }
+
+    $altered = $wpdb->query( "ALTER TABLE `{$table}` ADD UNIQUE KEY `unique_spa_vs` (`spa_vs`)" );
+    if ( $altered === false ) {
+        error_log( '[SPA VS UNIQUE MIGRATION] ALTER failed: ' . (string) $wpdb->last_error );
+        if ( class_exists( '\SpaRegisterGf\Infrastructure\Logger', false ) ) {
+            \SpaRegisterGf\Infrastructure\Logger::error(
+                'spa_registrations_unique_spa_vs_failed',
+                [
+                    'last_error' => (string) $wpdb->last_error,
+                ]
+            );
+        }
+        return;
+    }
+
+    update_option( 'spa_reg_gf_vs_unique_applied', 'yes', true );
+    error_log( '[SPA VS UNIQUE MIGRATION] UNIQUE KEY unique_spa_vs applied on ' . $table );
+}
+
 register_activation_hook( __FILE__, function () {
     delete_transient( 'spa_reg_gf_form_id' );
     $ok = spa_reg_gf_install_or_upgrade();
     if ( $ok ) {
+        spa_reg_gf_maybe_add_unique_spa_vs();
         update_option( 'spa_reg_gf_version', SPA_REG_GF_DB_VERSION );
     }
 } );
@@ -199,8 +281,11 @@ add_action( 'plugins_loaded', function () {
     if ( $installed_version === '' || version_compare( $installed_version, SPA_REG_GF_DB_VERSION, '<' ) ) {
         $ok = spa_reg_gf_install_or_upgrade();
         if ( $ok ) {
+            spa_reg_gf_maybe_add_unique_spa_vs();
             update_option( 'spa_reg_gf_version', SPA_REG_GF_DB_VERSION );
         }
+    } else {
+        spa_reg_gf_maybe_add_unique_spa_vs();
     }
     SpaRegisterGf\Bootstrap\Plugin::boot();
 }, 20 );

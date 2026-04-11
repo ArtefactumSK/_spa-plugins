@@ -563,20 +563,34 @@ class RegistrationService {
 
     /**
      * Fallback generátor variabilného symbolu (3-miestny unikátny kód).
+     * Unikátnosť voči wp_spa_registrations (spa_is_vs_unique), nie voči CPT meta.
      * Ak téma poskytuje spa_generate_vs(), tento sa nepoužije.
      */
     private function generateVs(): string {
         do {
             $vs = str_pad( (string) wp_rand( 100, 999 ), 3, '0', STR_PAD_LEFT );
-            $existing = get_posts( [
-                'post_type'   => 'spa_registration',
-                'meta_key'    => 'spa_vs',
-                'meta_value'  => $vs,
-                'numberposts' => 1,
-                'fields'      => 'ids',
-            ] );
-        } while ( ! empty( $existing ) );
+            if ( \function_exists( '\spa_is_vs_unique' ) ) {
+                $ok = \spa_is_vs_unique( $vs );
+            } else {
+                $ok = $this->generateVsLegacyCptCheck( $vs );
+            }
+        } while ( ! $ok );
 
         return $vs;
+    }
+
+    /**
+     * @deprecated Používa sa len ak téma ešte nemá spa_is_vs_unique().
+     */
+    private function generateVsLegacyCptCheck( string $vs ): bool {
+        $existing = get_posts( [
+            'post_type'   => 'spa_registration',
+            'meta_key'    => 'spa_vs',
+            'meta_value'  => $vs,
+            'numberposts' => 1,
+            'fields'      => 'ids',
+        ] );
+
+        return empty( $existing );
     }
 }
