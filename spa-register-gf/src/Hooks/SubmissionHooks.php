@@ -25,7 +25,10 @@ class SubmissionHooks {
 
         if ( ! $session ) {
             Logger::error( 'submission_session_missing', [ 'entry_id' => $entry['id'] ?? 0 ] );
-            $this->redirectToSelector();
+            $entryId = (int) ( $entry['id'] ?? 0 );
+            if ( $entryId > 0 && function_exists( 'gform_update_meta' ) ) {
+                gform_update_meta( $entryId, 'is_demo', true );
+            }
             return;
         }
 

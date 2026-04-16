@@ -30,8 +30,6 @@ class ValidationHooks {
         $session = SessionService::tryCreate();
 
         if ( ! $session ) {
-            // Session chýba → nastav GF field chybu na prvé viditeľné pole
-            add_filter( 'gform_validation', [ $this, 'forceSessionError' ] );
             Logger::warning( 'validation_session_missing' );
             return $form;
         }
@@ -95,11 +93,8 @@ class ValidationHooks {
         $session = SessionService::tryCreate();
 
         if ( ! $session ) {
-            Logger::warning( 'validation_block_session_null' );
-            return $this->blockWithMessage(
-                $validationResult,
-                'Platnosť výberu vypršala. Vráťte sa na výber programu a začnite odznova.'
-            );
+            Logger::warning( 'validation_skip_session_null' );
+            return $validationResult;
         }
 
         if ( $session->isExpired() ) {

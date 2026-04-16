@@ -251,7 +251,7 @@ class PreRenderHooks {
             }
         }
 
-            // Fallback ak session úplne chýba – skry všetky polia, zobraz chybovú správu
+            // Fallback ak session úplne chýba – nechaj formulár renderovať bez blokovania
         if ( ! $session ) {
             foreach ( $form['fields'] as &$field ) {
                 if (
@@ -262,26 +262,6 @@ class PreRenderHooks {
                     break;
                 }
             }
-
-            wp_add_inline_script(
-                'spa-register-gf-js',
-                '(function(){
-                    function spaMaskForm(){
-                        var form = document.querySelector("form.spa-register-gf");
-                        if(!form) return;
-                        var fields = form.querySelectorAll(".gfield:not(.gfield--type-html)");
-                        fields.forEach(function(f){ f.style.display="none"; });
-                        var buttons = form.querySelectorAll(".gform_footer, .gform_page_footer");
-                        buttons.forEach(function(b){ b.style.display="none"; });
-                    }
-                    if(document.readyState === "loading"){
-                        document.addEventListener("DOMContentLoaded", spaMaskForm);
-                    } else {
-                        spaMaskForm();
-                    }
-                })();',
-                'after'
-            );
         }
 
         if ( $cityFieldId && isset( $_GET['city'] ) ) {
