@@ -39,7 +39,7 @@ define( 'SPA_REG_GF_SESSION_KEY',  'spa_registration' );
 define( 'SPA_REG_GF_SESSION_TTL',  1800 );
 define( 'SPA_REG_GF_CSS_CLASS',    'spa-register-gf' );
 define( 'SPA_REG_GF_SELECTOR_URL', '/spa-selector' );
-define( 'SPA_REG_GF_DB_VERSION',   '1.3.0' );
+define( 'SPA_REG_GF_DB_VERSION',   '1.4.0' );
 
 require_once SPA_REG_GF_DIR . 'src/Bootstrap/Plugin.php';
 
@@ -67,6 +67,7 @@ function spa_reg_gf_install_or_upgrade(): bool {
         'parent_user_id',
         'program_id',
         'status',
+        'valid_until',
         'amount',
         'frequency_key',
         'spa_vs',
@@ -134,6 +135,7 @@ function spa_reg_gf_install_or_upgrade(): bool {
         parent_user_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
         program_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
         status VARCHAR(32) NOT NULL DEFAULT 'pending',
+        valid_until DATE NULL DEFAULT NULL,
         amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
         frequency_key VARCHAR(50) NOT NULL DEFAULT '',
         spa_vs VARCHAR(32) NOT NULL DEFAULT '',
