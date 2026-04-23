@@ -52,6 +52,7 @@ class RegistrationPayload {
      * - online_payment (Stripe Checkout)
      */
     public ?string $paymentMethod         = null;
+    public ?string $spaVs                 = null;
 
     // Fakturácia (invoice/company)
     public bool    $invoiceToCompany      = false;

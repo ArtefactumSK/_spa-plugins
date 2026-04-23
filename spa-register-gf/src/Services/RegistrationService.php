@@ -24,6 +24,7 @@ class RegistrationService {
         $clientUserId = $userIds['client_user_id'] ?? 0;
         $parentUserId = isset( $userIds['parent_user_id'] ) ? (int) $userIds['parent_user_id'] : 0;
         $gfEntryId    = (int) $payload->gfEntryId;
+        $requestedVs  = isset( $payload->spaVs ) ? trim( (string) $payload->spaVs ) : '';
         $baseAmount   = (float) $session->getAmount();
         $surchargeRaw = $session->getExternalSurcharge();
 
@@ -52,12 +53,14 @@ class RegistrationService {
         // Základná idempotencia: ak už existuje CPT pre daný GF entry, nepokračujeme.
         $existingRegistrationId = $this->findExistingRegistrationByEntryId( $gfEntryId );
         if ( $existingRegistrationId > 0 ) {
-            $existingVs = (string) get_post_meta( $existingRegistrationId, 'spa_vs', true );
+            $existingVs = function_exists( 'spa_get_registration_vs' )
+                ? (string) spa_get_registration_vs( (int) $existingRegistrationId )
+                : (string) get_post_meta( $existingRegistrationId, 'spa_vs', true );
             $existingDbRegistrationId = (int) get_post_meta( $existingRegistrationId, 'db_registration_id', true );
             $resolvedDbRegistrationId = $this->ensureDbCptSync(
                 $existingRegistrationId,
                 $existingDbRegistrationId,
-                $existingVs !== '' ? $existingVs : $vs,
+                $existingVs !== '' ? $existingVs : $requestedVs,
                 $payload,
                 $session,
                 $userIds,
@@ -92,10 +95,10 @@ class RegistrationService {
                     . ' – '
                     . ( $program ? $program->post_title : 'Program #' . $programId );
 
-        // Generovanie VS – reuse témy ak existuje.
-        $vs = function_exists( 'spa_generate_vs' )
-            ? spa_generate_vs()
-            : $this->generateVs();
+        // PRIORITA VS: CSV/GF payload > generateVs fallback.
+        $vs = $requestedVs !== ''
+            ? $requestedVs
+            : ( function_exists( 'spa_generate_vs' ) ? spa_generate_vs() : $this->generateVs() );
 
         // 1) DB INSERT (doplnkovy krok) – nikdy nesmie blokovat CPT flow.
         $dbRegistrationId = 0;
@@ -147,7 +150,7 @@ class RegistrationService {
         } else {
             $registrationId = wp_insert_post( [
                 'post_type'   => 'spa_registration',
-                'post_status' => 'pending',
+                'post_status' => 'publish',
                 'post_title'  => sanitize_text_field( $title ),
             ] );
         }
@@ -159,6 +162,11 @@ class RegistrationService {
             throw new \RuntimeException( 'Nepodarilo sa vytvoriť registráciu.' );
         }
 
+        wp_update_post( [
+            'ID' => (int) $registrationId,
+            'post_status' => 'publish',
+        ] );
+
         Logger::info( 'registration_cpt_create_success', [
             'registration_id' => (int) $registrationId,
             'gf_entry_id' => $gfEntryId,
@@ -167,6 +175,8 @@ class RegistrationService {
             if (defined('SPA_DEBUG') && SPA_DEBUG === true) {
                 spa_debug_log( 'SPA-REGISTER-GF: CPT CREATE success id=' . (int) $registrationId );
             }
+            spa_debug_log( '[spa-register-gf] import_debug_vs: csv_vs=' . $requestedVs . ' resolved_vs=' . $vs );
+            spa_debug_log( '[spa-register-gf] import_debug_post_status: publish' );
             spa_debug_log( '[spa-register-gf] registration_saved_amount: ' . $finalAmount );
             spa_debug_log( '[spa-register-gf] final_amount_saved_registration: ' . $finalAmount );
         }
@@ -583,14 +593,17 @@ class RegistrationService {
      * @deprecated Používa sa len ak téma ešte nemá spa_is_vs_unique().
      */
     private function generateVsLegacyCptCheck( string $vs ): bool {
-        $existing = get_posts( [
-            'post_type'   => 'spa_registration',
-            'meta_key'    => 'spa_vs',
-            'meta_value'  => $vs,
-            'numberposts' => 1,
-            'fields'      => 'ids',
-        ] );
+        global $wpdb;
+        $table = $wpdb->prefix . 'spa_registrations';
+        $exists = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+        if ( $exists !== $table ) {
+            return false;
+        }
 
-        return empty( $existing );
+        $count = (int) $wpdb->get_var(
+            $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE spa_vs = %s", $vs )
+        );
+
+        return $count === 0;
     }
 }
