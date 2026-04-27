@@ -59,9 +59,23 @@ function spa_csv_import_page(): void
         <form method="post" enctype="multipart/form-data">
             <?php wp_nonce_field('spa_import', 'spa_import_nonce'); ?>
             <table class="form-table">
-                <tr>
+            <tr>
                     <th><label for="import_file">CSV subor</label></th>
-                    <td><input type="file" required name="import_file" id="import_file" accept=".csv"></td>
+                    <td>
+                    <div id="spa-dropzone" class="spa-dropzone">
+                            <p class="spa-dropzone-label">Pretiahni CSV súbor sem alebo <span class="spa-dropzone-link">klikni na výber</span></p>
+                            <p id="spa-dropzone-filename" class="spa-dropzone-filename" style="display:none;"></p>
+                            <input type="file" name="import_file" id="import_file" accept=".csv" style="display:none;">
+                        </div>
+                        <p class="description" style="margin-top:6px;">Alebo vlož CSV obsah priamo nižšie:</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="spa_import_csv_text">CSV text (alternatíva)</label></th>
+                    <td>
+                        <textarea name="spa_import_csv_text" id="spa_import_csv_text" rows="10" style="width:100%;font-family:monospace;" placeholder="Vlož CSV obsah sem (alternatíva k uploadu)"></textarea>
+                        <p class="description">Ak vložíš CSV obsah sem, súbor sa ignoruje.</p>
+                    </td>
                 </tr>
                 <tr>
                     <th><label for="program_id">Program</label></th>
@@ -112,7 +126,108 @@ function spa_csv_import_page(): void
                 <button type="submit" name="spa_import_submit" class="button button-primary">Spustit import</button>
             </p>
         </form>
-    </div>
+        </div>
+    <style>
+    .spa-dropzone {
+        border: 2px dashed #ccc;
+        border-radius: 4px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        background: #fafafa;
+        transition: border-color 0.2s, background 0.2s;
+        max-width: 500px;
+    }
+    .spa-dropzone.dragover {
+        border-color: #0073aa;
+        background: #f0f8ff;
+    }
+    .spa-dropzone.has-file {
+        border-color: #46b450;
+        background: #f0fff0;
+    }
+    .spa-dropzone-label {
+        margin: 0;
+        color: #555;
+        pointer-events: none;
+    }
+    .spa-dropzone-link {
+        color: #0073aa;
+        text-decoration: underline;
+        pointer-events: none;
+    }
+    .spa-dropzone-filename {
+        margin: 8px 0 0;
+        font-weight: 600;
+        color: #46b450;
+        pointer-events: none;
+    }
+    </style>
+    <script>
+    (function () {
+        var zone  = document.getElementById('spa-dropzone');
+        var input = document.getElementById('import_file');
+        var label = document.getElementById('spa-dropzone-filename');
+
+        if (!zone || !input) return;
+
+        function setFile(file) {
+            if (!file) return;
+            // Priradenie cez DataTransfer — štandardná cesta pre programatické nastavenie input.files
+            var dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+
+            label.textContent = file.name;
+            label.style.display = 'block';
+            zone.classList.remove('dragover');
+            zone.classList.add('has-file');
+
+            // Trigger change pre prípadné ďalšie listenery
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+
+            console.log('[SPA_IMPORT] IMPORT SOURCE: file (drag&drop) ->', file.name);
+        }
+
+        // Klik na dropzone → otvorí file dialog
+        zone.addEventListener('click', function (e) {
+            // Ak klik prišiel priamo z inputu, neprerušujeme
+            if (e.target === input) return;
+            input.click();
+        });
+
+        // Výber cez dialog → aktualizuj label
+        input.addEventListener('change', function () {
+            if (input.files && input.files[0]) {
+                label.textContent = input.files[0].name;
+                label.style.display = 'block';
+                zone.classList.add('has-file');
+                console.log('[SPA_IMPORT] IMPORT SOURCE: file (dialog) ->', input.files[0].name);
+            }
+        });
+
+        zone.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            zone.classList.add('dragover');
+        });
+
+        zone.addEventListener('dragleave', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            zone.classList.remove('dragover');
+        });
+
+        zone.addEventListener('drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var files = e.dataTransfer && e.dataTransfer.files;
+            if (files && files[0]) {
+                setFile(files[0]);
+            }
+        });
+    })();
+    </script>
     <?php
 }
 
@@ -155,8 +270,12 @@ function spa_csv_import_format_program_option_label(int $programId, string $prog
 
 function spa_csv_import_handle_submission(): array
 {
-    if (!isset($_FILES['import_file']) || (int) $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
-        return ['status' => 'error', 'message' => 'Chyba pri upload-e suboru.', 'details' => ''];
+    $csvText = isset($_POST['spa_import_csv_text']) ? trim((string) $_POST['spa_import_csv_text']) : '';
+    $hasTextarea = $csvText !== '';
+    $hasFile = isset($_FILES['import_file']) && (int) $_FILES['import_file']['error'] === UPLOAD_ERR_OK;
+
+    if (!$hasTextarea && !$hasFile) {
+        return ['status' => 'error', 'message' => 'Chyba: vlož CSV obsah do textarea alebo nahraj súbor.', 'details' => ''];
     }
 
     $programId = isset($_POST['program_id']) ? (int) $_POST['program_id'] : 0;
@@ -180,7 +299,13 @@ function spa_csv_import_handle_submission(): array
         return ['status' => 'error', 'message' => 'Vyber program.', 'details' => ''];
     }
 
-    $parsed = spa_csv_import_parse_csv_file((string) $_FILES['import_file']['tmp_name'], $delimiter);
+    if ($hasTextarea) {
+        error_log('[SPA_IMPORT] IMPORT SOURCE: textarea');
+        $parsed = spa_csv_import_parse_csv_string($csvText, $delimiter);
+    } else {
+        error_log('[SPA_IMPORT] IMPORT SOURCE: file');
+        $parsed = spa_csv_import_parse_csv_file((string) $_FILES['import_file']['tmp_name'], $delimiter);
+    }
     if (!$parsed['ok']) {
         return ['status' => 'error', 'message' => $parsed['message'], 'details' => ''];
     }
@@ -279,7 +404,37 @@ function spa_csv_import_handle_submission(): array
         'details' => implode("\n", $logs),
     ];
 }
+function spa_csv_import_parse_csv_string(string $csvContent, string $delimiter): array
+{
+    $csvContent = str_replace("\r\n", "\n", $csvContent);
+    $csvContent = str_replace("\r", "\n", $csvContent);
 
+    $handle = fopen('php://memory', 'r+');
+    if (!$handle) {
+        return ['ok' => false, 'message' => 'Nepodarilo sa spracovať CSV text.', 'rows' => []];
+    }
+    fwrite($handle, $csvContent);
+    rewind($handle);
+
+    $headers = fgetcsv($handle, 0, $delimiter);
+    if (!is_array($headers)) {
+        fclose($handle);
+        return ['ok' => false, 'message' => 'CSV text je prázdny alebo neplatný.', 'rows' => []];
+    }
+
+    $rows = [];
+    while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+        if (empty(array_filter((array) $row, static function ($v): bool {
+            return trim((string) $v) !== '';
+        }))) {
+            continue;
+        }
+        $rows[] = array_values((array) $row);
+    }
+    fclose($handle);
+
+    return ['ok' => true, 'message' => '', 'rows' => $rows];
+}
 function spa_csv_import_parse_csv_file(string $filePath, string $delimiter): array
 {
     $handle = fopen($filePath, 'r');
@@ -448,6 +603,8 @@ function spa_csv_import_import_row(array $dto, array $options): array
     $child = spa_csv_import_resolve_child($dto['child'], $parentIdForResolver);
     $programId = (int) $dto['registration']['program_id'];
     $existingReg = ($child['id'] > 0) ? spa_csv_import_find_registration($child['id'], $programId) : null;
+    $csvVs = isset($dto['registration']['vs']) ? preg_replace('/[^0-9]/', '', (string) $dto['registration']['vs']) : '';
+    $dto['registration']['vs'] = $csvVs;
 
     if ($dryRun) {
         $payloadPreview = spa_csv_import_build_registration_payload($dto, max(0, (int) $parent['id']), max(0, (int) $child['id']));
@@ -492,6 +649,19 @@ function spa_csv_import_import_row(array $dto, array $options): array
 
     $existingReg = spa_csv_import_find_registration($childId, $programId);
     if (is_array($existingReg)) {
+        $existingDbId = (int) ($existingReg['id'] ?? 0);
+        $existingVs = trim((string) ($existingReg['spa_vs'] ?? ''));
+        $targetVs = $csvVs !== '' ? $csvVs : $existingVs;
+        if ($targetVs === '' && function_exists('spa_generate_vs')) {
+            $targetVs = (string) spa_generate_vs();
+        }
+
+        if ($targetVs !== '' && !spa_csv_import_is_vs_unique($targetVs, $existingDbId)) {
+            spa_csv_import_log_vs_conflict('update', $targetVs, $existingDbId);
+            return ['ok' => false, 'action' => 'error', 'error' => 'VS konflikt pri update: ' . $targetVs];
+        }
+        $dto['registration']['vs'] = $targetVs;
+
         if ($skipExisting) {
             return ['ok' => true, 'action' => 'skip', 'message' => 'registracia existuje, preskocena (skip_existing=true, bez zmien)'];
         }
@@ -500,7 +670,7 @@ function spa_csv_import_import_row(array $dto, array $options): array
             'child_user_id' => $childId,
             'child_email_old' => '',
             'child_email_new' => '',
-            'vs_old' => (string) ($existingReg['spa_vs'] ?? ''),
+            'vs_old' => $existingVs,
             'vs_new' => trim((string) ($dto['registration']['vs'] ?? '')),
             'consent_old' => '',
             'consent_new' => '',
@@ -557,6 +727,16 @@ function spa_csv_import_import_row(array $dto, array $options): array
                 . (!empty($updated['vs_message']) ? ' | ' . (string) $updated['vs_message'] : ''),
         ];
     }
+
+    $targetCreateVs = $csvVs;
+    if ($targetCreateVs === '' && function_exists('spa_generate_vs')) {
+        $targetCreateVs = (string) spa_generate_vs();
+    }
+    if ($targetCreateVs !== '' && !spa_csv_import_is_vs_unique($targetCreateVs, 0)) {
+        spa_csv_import_log_vs_conflict('create', $targetCreateVs, 0);
+        return ['ok' => false, 'action' => 'error', 'error' => 'VS konflikt pri create: ' . $targetCreateVs];
+    }
+    $dto['registration']['vs'] = $targetCreateVs;
 
     $created = spa_csv_import_create_registration_via_service($dto, $parentId, $childId);
     if (!$created['ok']) {
@@ -867,6 +1047,55 @@ function spa_csv_import_find_registration(int $childId, int $programId): ?array
     return is_array($row) ? $row : null;
 }
 
+function spa_csv_import_get_vs_conflicts_detected(): int
+{
+    return max(0, (int) get_option('spa_import_vs_conflicts_detected', 0));
+}
+
+function spa_csv_import_increment_vs_conflicts_detected(): void
+{
+    update_option('spa_import_vs_conflicts_detected', spa_csv_import_get_vs_conflicts_detected() + 1, false);
+}
+
+function spa_csv_import_log_vs_conflict(string $context, string $vs, int $excludeDbRegistrationId = 0): void
+{
+    spa_csv_import_increment_vs_conflicts_detected();
+    error_log(
+        '[SPA_IMPORT][VS_CONFLICT] context=' . $context
+        . ' vs=' . $vs
+        . ' exclude_db_registration_id=' . $excludeDbRegistrationId
+    );
+}
+
+function spa_csv_import_is_vs_unique(string $vs, int $excludeDbRegistrationId = 0): bool
+{
+    global $wpdb;
+    $vs = preg_replace('/[^0-9]/', '', trim($vs));
+    if ($vs === '') {
+        return true;
+    }
+
+    $table = $wpdb->prefix . 'spa_registrations';
+    if ($excludeDbRegistrationId > 0) {
+        $count = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE spa_vs = %s AND id != %d",
+                $vs,
+                $excludeDbRegistrationId
+            )
+        );
+    } else {
+        $count = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE spa_vs = %s",
+                $vs
+            )
+        );
+    }
+
+    return $count === 0;
+}
+
 function spa_csv_import_update_registration(int $dbRegistrationId, array $registration): array
 {
     global $wpdb;
@@ -887,14 +1116,13 @@ function spa_csv_import_update_registration(int $dbRegistrationId, array $regist
     $vs = isset($registration['vs']) ? trim((string) $registration['vs']) : '';
     $vsMessage = '';
     if ($vs !== '') {
-        $isUnique = function_exists('spa_is_vs_unique')
-            ? spa_is_vs_unique($vs, (int) $dbRegistrationId)
-            : ((int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE spa_vs = %s AND id != %d", $vs, $dbRegistrationId)) === 0);
+        $isUnique = spa_csv_import_is_vs_unique($vs, (int) $dbRegistrationId);
         if ($isUnique) {
             $data['spa_vs'] = $vs;
             $format[] = '%s';
         } else {
             $vsMessage = 'VS neuložený – duplicita';
+            spa_csv_import_log_vs_conflict('update_registration', $vs, (int) $dbRegistrationId);
         }
     }
 
